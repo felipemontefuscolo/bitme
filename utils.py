@@ -6,39 +6,42 @@ import dateutil.parser
 
 
 class Day:
-    def __init__(self, x):
-        self._x = x
+    def __init__(self):
         pass
 
-    def to_sec(self):
-        return self._x * 86400
+    @staticmethod
+    def to_sec(x):
+        return x * 86400
 
-    def to_min(self):
-        return self._x * 1440
+    @staticmethod
+    def to_min(x):
+        return x * 1440
 
-    def to_hour(self):
-        return self._x * 24
+    @staticmethod
+    def to_hour(x):
+        return x * 24
 
 
 class Hour:
-    def __init__(self, x):
-        self._x = x
+    def __init__(self):
         pass
 
-    def to_sec(self):
-        return self._x * 3600
+    @staticmethod
+    def to_sec(x):
+        return x * 3600
 
-    def to_min(self):
-        return self._x * 60
+    @staticmethod
+    def to_min(x):
+        return x * 60
 
 
 class Min:
-    def __init__(self, x):
-        self._x = x
+    def __init__(self):
         pass
 
-    def to_sec(self):
-        return self._x * 60
+    @staticmethod
+    def to_sec(x):
+        return x*60
 
 
 def get_current_ts():

@@ -1,17 +1,22 @@
 import sys
 from candles import Candles
+from tactic_mm import TacticMM
+from utils import Hour
 
 
 def main():
-    # candles1s = read_candles('/Users/felipe/bitme/data/data1s.csv')
-    # candles1s = read_candles('/Users/felipe/bitme/data/test')
-    print("starting")
-    candles = Candles.fromfilename('/Users/felipe/bitme/data/test')
-    candles.get_candles(2, candles.ts_l[-1] - 5, candles.ts_l[-1]).printf()
-    print "------"
-    candles.get_candles(58, candles.ts_l[-1] - 25, candles.ts_l[-1] + 29).printf()
-    print "------"
-    #candles.get_candles(2, candles.ts_l[-1] - 5, candles.ts_l[-1]).printf()
+    print("starting sim")
+    #candles = Candles.fromfilename('/Users/felipe/bitme/data/test')
+    candles = Candles.fromfilename('/Users/felipe/bitme/data/data1s.csv')
+
+    tac = TacticMM()
+
+    beg = candles.ts_l[0]
+    end = candles.ts_l[-1]
+
+    beg = beg + Hour.to_sec(24)
+
+    tac.handle_candles(candles, beg)
 
     return 0
 
