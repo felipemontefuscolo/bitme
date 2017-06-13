@@ -14,7 +14,7 @@ def main():
     beg = candles.ts_l[0]
     end = candles.ts_l[-1]
 
-    beg = beg + Hour.to_sec(24)
+    beg = beg + Hour(24).to_sec()
 
     tac.handle_candles(candles, beg)
 
