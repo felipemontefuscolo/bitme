@@ -48,8 +48,10 @@ def get_current_ts():
 def to_iso_utc(ts):
     return datetime.datetime.utcfromtimestamp(ts).isoformat()
 
+
 def to_iso_local(ts):
     return datetime.datetime.fromtimestamp(ts).isoformat()
+
 
 def to_ts(iso_time):
     # return time.mktime(dateutil.parser.parse(iso_time).timetuple())

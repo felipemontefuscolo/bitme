@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import math
 import sys
 import time
@@ -5,29 +6,37 @@ import contextlib
 import GDAX
 import re
 
-from utils import Hour, get_current_ts, to_iso_utc, to_iso_local, Min
+from utils import Hour, get_current_ts, to_iso_utc, to_iso_local, Min, to_ts
 from optparse import OptionParser
 
-NUM_CANDLES_GDAX_LIMIT = 199
+NUM_CANDLES_GDAX_LIMIT = 200
 
 
 # granularity in sec
 # start and end are timestamps
-def get_candles(publicClient, granularity, begin_ts, end_ts):
+def download_and_print_candles(publicClient, granularity, begin_ts, end_ts, filename):
     n_candles = math.ceil((end_ts - begin_ts) / granularity)
     n_calls = int(math.ceil(n_candles / NUM_CANDLES_GDAX_LIMIT))
-    candles = []
-    for i in range(n_calls - 1, -1, -1):
-        ss = begin_ts + i * NUM_CANDLES_GDAX_LIMIT * granularity
-        ee = min(granularity * NUM_CANDLES_GDAX_LIMIT + ss, end_ts)
-        candles_tmp = publicClient.getProductHistoricRates(granularity=granularity, start=to_iso_utc(ss),
-                                                           end=to_iso_utc(ee))
-        if 'message' in candles_tmp:
-            raise Exception('invalid gdax message: ' + str(candles_tmp))
-        candles += candles_tmp
-        time.sleep(1.005)
-        # print str((n_calls - i)/n_calls)*100 + '% done'
-    return candles
+    print "getting candles ... 0%"
+    with smart_open(filename) as fh:
+        print >> fh, "time,low,high,open,close,volume"
+        for i in range(0, n_calls):
+            ss = begin_ts + i * NUM_CANDLES_GDAX_LIMIT * granularity
+            ee = min(granularity * NUM_CANDLES_GDAX_LIMIT + ss, end_ts)
+            candles_tmp = publicClient.getProductHistoricRates(granularity=granularity, start=to_iso_utc(ss),
+                                                               end=to_iso_utc(ee))
+            #print_candles(candles_tmp, '-')
+            if 'message' in candles_tmp:
+                raise Exception('invalid gdax message: ' + str(candles_tmp))
+
+            candles_tmp = list(reversed(candles_tmp))
+            candles_ts_to_utc(candles_tmp)
+            for candle in candles_tmp:
+                print >> fh, ','.join(str(e) for e in candle)
+            time.sleep(1.005)
+            print "getting candles ... " + str(int(float(i+1)/n_calls*100 + 0.5)) + "%"
+            # print str((n_calls - i)/n_calls)*100 + '% done'
+    print "done"
 
 
 @contextlib.contextmanager
@@ -45,11 +54,22 @@ def smart_open(filename=None):
 
 
 def candles_ts_to_utc(candles):
-    last_ts = sys.maxsize
+    last_ts = 0
     for candle in candles:
-        if last_ts > int(candle[0]):
+        if last_ts < int(candle[0]):
             last_ts = int(candle[0])
             candle[0] = to_iso_utc(candle[0])
+        else:
+            raise Exception(
+                'invalid time stamp order: last = ' + str(to_iso_utc(last_ts)) + ', current = ' + to_iso_utc(candle[0]))
+
+
+def check_candles_order(candles_utc):
+    last_ts = 0
+    for candle in candles_utc:
+        current = to_ts(candle[0])
+        if last_ts < current:
+            last_ts = current
         else:
             raise Exception(
                 'invalid time stamp order: last = ' + str(to_iso_utc(last_ts)) + ', current = ' + to_iso_utc(candle[0]))
@@ -68,9 +88,11 @@ def get_options():
 
     options.duration = parse_number(str(options.duration))
     options.granularity = parse_number(str(options.granularity))
-    args = args if len(args) > 0 else ['-']
+    if len(args) < 1:
+        parser.print_help()
+        exit(-1)
 
-    print "options: " + str({'duration(s):': options.duration, 'granularity(s):': options.granularity})
+    print "options: " + str({'duration(s)': options.duration, 'granularity(s)': options.granularity})
     print "filename: " + str(args[0])
 
     return options, args
@@ -94,6 +116,14 @@ def parse_number(x):
     else:
         raise Exception("invalid time unit")
     return y
+
+
+def print_candles(candles, filename):
+    with smart_open(filename) as fh:
+        print >> fh, "time,low,high,open,close,volume"
+        for candle in candles:
+            print >> fh, ','.join(str(e) for e in candle)
+    return
 
 
 def main():
@@ -124,17 +154,7 @@ def main():
     b = e - options.duration
 
     print("getting candles for (utc) " + to_iso_utc(b) + " -- " + to_iso_utc(e))
-    candles = get_candles(publicClient, granularity=gran, begin_ts=b, end_ts=e)
-
-    # time, low, high, open, close, volume
-    # table = np.array(candles)
-    # np.savetxt("data.txt", table);
-
-    candles_ts_to_utc(candles)
-
-    print "time,low,high,open,close,volume"
-    for candle in reversed(candles):
-        print ','.join(str(e) for e in candle)
+    download_and_print_candles(publicClient, granularity=gran, begin_ts=b, end_ts=e, filename=filename)
 
     return 0
 
