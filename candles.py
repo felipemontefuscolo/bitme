@@ -86,7 +86,7 @@ class Candles:
 
         n = int(math.ceil((end_ts + 1 - begin_ts) / float(granularity)))
         n = (1 if n == 0 else n)
-        new_beg_ts = end_ts - n * granularity
+        new_beg_ts = end_ts + 1 - n * granularity
         for i in range(0, n):
             idx = new_beg_ts + i * granularity - self.ts_l[0]
             if idx < 0:

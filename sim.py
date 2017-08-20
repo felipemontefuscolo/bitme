@@ -23,7 +23,7 @@ def main():
     # for i in sent_orders.sells + sent_orders.buys:
     #     print i
 
-    candles.get_candles(3, candles.ts_l[0], candles.ts_l[-1]).printf()
+    candles.get_candles(1, candles.ts_l[0], candles.ts_l[-1]).printf()
     #candles.printf()
 
 
