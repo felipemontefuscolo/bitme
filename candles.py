@@ -79,12 +79,12 @@ class Candles:
         close_l = []
         volume_l = []
 
-        granularity = (granularity if granularity < len(self.ts_l) else len(self.ts_l))-1
+        granularity = (granularity if granularity <= len(self.ts_l) else len(self.ts_l))
 
         begin_ts = max(begin_ts, self.ts_l[0])
         end_ts = min(end_ts, self.ts_l[-1])
 
-        n = int(math.ceil((end_ts - begin_ts) / float(granularity)))
+        n = int(math.ceil((end_ts + 1 - begin_ts) / float(granularity)))
         n = (1 if n == 0 else n)
         new_beg_ts = end_ts - n * granularity
         for i in range(0, n):
