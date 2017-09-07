@@ -5,25 +5,23 @@ from utils import Hour
 from orders import LimitOrder, Orders
 import math
 
+
 def main():
     print("starting sim")
     candles = Candles.fromfilename('/Users/felipe/bitme/data/test')
     #candles = Candles.fromfilename('/Users/felipe/bitme/data/data1s.csv')
 
     tac = TacticMM('ETH-USD')
-    orders = Orders()
+    active_orders = Orders()
 
-    beg = candles.ts_l[0]
-    end = candles.ts_l[-1]
-
-    beg = beg + Hour(24).to_sec()
-
-    #sent_orders = tac.handle_candles(candles, beg, orders)
+    active_orders.merge(tac.handle_candles(candles, active_orders))
+    active_orders.merge(tac.handle_candles(candles, active_orders))
+    active_orders.printf()
 
     # for i in sent_orders.sells + sent_orders.buys:
     #     print i
 
-    candles.get_candles(1, candles.ts_l[0], candles.ts_l[-1]).printf()
+    #candles.get_candles(1, candles.ts_l[0], candles.ts_l[-1]).printf()
     #candles.printf()
 
 

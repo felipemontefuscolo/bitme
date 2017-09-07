@@ -7,10 +7,10 @@ class TacticMM:
         self.product_id = product_id
         pass
 
-    def handle_candles(self, candles1s, current_time, orders):
+    def handle_candles(self, candles1s, active_orders):
         # should return orders to send
 
-        t = current_time
+        t = candles1s.ts_l[-1]
         # c1h = candles1s.get_candles(Hour().to_sec(1), t - Hour().to_sec(24), t)
         # c15m = candles1s.get_candles(Min().to_sec(15), t - Hour().to_sec(6), t)
         # c1m = candles1s.get_candles(Min().to_sec(1), t - Min().to_sec(24), t)
@@ -24,7 +24,7 @@ class TacticMM:
         # c1m.printf()
 
         orders_to_send = Orders()
-        orders_to_send.post_limit_order('buy', 123.44444, 2, self.product_id, current_time)
-        orders_to_send.post_limit_order('sell', 123.666666, 1.1111, self.product_id, current_time)
+        orders_to_send.post_limit_order('buy', 123.44444, 2, self.product_id, t)
+        orders_to_send.post_limit_order('sell', 123.666666, 1.1111, self.product_id, t)
 
         return orders_to_send

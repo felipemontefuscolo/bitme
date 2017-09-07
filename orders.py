@@ -14,8 +14,23 @@ class Orders:
         order = LimitOrder(side, price, size, product_id, time_posted)
         if side == "buy":
             self.buys += [order]
-        else:
+        elif side == "sell":
             self.sells += [order]
+        else:
+            raise RuntimeError("Unknown order")
+
+    def merge(self, orders):
+        # type: (Orders) -> None
+        self.buys += orders.buys
+        self.sells += orders.sells
+
+    def printf(self):
+        print("buys")
+        for i in self.buys:
+            print(i.to_json())
+        print("\nsells")
+        for i in self.sells:
+            print(i.to_json())
 
 
 class LimitOrder:

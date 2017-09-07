@@ -114,7 +114,7 @@ def _first_non_none(v):
 
 
 def _last_non_none(v):
-    return next((x for x in v if x is not None), None)
+    return next((x for x in reversed(v) if x is not None), None)
 
 
 def _sum(v):
