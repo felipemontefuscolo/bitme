@@ -14,6 +14,9 @@ class Candles:
         self.volume_l = volume_l
         pass
 
+    def __iter__(self):
+        return iter(zip(self.ts_l, self.low_l, self.high_l, self.open_l, self.close_l, self.volume_l))
+
     def printf(self):
         print "time,low,high,open,close,volume"
         for t, l, h, o, c, v in zip(self.ts_l, self.low_l, self.high_l, self.open_l, self.close_l, self.volume_l):

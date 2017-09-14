@@ -6,40 +6,54 @@ EIGHPLACES = Decimal(10) ** -8
 
 class Orders:
     def __init__(self):
-        self.buys = []
-        self.sells = []
+        self.data = []
         pass
 
     def post_limit_order(self, side, price, size, product_id, time_posted):
         order = LimitOrder(side, price, size, product_id, time_posted)
-        if side == "buy":
-            self.buys += [order]
-        elif side == "sell":
-            self.sells += [order]
-        else:
-            raise RuntimeError("Unknown order")
+        self.data += [order]
 
     def merge(self, orders):
         # type: (Orders) -> None
-        self.buys += orders.buys
-        self.sells += orders.sells
+        self.data += orders.data
+
+    def clean_filled(self):
+        self.data = [order for order in self.data if order.size > 0]
 
     def printf(self):
         print("buys")
-        for i in self.buys:
-            print(i.to_json())
+        for i in self.data:
+            if i.side == 'buy':
+                print(i.to_json())
         print("\nsells")
-        for i in self.sells:
-            print(i.to_json())
+        for i in self.data:
+            if i.side == 'sell':
+                print(i.to_json())
+
+    def remove_no_fund_orders(self, position_coin, position_usd):
+        self.data = [o for o in self.data if (o.side[0] == 's' and o.size <= position_coin) or
+                                             (o.side[0] == 'b' and o.size * o.price <= position_usd)]
 
 
-class LimitOrder:
-    def __init__(self, side, price, size, product_id, time_posted):
+class _OrderCommon:
+    def __init__(self, side, size, product_id, order_type, time_posted):
         self.side = side
-        self.price = price
         self.size = size
-        self.product_id = product_id
+        self.order_type = order_type
         self.ts = time_posted
+        self.product_id = product_id
+        pass
+
+    def fill(self, size):
+        filled = min(self.size, abs(size))
+        self.size -= filled
+        return filled
+
+
+class LimitOrder(_OrderCommon):
+    def __init__(self, side, price, size, product_id, time_posted):
+        _OrderCommon.__init__(self, side, size, product_id, 'limit', time_posted)
+        self.price = price
         pass
 
     def __repr__(self):
@@ -60,13 +74,15 @@ class LimitOrder:
         }
         return params
 
+    @staticmethod
+    def is_ioc():
+        return False
 
-class MarketOrder:
+
+class MarketOrder(_OrderCommon):
     def __init__(self, side, size, product_id, time_posted):
-        self.side = side
-        self.size = size
-        self.product_id = product_id
-        self.ts = time_posted
+        _OrderCommon.__init__(self, side, size, product_id, 'market', time_posted)
+        raise RuntimeError("Not implemented. Need to implement full depth book first")
         pass
 
     def __repr__(self):
@@ -85,14 +101,16 @@ class MarketOrder:
         }
         return params
 
+    @staticmethod
+    def is_ioc():
+        return True
 
-class StopOrder:
+
+class StopOrder(_OrderCommon):
     def __init__(self, side, price, size, product_id, time_posted):
-        self.side = side
+        _OrderCommon.__init__(self, side, size, product_id, 'stop', time_posted)
         self.price = price
-        self.size = size
-        self.product_id = product_id
-        self.ts = time_posted
+        raise RuntimeError("Not implemented. Need to implement full depth book first")
         pass
 
     def __repr__(self):
@@ -111,6 +129,10 @@ class StopOrder:
             'overdraft_enabled': 'true'
         }
         return params
+
+    @staticmethod
+    def is_ioc():
+        return False
 
 
 def to_str(number, precision=TWOPLACES):

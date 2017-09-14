@@ -2,13 +2,18 @@ from orders import Orders
 from utils import Min, Hour
 
 
-class TacticMM:
+class TacticTest:
     def __init__(self, product_id):
         self.product_id = product_id
+        self.round = 0
         pass
 
-    def handle_candles(self, candles1s, active_orders):
+    def handle_candles(self, candles1s, active_orders, position_coin, position_usd):
         # should return orders to send
+
+        # if self.round > 0:
+        #     return Orders()
+        # self.round = 1
 
         t = candles1s.ts_l[-1]
         # c1h = candles1s.get_candles(Hour().to_sec(1), t - Hour().to_sec(24), t)
@@ -24,7 +29,7 @@ class TacticMM:
         # c1m.printf()
 
         orders_to_send = Orders()
-        orders_to_send.post_limit_order('buy', 123.44444, 2, self.product_id, t)
-        orders_to_send.post_limit_order('sell', 123.666666, 1.1111, self.product_id, t)
+        orders_to_send.post_limit_order('buy', 178.02, position_usd / 178.02 - 0.00001, self.product_id, t)
+        orders_to_send.post_limit_order('sell', 179.02, 5, self.product_id, t)
 
         return orders_to_send
