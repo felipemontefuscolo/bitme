@@ -5,12 +5,21 @@ EIGHPLACES = Decimal(10) ** -8
 
 
 class Orders:
+    order_id = 0
+
     def __init__(self):
         self.data = []
         pass
 
+    def __iter__(self):
+        return iter(self.data)
+
+    def size(self):
+        return len(self.data)
+
     def post_limit_order(self, side, price, size, product_id, time_posted):
-        order = LimitOrder(side, price, size, product_id, time_posted)
+        order = LimitOrder(self.order_id, side, price, size, product_id, time_posted)
+        self.order_id += 1
         self.data += [order]
 
     def merge(self, orders):
@@ -36,7 +45,8 @@ class Orders:
 
 
 class _OrderCommon:
-    def __init__(self, side, size, product_id, order_type, time_posted):
+    def __init__(self, order_id, side, size, product_id, order_type, time_posted):
+        self.order_id = order_id
         self.side = side
         self.size = size
         self.order_type = order_type
@@ -51,8 +61,8 @@ class _OrderCommon:
 
 
 class LimitOrder(_OrderCommon):
-    def __init__(self, side, price, size, product_id, time_posted):
-        _OrderCommon.__init__(self, side, size, product_id, 'limit', time_posted)
+    def __init__(self, order_id, side, price, size, product_id, time_posted):
+        _OrderCommon.__init__(self, order_id, side, size, product_id, 'limit', time_posted)
         self.price = price
         pass
 
@@ -80,8 +90,8 @@ class LimitOrder(_OrderCommon):
 
 
 class MarketOrder(_OrderCommon):
-    def __init__(self, side, size, product_id, time_posted):
-        _OrderCommon.__init__(self, side, size, product_id, 'market', time_posted)
+    def __init__(self, order_id, side, size, product_id, time_posted):
+        _OrderCommon.__init__(self, order_id, side, size, product_id, 'market', time_posted)
         raise RuntimeError("Not implemented. Need to implement full depth book first")
         pass
 
@@ -107,8 +117,8 @@ class MarketOrder(_OrderCommon):
 
 
 class StopOrder(_OrderCommon):
-    def __init__(self, side, price, size, product_id, time_posted):
-        _OrderCommon.__init__(self, side, size, product_id, 'stop', time_posted)
+    def __init__(self, order_id, side, price, size, product_id, time_posted):
+        _OrderCommon.__init__(self, order_id, side, size, product_id, 'stop', time_posted)
         self.price = price
         raise RuntimeError("Not implemented. Need to implement full depth book first")
         pass

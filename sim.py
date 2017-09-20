@@ -1,13 +1,14 @@
 import sys
 from candles import Candles
-from tactic_mm import TacticTest
+from tactic_mm import TacticTest, Tactic1
 from utils import Hour, to_iso_utc
 from orders import LimitOrder, Orders, to_str, TWOPLACES, EIGHPLACES
 import math
 
 
 class Fill:
-    def __init__(self, side, size, price, order_type, fill_time):
+    def __init__(self, order_id, side, size, price, order_type, fill_time):
+        self.order_id = order_id
         self.side = side
         self.size = size
         self.price = price
@@ -23,6 +24,7 @@ class Fill:
     def to_json(self):
         params = {
             'time': to_iso_utc(self.fill_time),
+            'order_id': self.order_id,
             'side': self.side,
             'price': to_str(self.price, TWOPLACES),  # USD
             'size': to_str(self.size, EIGHPLACES),  # BTC
@@ -33,20 +35,31 @@ class Fill:
 
 def main():
     print("starting sim")
-    candles = Candles.fromfilename('/Users/felipe/bitme/data/test')
-    # candles = Candles.fromfilename('/Users/felipe/bitme/data/data1s.csv')
+    # candles = Candles.fromfilename('/Users/felipe/bitme/data/test')
+    print("reading candles")
+    candles = Candles.fromfilename('/Users/felipe/bitme/data/data1s.csv')
+    print("finished reading candles")
 
-    tac = TacticTest('BTC-USD')
+    tac = Tactic1('BTC-USD')
     active_orders = Orders()
 
+    initial_position_btc = 0
+    initial_position_usd = 100
+
     fills = []
-    position_btc = 0
-    position_usd = 100
+    position_btc = initial_position_btc
+    position_usd = initial_position_usd
+
+    k = 0
 
     for t, low, high, open_p, close_p, volume in candles:
         if t is None:
             # no activity
             continue
+
+        sys.stdout.write("progress: %d out of %d   \r" % (k , candles.size()))
+        sys.stdout.flush()
+        k = k + 1
 
         orders_to_send = tac.handle_candles(candles, active_orders, position_btc, position_usd)
         orders_to_send.remove_no_fund_orders(position_btc, position_usd)
@@ -70,7 +83,7 @@ def main():
 
             if vol_fill > 0:
                 filled = order.fill(vol_fill)
-                fills += [Fill(order.side, filled, order.price, order.order_type, t + 1)]
+                fills += [Fill(order.order_id, order.side, filled, order.price, order.order_type, t + 1)]
 
                 filled = filled if is_buy else -filled
                 position_btc += filled
@@ -80,8 +93,8 @@ def main():
                 position_usd -= filled * order.price
 
 
-                    # print("vol_fill = " + str(vol_fill))
-                    # active_orders.printf()
+                # print("vol_fill = " + str(vol_fill))
+                # active_orders.printf()
 
         active_orders.clean_filled()
 
@@ -94,7 +107,7 @@ def main():
 
     print("position btc = " + str(position_btc))
     print("position usd = " + str(position_usd))
-    print("optimist realized profit = " + str(position_usd + position_btc * close_p))
+    print("optimist realized profit = " + str((position_usd - 100) + position_btc * close_p))
 
     return 0
 

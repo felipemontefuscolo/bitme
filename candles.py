@@ -14,6 +14,9 @@ class Candles:
         self.volume_l = volume_l
         pass
 
+    def size(self):
+        return len(self.ts_l)
+
     def __iter__(self):
         return iter(zip(self.ts_l, self.low_l, self.high_l, self.open_l, self.close_l, self.volume_l))
 
@@ -97,8 +100,8 @@ class Candles:
             ts_l.append(new_beg_ts + i * granularity)
             low_l.append(_min(self.low_l[idx:idx + granularity]))
             high_l.append(max(self.high_l[idx:idx + granularity]))
-            open_l.append(_first_non_none(self.open_l[idx:idx + granularity]))
-            close_l.append(_last_non_none(self.close_l[idx:idx + granularity]))
+            open_l.append(first_non_none(self.open_l[idx:idx + granularity]))
+            close_l.append(last_non_none(self.close_l[idx:idx + granularity]))
             volume_l.append(_sum(self.volume_l[idx: idx + granularity]))
         return Candles(ts_l, low_l, high_l, open_l, close_l, volume_l)
 
@@ -112,11 +115,11 @@ def _max(v):
     return max(x if x is not None else None for x in v)
 
 
-def _first_non_none(v):
+def first_non_none(v):
     return next((x for x in v if x is not None), None)
 
 
-def _last_non_none(v):
+def last_non_none(v):
     return next((x for x in reversed(v) if x is not None), None)
 
 
