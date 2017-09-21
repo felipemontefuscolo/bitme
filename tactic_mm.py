@@ -62,10 +62,10 @@ class Tactic1:
             # warm up period
             return Orders()
 
-        going_up = sum([open_p >= close_p for t, low, high, open_p, close_p, volume in c6h])
-        if going_up < 2:
-            # market not favorable
-            return Orders()
+        # going_up = sum([open_p >= close_p for t, low, high, open_p, close_p, volume in c6h])
+        #if going_up < 2:
+        #    # market not favorable
+        #    return Orders()
 
         if active_orders.size() > 2:
             raise ValueError("should have more than 2 orders placed")

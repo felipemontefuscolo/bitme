@@ -32,6 +32,14 @@ class Fill:
         }
         return params
 
+    def to_line(self):
+        return ','.join([str(self.order_id), str(self.side), str(self.size), str(self.price), str(self.order_type),
+                         str(self.fill_time)])
+
+    @staticmethod
+    def get_header():
+        return "time,order_id,side,price,size,type"
+
 
 def main():
     print("starting sim")
@@ -44,7 +52,7 @@ def main():
     active_orders = Orders()
 
     initial_position_btc = 0
-    initial_position_usd = 100
+    initial_position_usd = 6000
 
     fills = []
     position_btc = initial_position_btc
@@ -52,17 +60,25 @@ def main():
 
     k = 0
 
+    fills_file = open("fills.txt", "w")
+    fills_file.write(Fill.get_header() + "\n")
+
+    t_idx = -1
     for t, low, high, open_p, close_p, volume in candles:
+        t_idx = t_idx + 1
         if t is None:
             # no activity
             continue
 
-        sys.stdout.write("progress: %d out of %d   \r" % (k , candles.size()))
+        sys.stdout.write("progress: %d out of %d   \r" % (k, candles.size()))
         sys.stdout.flush()
         k = k + 1
 
         orders_to_send = tac.handle_candles(candles, active_orders, position_btc, position_usd)
         orders_to_send.remove_no_fund_orders(position_btc, position_usd)
+        if orders_to_send.size() > 0:
+            print("ORDERRRRRRRR " + orders_to_send.data[0])
+            sys.stdout.flush()
         active_orders.merge(orders_to_send)
 
         # fill sim
@@ -92,6 +108,10 @@ def main():
                         "Position should never be negative (it is %s). Last fill was %s" % (position_btc, filled))
                 position_usd -= filled * order.price
 
+                fills_file.write(fills[-1].to_line() + "\n")
+                fills_file.flush()
+                print("FILLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL filled")
+                sys.stdout.flush()
 
                 # print("vol_fill = " + str(vol_fill))
                 # active_orders.printf()
@@ -99,7 +119,7 @@ def main():
         active_orders.clean_filled()
 
     # active_orders.printf()
-    print_fills = True
+    print_fills = False
     if print_fills:
         print("Fills:")
         for fill in fills:
@@ -107,7 +127,9 @@ def main():
 
     print("position btc = " + str(position_btc))
     print("position usd = " + str(position_usd))
-    print("optimist realized profit = " + str((position_usd - 100) + position_btc * close_p))
+    print("optimist realized profit = " + str(position_usd + position_btc * close_p - initial_position_usd))
+
+    fills_file.close()
 
     return 0
 
