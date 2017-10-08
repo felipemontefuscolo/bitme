@@ -1,9 +1,11 @@
 import sys
-from candles import Candles
-from tactic_mm import TacticTest, Tactic1
+from simcandles import SimCandles
+from tactic_mm import *
 from utils import Hour, to_iso_utc
 from orders import LimitOrder, Orders, to_str, TWOPLACES, EIGHPLACES
 import math
+import pandas as pd
+import numpy as np
 
 
 class Fill:
@@ -23,7 +25,7 @@ class Fill:
 
     def to_json(self):
         params = {
-            'time': to_iso_utc(self.fill_time),
+            'time': self.fill_time,
             'order_id': self.order_id,
             'side': self.side,
             'price': to_str(self.price, TWOPLACES),  # USD
@@ -33,56 +35,79 @@ class Fill:
         return params
 
     def to_line(self):
-        return ','.join([str(self.order_id), str(self.side), str(self.size), str(self.price), str(self.order_type),
-                         str(self.fill_time)])
+        return ','.join([
+            str(self.fill_time),
+            str(self.order_id),
+            str(self.side),
+            str(to_str(self.price, TWOPLACES)),  # USD
+            str(to_str(self.size, EIGHPLACES)),  # BTC
+            str(self.order_type)
+        ])
 
     @staticmethod
     def get_header():
         return "time,order_id,side,price,size,type"
 
 
+# try to simulate cancels
+def simulate_cancel_orders(orders_to_send, position_btc, position_usd):
+    # type: (Orders, float, float) -> Orders
+    orders_to_send.remove_no_fund_orders(position_btc, position_usd)
+    return orders_to_send
+
+
 def main():
     print("starting sim")
     # candles = Candles.fromfilename('/Users/felipe/bitme/data/test')
-    print("reading candles")
-    candles = Candles.fromfilename('/Users/felipe/bitme/data/data1s.csv')
-    print("finished reading candles")
 
-    tac = Tactic1('BTC-USD')
-    active_orders = Orders()
+    #file_name = '/Users/felipe/bitme/data/data1s.csv'
+    file_name = '/Users/felipe/bitme/data/test2'
+    #file_name = '/Users/felipe/bitme/data/test'
+    product_id = 'BTC-USD'
+    candles = SimCandles(file_name)
+    opened_orders = Orders()
+    #tac = TacticTest(product_id)
+    tac = Tactic1(product_id)
 
     initial_position_btc = 0
     initial_position_usd = 6000
+    close_p = -999999999
 
     fills = []
+    fills_file = open('/Users/felipe/bitme/output.fills', 'w')
+    fills_file.write(Fill.get_header() + '\n')
     position_btc = initial_position_btc
     position_usd = initial_position_usd
 
     k = 0
 
-    fills_file = open("fills.txt", "w")
-    fills_file.write(Fill.get_header() + "\n")
+    for candles_view in candles.views():
+        # candles_view = all candles from 0 to current
 
-    t_idx = -1
-    for t, low, high, open_p, close_p, volume in candles:
-        t_idx = t_idx + 1
-        if t is None:
-            # no activity
-            continue
-
-        sys.stdout.write("progress: %d out of %d   \r" % (k, candles.size()))
-        sys.stdout.flush()
-        k = k + 1
-
-        orders_to_send = tac.handle_candles(candles, active_orders, position_btc, position_usd)
-        orders_to_send.remove_no_fund_orders(position_btc, position_usd)
-        if orders_to_send.size() > 0:
-            print("ORDERRRRRRRR " + orders_to_send.data[0])
+        if True:
+            sys.stdout.write("progress: %d out of %d (%s%%)   \r" % (k, candles.size(), 100*float(k)/candles.size()))
             sys.stdout.flush()
-        active_orders.merge(orders_to_send)
+            k = k + 1
+
+        orders_to_send = tac.handle_candles(SimCandles(data=candles_view), opened_orders, position_btc, position_usd)
+
+        orders_to_send = simulate_cancel_orders(orders_to_send, position_btc, position_usd)
+
+        if orders_to_send.size() > 0:
+            print("sending orders ")
+            orders_to_send.printf()
+
+        opened_orders.merge(orders_to_send)
+
+        last_candle = candles_view.iloc[-1]
+        current_time = last_candle.name  # pd.Timestamp
+        high = last_candle.high
+        low = last_candle.low
+        volume = last_candle.volume
+        close_p = last_candle.close
 
         # fill sim
-        for order in active_orders.data:
+        for order in opened_orders.data:
             # special case
 
             vol_fill = 0
@@ -98,35 +123,37 @@ def main():
                     vol_fill = ((low - order.price) / (low - high)) * volume
 
             if vol_fill > 0:
-                filled = order.fill(vol_fill)
-                fills += [Fill(order.order_id, order.side, filled, order.price, order.order_type, t + 1)]
+                size_filled = order.fill(vol_fill)
+                fill = Fill(order.order_id, order.side, size_filled, order.price, order.order_type, str(current_time))
+                fills += [fill]
 
-                filled = filled if is_buy else -filled
-                position_btc += filled
+                size_filled = size_filled if is_buy else -size_filled
+                position_btc += size_filled
                 if position_btc < 0:
                     raise RuntimeError(
-                        "Position should never be negative (it is %s). Last fill was %s" % (position_btc, filled))
-                position_usd -= filled * order.price
+                        "Position should never be negative (it is %s). Last fill was %s" % (position_btc, size_filled))
+                position_usd -= size_filled * order.price
 
                 fills_file.write(fills[-1].to_line() + "\n")
                 fills_file.flush()
-                print("FILLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL filled")
+                print("FILL: " + str(fill))
                 sys.stdout.flush()
 
                 # print("vol_fill = " + str(vol_fill))
                 # active_orders.printf()
 
-        active_orders.clean_filled()
+        opened_orders.clean_filled()
 
-    # active_orders.printf()
     print_fills = False
     if print_fills:
         print("Fills:")
         for fill in fills:
             print(str(fill.to_json()))
 
+    print("")
     print("position btc = " + str(position_btc))
     print("position usd = " + str(position_usd))
+    print("close price = " + str(close_p))
     print("optimist realized profit = " + str(position_usd + position_btc * close_p - initial_position_usd))
 
     fills_file.close()

@@ -18,8 +18,8 @@ class Orders:
         return len(self.data)
 
     def post_limit_order(self, side, price, size, product_id, time_posted):
-        order = LimitOrder(self.order_id, side, price, size, product_id, time_posted)
-        self.order_id += 1
+        order = LimitOrder(Orders.order_id, side, price, size, product_id, time_posted)
+        Orders.order_id += 1
         self.data += [order]
 
     def merge(self, orders):
@@ -30,14 +30,17 @@ class Orders:
         self.data = [order for order in self.data if order.size > 0]
 
     def printf(self):
+        print("-------------")
         print("buys")
         for i in self.data:
             if i.side == 'buy':
                 print(i.to_json())
-        print("\nsells")
+        print("sells")
         for i in self.data:
             if i.side == 'sell':
                 print(i.to_json())
+        print("-------------")
+
 
     def remove_no_fund_orders(self, position_coin, position_usd):
         self.data = [o for o in self.data if (o.side[0] == 's' and o.size <= position_coin) or
@@ -55,7 +58,7 @@ class _OrderCommon:
         pass
 
     def fill(self, size):
-        filled = min(self.size, abs(size))
+        filled = min(abs(self.size), abs(size))
         self.size -= filled
         return filled
 
