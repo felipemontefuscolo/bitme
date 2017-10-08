@@ -67,6 +67,10 @@ def print_file(file_or_stdout, api_instance, bin_size, partial, symbol, reverse,
         print >> fh, "time,open,high,low,close,volume"
 
         for i in reversed(range(num_pages)):
+            sys.stdout.write(
+                "progress: %d out of %d pages (%s%%)   \r" % (num_pages-i, num_pages, 100 * float(num_pages-i) / num_pages))
+            sys.stdout.flush()
+
             page = api_instance.trade_get_bucketed(bin_size=bin_size, partial=partial, symbol=symbol,
                                                    count=MAX_NUM_CANDLES_BITMEX, start=i * MAX_NUM_CANDLES_BITMEX,
                                                    reverse=reverse, start_time=start_time, end_time=end_time)
@@ -78,12 +82,12 @@ def print_file(file_or_stdout, api_instance, bin_size, partial, symbol, reverse,
                                        str(line.close),
                                        str(line.volume)])
             time.sleep(1.005)
-
+        print ""
 
 def main():
     start_time = dateutil.parser.parse('2017-10-01T19:20:00')  # datetime | Starting date filter for results. (optional)
     end_time = dateutil.parser.parse('2017-10-01T19:26:00')  # datetime | Ending date filter for results. (optional)
-    file_or_stdout = '-'
+    file_or_stdout = 'bitmex_1week.csv'
 
     # create an instance of the API class
     configuration = swagger_client.Configuration()
