@@ -2,7 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="f802fea8-a251-463a-97b6-49659b8de660" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/bitmex_1week.csv" afterPath="$PROJECT_DIR$/bitmex_1week.csv" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/bitmex_1day.csv" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/bitmex_1week.csv" afterPath="" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/get_bitmex_data.py" afterPath="$PROJECT_DIR$/get_bitmex_data.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -43,7 +45,7 @@
       <file leaf-file-name="get_bitmex_data.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/get_bitmex_data.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="566">
+            <state relative-caret-position="321">
               <caret line="69" column="50" lean-forward="false" selection-start-line="69" selection-start-column="50" selection-end-line="69" selection-end-column="50" />
               <folding>
                 <element signature="e#22#39#0" expanded="true" />
@@ -836,7 +838,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/get_bitmex_data.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="566">
+        <state relative-caret-position="321">
           <caret line="69" column="50" lean-forward="false" selection-start-line="69" selection-start-column="50" selection-end-line="69" selection-end-column="50" />
           <folding>
             <element signature="e#22#39#0" expanded="true" />

@@ -67,9 +67,9 @@ def print_file(file_or_stdout, api_instance, bin_size, partial, symbol, reverse,
 
 
 def main():
-    start_time = dateutil.parser.parse('2017-10-01T19:26:00')  # datetime | Starting date filter for results. (optional)
+    start_time = dateutil.parser.parse('2017-10-07T19:26:00')  # datetime | Starting date filter for results. (optional)
     end_time = dateutil.parser.parse('2017-10-08T19:26:00')  # datetime | Ending date filter for results. (optional)
-    file_or_stdout = 'bitmex_1week.csv'
+    file_or_stdout = 'data/bitmex_1day.csv'
 
     # create an instance of the API class
     configuration = swagger_client.Configuration()
