@@ -21,7 +21,7 @@ class Fill:
         return str(self.to_json())
 
     def __str__(self):
-        return str(self.to_json())
+        return str(self.to_line())
 
     def to_json(self):
         params = {
@@ -61,7 +61,7 @@ def main():
     # candles = Candles.fromfilename('/Users/felipe/bitme/data/test')
 
     #file_name = '/Users/felipe/bitme/data/data1s.csv'
-    file_name = '/Users/felipe/bitme/data/test2'
+    file_name = '/Users/felipe/bitme/data/bitmex_1day.csv'
     #file_name = '/Users/felipe/bitme/data/test'
     product_id = 'BTC-USD'
     candles = SimCandles(file_name)
@@ -75,7 +75,9 @@ def main():
 
     fills = []
     fills_file = open('/Users/felipe/bitme/output.fills', 'w')
+    orders_file = open('/Users/felipe/bitme/output.orders', 'w')
     fills_file.write(Fill.get_header() + '\n')
+    orders_file.write(Orders().to_csv() + '\n')
     position_btc = initial_position_btc
     position_usd = initial_position_usd
 
@@ -85,7 +87,7 @@ def main():
         # candles_view = all candles from 0 to current
 
         if True:
-            sys.stdout.write("progress: %d out of %d (%s%%)   \r" % (k, candles.size(), 100*float(k)/candles.size()))
+            sys.stdout.write("progress: %d out of %d (%.4f%%)   \r" % (k, candles.size(), 100*float(k)/candles.size()))
             sys.stdout.flush()
             k = k + 1
 
@@ -94,8 +96,11 @@ def main():
         orders_to_send = simulate_cancel_orders(orders_to_send, position_btc, position_usd)
 
         if orders_to_send.size() > 0:
-            print("sending orders ")
-            orders_to_send.printf()
+            print("")
+            print("ORDERS")
+            print(orders_to_send.to_csv())
+            orders_file.write(orders_to_send.to_csv(False) + '\n')
+            print("--------")
 
         opened_orders.merge(orders_to_send)
 
@@ -157,6 +162,7 @@ def main():
     print("optimist realized profit = " + str(position_usd + position_btc * close_p - initial_position_usd))
 
     fills_file.close()
+    orders_file.close()
 
     return 0
 

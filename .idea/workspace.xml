@@ -2,10 +2,12 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="f802fea8-a251-463a-97b6-49659b8de660" name="Default" comment="">
-      <change type="DELETED" beforePath="$PROJECT_DIR$/bitmex_1day.csv" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/bitmex_1week.csv" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/data/.bitmex_test.csv.swp" afterPath="" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/get_bitmex_data.py" afterPath="$PROJECT_DIR$/get_bitmex_data.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/orders.py" afterPath="$PROJECT_DIR$/orders.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/output.fills" afterPath="$PROJECT_DIR$/output.fills" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sim.py" afterPath="$PROJECT_DIR$/sim.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -32,64 +34,34 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="sim.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="sim.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/sim.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="114">
-              <caret line="88" column="30" lean-forward="true" selection-start-line="87" selection-start-column="12" selection-end-line="88" selection-end-column="30" />
+            <state relative-caret-position="-820">
+              <caret line="79" column="46" lean-forward="false" selection-start-line="79" selection-start-column="46" selection-end-line="79" selection-end-column="46" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="get_bitmex_data.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="orders.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/orders.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="188">
+              <caret line="37" column="52" lean-forward="true" selection-start-line="37" selection-start-column="52" selection-end-line="37" selection-end-column="52" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="get_bitmex_data.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/get_bitmex_data.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="321">
-              <caret line="69" column="50" lean-forward="false" selection-start-line="69" selection-start-column="50" selection-end-line="69" selection-end-column="50" />
+            <state relative-caret-position="379">
+              <caret line="57" column="83" lean-forward="true" selection-start-line="57" selection-start-column="53" selection-end-line="57" selection-end-column="83" />
               <folding>
                 <element signature="e#22#39#0" expanded="true" />
               </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="datetime.py" pinned="false" current-in-tab="false">
-        <entry file="file://$USER_HOME$/Library/Caches/PyCharmCE2017.1/python_stubs/-1730649415/datetime.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="207">
-              <caret line="28" column="36" lean-forward="false" selection-start-line="28" selection-start-column="27" selection-end-line="28" selection-end-column="36" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="trade_bin.py" pinned="false" current-in-tab="false">
-        <entry file="file:///anaconda/lib/python2.7/site-packages/swagger_client/models/trade_bin.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="287">
-              <caret line="165" column="16" lean-forward="true" selection-start-line="165" selection-start-column="16" selection-end-line="165" selection-end-column="16" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="__builtin__.py" pinned="false" current-in-tab="false">
-        <entry file="file://$USER_HOME$/Library/Caches/PyCharmCE2017.1/python_stubs/-1730649415/__builtin__.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="224">
-              <caret line="3915" column="8" lean-forward="false" selection-start-line="3915" selection-start-column="8" selection-end-line="3915" selection-end-column="8" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="configuration.py" pinned="false" current-in-tab="false">
-        <entry file="file:///anaconda/lib/python2.7/site-packages/swagger_client/configuration.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="234">
-              <caret line="52" column="17" lean-forward="false" selection-start-line="52" selection-start-column="8" selection-end-line="52" selection-end-column="17" />
-              <folding />
             </state>
           </provider>
         </entry>
@@ -100,6 +72,18 @@
             <state relative-caret-position="45">
               <caret line="3" column="0" lean-forward="false" selection-start-line="3" selection-start-column="0" selection-end-line="3" selection-end-column="22" />
               <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="tactic_mm.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/tactic_mm.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="568">
+              <caret line="63" column="89" lean-forward="false" selection-start-line="63" selection-start-column="89" selection-end-line="63" selection-end-column="89" />
+              <folding>
+                <element signature="e#0#27#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -115,11 +99,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>candle</find>
-      <find>close_p</find>
-      <find>handle_candles</find>
-      <find>last_filled_buy_price</find>
-      <find>retur</find>
       <find>max</find>
       <find>last_ts</find>
       <find>data1s_file</find>
@@ -145,6 +124,11 @@
       <find>date_parser</find>
       <find>print_candles</find>
       <find>print</find>
+      <find>p</find>
+      <find>post_on</find>
+      <find>stdou</find>
+      <find>write</find>
+      <find>orders_to_send</find>
     </findStrings>
     <replaceStrings>
       <replace>x</replace>
@@ -163,10 +147,10 @@
         <option value="$PROJECT_DIR$/candles.py" />
         <option value="$PROJECT_DIR$/simcandles.py" />
         <option value="$PROJECT_DIR$/tactic_mm.py" />
-        <option value="$PROJECT_DIR$/orders.py" />
-        <option value="$PROJECT_DIR$/sim.py" />
         <option value="$PROJECT_DIR$/utils.py" />
         <option value="$PROJECT_DIR$/get_bitmex_data.py" />
+        <option value="$PROJECT_DIR$/orders.py" />
+        <option value="$PROJECT_DIR$/sim.py" />
       </list>
     </option>
   </component>
@@ -686,16 +670,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/tactic_mm.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="648">
-          <caret line="63" column="37" lean-forward="false" selection-start-line="63" selection-start-column="37" selection-end-line="63" selection-end-column="37" />
-          <folding>
-            <element signature="e#0#27#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/simcandles.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="201">
@@ -718,14 +692,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-7601">
           <caret line="261" column="35" lean-forward="false" selection-start-line="261" selection-start-column="28" selection-end-line="261" selection-end-column="35" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/orders.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="417">
-          <caret line="35" column="19" lean-forward="false" selection-start-line="35" selection-start-column="19" selection-end-line="35" selection-end-column="19" />
           <folding />
         </state>
       </provider>
@@ -818,14 +784,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/sim.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="114">
-          <caret line="88" column="30" lean-forward="true" selection-start-line="87" selection-start-column="12" selection-end-line="88" selection-end-column="30" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/get_gdax_data.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="651">
@@ -836,13 +794,39 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/tactic_mm.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="568">
+          <caret line="63" column="89" lean-forward="false" selection-start-line="63" selection-start-column="89" selection-end-line="63" selection-end-column="89" />
+          <folding>
+            <element signature="e#0#27#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/get_bitmex_data.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="321">
-          <caret line="69" column="50" lean-forward="false" selection-start-line="69" selection-start-column="50" selection-end-line="69" selection-end-column="50" />
+        <state relative-caret-position="379">
+          <caret line="57" column="83" lean-forward="true" selection-start-line="57" selection-start-column="53" selection-end-line="57" selection-end-column="83" />
           <folding>
             <element signature="e#22#39#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/orders.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="188">
+          <caret line="37" column="52" lean-forward="true" selection-start-line="37" selection-start-column="52" selection-end-line="37" selection-end-column="52" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/sim.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-820">
+          <caret line="79" column="46" lean-forward="false" selection-start-line="79" selection-start-column="46" selection-end-line="79" selection-end-column="46" />
+          <folding />
         </state>
       </provider>
     </entry>

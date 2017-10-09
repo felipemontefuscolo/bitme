@@ -29,22 +29,20 @@ class Orders:
     def clean_filled(self):
         self.data = [order for order in self.data if order.size > 0]
 
-    def printf(self):
-        print("-------------")
-        print("buys")
-        for i in self.data:
-            if i.side == 'buy':
-                print(i.to_json())
-        print("sells")
-        for i in self.data:
-            if i.side == 'sell':
-                print(i.to_json())
-        print("-------------")
-
-
     def remove_no_fund_orders(self, position_coin, position_usd):
         self.data = [o for o in self.data if (o.side[0] == 's' and o.size <= position_coin) or
                                              (o.side[0] == 'b' and o.size * o.price <= position_usd)]
+
+    def to_csv(self, header=True):
+        # type: () -> str
+        r = ['time,side,size,price'] if header else []
+        for o in self.data:
+            try:
+                price = str(o.price)
+            except AttributeError:
+                price = 'market'  # market order
+            r += [','.join([o.ts.strftime('%Y-%m-%dT%H:%M:%S'), o.side, str(o.size), price])]
+        return '\n'.join(r)
 
 
 class _OrderCommon:
