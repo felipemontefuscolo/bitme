@@ -2,7 +2,7 @@ import sys
 from simcandles import SimCandles
 from tactic_mm import *
 from utils import Hour, to_iso_utc
-from orders import LimitOrder, Orders, to_str, TWOPLACES, EIGHPLACES
+from orders import LimitOrder, Orders, to_str, TWOPLACES, EIGHPLACES, MarketOrder
 import math
 import pandas as pd
 import numpy as np
@@ -49,7 +49,7 @@ class Fill:
         return "time,order_id,side,price,size,type"
 
 
-# try to simulate cancels
+# try to simulate cancels -- for example, cancel invalid order
 def simulate_cancel_orders(orders_to_send, position_btc, position_usd):
     # type: (Orders, float, float) -> Orders
     orders_to_send.remove_no_fund_orders(position_btc, position_usd)
@@ -110,43 +110,66 @@ def main():
         low = last_candle.low
         volume = last_candle.volume
         close_p = last_candle.close
+        open_p = last_candle.open
 
         # fill sim
         for order in opened_orders.data:
-            # special case
-
-            vol_fill = 0
             is_sell = order.side[0] == 's'
             is_buy = not is_sell
-            if high == low:
-                if (is_sell and order.price < high) or (is_buy and order.price > low):
-                    vol_fill = 0.5 * volume
-            else:
-                if is_sell and order.price < high:
-                    vol_fill = ((high - order.price) / (high - low)) * volume
-                elif is_buy and order.price > low:
-                    vol_fill = ((low - order.price) / (low - high)) * volume
 
-            if vol_fill > 0:
-                size_filled = order.fill(vol_fill)
-                fill = Fill(order.order_id, order.side, size_filled, order.price, order.order_type, str(current_time))
-                fills += [fill]
+            # handle market order
+            if isinstance(order, MarketOrder):
+                size_filled = volume
+                price_fill = (open_p + 2.*(low + high) + 3.*close_p) / 8.
+                cost = 0.00075 * volume * price_fill  # BITMEX cost
+                order.set_filled()
 
                 size_filled = size_filled if is_buy else -size_filled
                 position_btc += size_filled
-                if position_btc < 0:
-                    raise RuntimeError(
-                        "Position should never be negative (it is %s). Last fill was %s" % (position_btc, size_filled))
-                position_usd -= size_filled * order.price
+                position_usd -= size_filled * price_fill + cost
+
+                fill = Fill(order.order_id, order.side, size_filled, price_fill, order.order_type, str(current_time))
+                fills += [fill]
 
                 fills_file.write(fills[-1].to_line() + "\n")
                 fills_file.flush()
                 print("FILL: " + str(fill))
                 sys.stdout.flush()
 
-                # print("vol_fill = " + str(vol_fill))
-                # active_orders.printf()
+            elif isinstance(order, LimitOrder):
+                vol_fill = 0
+                is_sell = order.side[0] == 's'
+                is_buy = not is_sell
+                if high == low:
+                    if (is_sell and order.price < high) or (is_buy and order.price > low):
+                        vol_fill = 0.5 * volume
+                else:
+                    if is_sell and order.price < high:
+                        vol_fill = ((high - order.price) / (high - low)) * volume
+                    elif is_buy and order.price > low:
+                        vol_fill = ((low - order.price) / (low - high)) * volume
 
+                if vol_fill > 0:
+                    size_filled = order.fill(vol_fill)
+                    fill = Fill(order.order_id, order.side, size_filled, order.price, order.order_type, str(current_time))
+                    fills += [fill]
+
+                    size_filled = size_filled if is_buy else -size_filled
+                    position_btc += size_filled
+                    if position_btc < 0:
+                        raise RuntimeError(
+                            "Position should never be negative (it is %s). Last fill was %s" % (position_btc, size_filled))
+                    position_usd -= size_filled * order.price
+
+                    fills_file.write(fills[-1].to_line() + "\n")
+                    fills_file.flush()
+                    print("FILL: " + str(fill))
+                    sys.stdout.flush()
+
+                    # print("vol_fill = " + str(vol_fill))
+                    # active_orders.printf()
+            else:
+                raise ValueError("order type not supported")
         opened_orders.clean_filled()
 
     print_fills = False

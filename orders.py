@@ -4,6 +4,7 @@ TWOPLACES = Decimal(10) ** -2
 EIGHPLACES = Decimal(10) ** -8
 
 
+# Array of orders
 class Orders:
     order_id = 0
 
@@ -19,6 +20,11 @@ class Orders:
 
     def post_limit_order(self, side, price, size, product_id, time_posted):
         order = LimitOrder(Orders.order_id, side, price, size, product_id, time_posted)
+        Orders.order_id += 1
+        self.data += [order]
+
+    def post_market_order(self, side, size, product_id, time_posted):
+        order = MarketOrder(Orders.order_id, side, size, product_id, time_posted)
         Orders.order_id += 1
         self.data += [order]
 
@@ -59,6 +65,10 @@ class _OrderCommon:
         filled = min(abs(self.size), abs(size))
         self.size -= filled
         return filled
+
+    def set_filled(self):
+        self.size = 0
+        pass
 
 
 class LimitOrder(_OrderCommon):

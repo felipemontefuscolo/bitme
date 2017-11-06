@@ -70,3 +70,11 @@ class Tactic1:
             return orders_to_send
 
         return Orders()
+
+
+# to test market orders
+class TacticLearner():
+    def __init__(self, product_id):
+        self.product_id = product_id
+        self.round = 0
+        pass
