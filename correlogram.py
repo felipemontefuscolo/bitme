@@ -21,17 +21,20 @@ from detect_peaks import strong_peak
 #       b) subtract it out from the orignal data
 #       OR
 #       a) differentiate the data
-# step 2.: remove seasonality:
+# step 2.: remove seasonality (I'm skeptical about this one)
 #       a) detect season: https://stats.stackexchange.com/questions/16117/what-method-can-be-used-to-detect-seasonality-in-data 
 #          construct periodogram using scipy.signal.welch(df, fs=1, nperseg=N) and take the frequency with higher sampling
 #       b) detect peaks with https://stackoverflow.com/questions/31910524/calculate-histogram-peaks-in-python
 #           or with https://github.com/MonsieurV/py-findpeaks/blob/master/tests/libs/detect_peaks.py
 #          (see also realtime peak detection: https://stackoverflow.com/questions/22583391/peak-signal-detection-in-realtime-timeseries-data
+# step 3.:
 
-def test_stationarity(timeseries):
+
+
+def test_stationarity(timeseries, period):
     # Determing rolling statistics
-    rolmean = pd.rolling_mean(timeseries, window=12)
-    rolstd = pd.rolling_std(timeseries, window=12)
+    rolmean = pd.rolling_mean(timeseries, window=period)
+    rolstd = pd.rolling_std(timeseries, window=period)
 
     # Plot rolling statistics:
     fig = plt.figure(figsize=(12, 8))
@@ -44,7 +47,7 @@ def test_stationarity(timeseries):
 
     # Perform Dickey-Fuller test:
     print 'Results of Dickey-Fuller Test:'
-    dftest = adfuller(timeseries, autolag='AIC')
+    dftest = adfuller(timeseries, autolag='AIC', regression='ctt')
     dfoutput = pd.Series(dftest[0:4], index=['Test Statistic', 'p-value', '#Lags Used', 'Number of Observations Used'])
     for key, value in dftest[4].items():
         dfoutput['Critical Value (%s)' % key] = value
@@ -104,6 +107,18 @@ def create3(N, err_mag=0., slope=0., vari_slope=0.):
     return [slope * float(x) + (1. + vari_slope * float(x)) * np.sin(8. * np.pi / (N - 1) * x) + err_mag * rd.gauss(0.0,
                                                                                                                     1.0)
             for x in range(N)]
+
+
+def create_cos(num_points=101, num_periods=5, err_mag=0., mean_slope=0., vari_slope=0., freq_slope=0., normalize=False):
+    x = np.arange(num_points).astype('float64')
+    if normalize:
+        x = x / float(num_points)
+    freq = freq_slope * x + 2.*np.pi*float(num_periods)/(num_points - 1)
+    vari = (1. + vari_slope * x)
+    err = err_mag * np.array([rd.gauss(0., 1.) for i in range(num_points)])
+    mean = mean_slope * x
+
+    return mean + vari * np.cos(freq * x) + err
 
 
 def create4(N):
@@ -173,7 +188,8 @@ def to_clip(x):
 def experiment1():
     n = 301
     x = [float(i) for i in range(n)]
-    y = np.array(downstairs(n, 9)) + 0.6 * white(n)
+    #y = np.array(downstairs(n, 9)) + 0.6 * white(n)
+    y = create_cos(num_points=n, num_periods=5, err_mag=0., mean_slope=10./n, vari_slope=0./n, freq_slope=.0/n)
     # y[300:] = 5
     # y = create3(n+1)
     # y = [ np.exp(i/(float(n)) + 0.2*np.sin(8.*np.pi / (n-1) * i) for i in range(n) ]
@@ -183,6 +199,7 @@ def experiment1():
     fit = np.poly1d(pars)(x)
     y_orig = y
     y = np.array(y) - fit
+    print("fitted y: mean={}".format(y.mean()))
 
     per = sg.welch(y, fs=1., nperseg=len(y))
     # per = sg.welch(y, fs=1., nperseg=len(y), detrend='linear')
@@ -190,21 +207,29 @@ def experiment1():
     freqs = per[0][1:]
     periods = (1. / np.array(freqs))[::-1]
     power_spectrum = np.array(per[1][1:])[::-1]
-    plt.plot(periods, power_spectrum, '-o')
-    plt.figure()
-    imax = strong_peak(periods, power_spectrum, min_hight=10., show=True, verbose=True, ax=plt)
-    if imax:
-        plt.plot(periods[imax], power_spectrum[imax], 'ro')
+    imax = strong_peak(periods, power_spectrum, min_hight=2., show=True, verbose=True, ax=plt)
+
+    #if imax:
+    #    plt.plot(periods[imax], power_spectrum[imax], 'ro')
     # plt.plot(per[0], per[1])
     plt.figure()
-    plt.plot(y)
-    plt.plot(y_orig)
+    ly, = plt.plot(y, label='de-trended')
+    ly_orig, = plt.plot(y_orig, label='original')
+    plt.legend(handles=[ly, ly_orig])
     # dydT = pd.Series(y) - pd.Series(y).shift(1)
     # plt.figure(); dydT.plot()
     plt.show()
+    if imax:
+        print("found period = {}".format(int(periods[imax])))
+        dT = np.array((pd.DataFrame(y) - pd.DataFrame(y).shift(int(periods[imax]))).dropna()[0])
+        test_stationarity(y, len(y))
     #print to_clip(power_spectrum[::-1])
     sys.exit(0)
 
+
+def experiment2():
+
+    sys.exit(0)
 
 experiment1()
 

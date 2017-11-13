@@ -1,0 +1,3 @@
+measuring linear correlation:
+http://mathworld.wolfram.com/CorrelationCoefficient.html
+

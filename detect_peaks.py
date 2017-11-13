@@ -35,11 +35,13 @@ def strong_peak(x, y, min_hight=10., show=False, ax=None, verbose=False):
         result = None
     else:
         if verbose:
-            print("index=%s, mean=%s, min_hight=%s" % (str(imax), str(mean), str(min_hight)))
+            print("index=%s, period=%s, mean=%s, min_hight=%s" % (str(imax), str(x[imax]), str(mean), str(min_hight)))
         result = imax
 
     if show and result:
         _plot(x, y, result, mean, ax)
+
+    return result
 
 
 def _plot(x, y, imax, mean, ax):
