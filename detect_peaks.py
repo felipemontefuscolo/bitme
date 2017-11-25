@@ -37,10 +37,8 @@ def strong_peak(x, y, min_hight=10., show=False, ax=None, verbose=False):
         if verbose:
             print("index=%s, period=%s, mean=%s, min_hight=%s" % (str(imax), str(x[imax]), str(mean), str(min_hight)))
         result = imax
-
     if show and result:
         _plot(x, y, result, mean, ax)
-
     return result
 
 
@@ -52,11 +50,9 @@ def _plot(x, y, imax, mean, ax):
     else:
         if ax is None:
             _, ax = plt.subplots(1, 1, figsize=(8, 4))
-
         ax.plot(x, y, 'b', lw=1)
         ax.plot(x[imax], y[imax], 'ro')
         n = len(x)
         ax.plot(x, [mean]*n, '--')
-
         # plt.grid()
         plt.show()
