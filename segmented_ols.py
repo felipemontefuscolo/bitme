@@ -7,7 +7,7 @@ import statsmodels.api as sm
 import math
 
 
-def seg_lin_reg(x, y, tol=0.03):
+def seg_lin_reg(x, y, tol=0.5):
     # if |ynew - ypredicted| > tol*std, new a new segment is started
     # return list of (slice, alpha, beta)
     assert len(x) == len(y)
