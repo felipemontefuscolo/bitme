@@ -53,11 +53,14 @@ def print_file(file_or_stdout, api_instance, bin_size, partial, symbol, reverse,
 
             page = api_instance.trade_get_bucketed(bin_size=bin_size, partial=partial, symbol=symbol,
                                                    count=count, start=i * MAX_NUM_CANDLES_BITMEX,
+
                                                    reverse=reverse, start_time=start_time, end_time=end_time)
+
+            #  TODO: bitmex has a bug where the high is not the highest value !!!!!
             for line in reversed(page):
                 print >> fh, ','.join([line.timestamp.strftime('%Y-%m-%dT%H:%M:%S'),
                                        str(line.open),
-                                       str(line.high),
+                                       str(max(line.high, line.open)),
                                        str(line.low),
                                        str(line.close),
                                        str(line.volume)])
@@ -67,9 +70,9 @@ def print_file(file_or_stdout, api_instance, bin_size, partial, symbol, reverse,
 
 
 def main():
-    start_time = dateutil.parser.parse('2017-10-01T19:26:00')  # datetime | Starting date filter for results. (optional)
-    end_time = dateutil.parser.parse('2017-10-08T19:26:00')  # datetime | Ending date filter for results. (optional)
-    file_or_stdout = 'data/bitmex_1week.csv'
+    start_time = dateutil.parser.parse('2017-12-01T19:26:00')  # datetime | Starting date filter for results. (optional)
+    end_time = dateutil.parser.parse('2017-12-02T19:26:00')  # datetime | Ending date filter for results. (optional)
+    file_or_stdout = 'data/bitmex_1day.csv'
 
     # create an instance of the API class
     configuration = swagger_client.Configuration()

@@ -119,14 +119,14 @@ def _test1():
     _assert_eq(segs[2][1], 4.), _assert_eq(segs[2][2], -1.)
     _assert_eq(segs[3][1], -11.), _assert_eq(segs[3][2], 2.)
 
-    _plot_result(x, y, 0.0001)
+    plot_segments(x, y, 0.0001)
 
     # test spikes
     y[17] = 2
     y[7] = 0
     y[-1] = 7
     y[-2] = 6
-    _plot_result(x, y, 0.0001)
+    plot_segments(x, y, 0.0001)
 
 
 def _test2(rand_err=1., tol=0.1):
@@ -143,7 +143,7 @@ def _test2(rand_err=1., tol=0.1):
     y[np.where(5 <= x)] = y4[np.where(5 <= x)]
     y += np.random.normal(0., rand_err, 41)
 
-    _plot_result(x, y, tol, title='tol={}'.format(tol))
+    plot_segments(x, y, tol, title='tol={}'.format(tol))
 
 
 def _test3(rand_err=0., tol=0.1):
@@ -151,21 +151,21 @@ def _test3(rand_err=0., tol=0.1):
     x = np.linspace(0., 10., 41) + 0.*np.random.normal(0., .01, 41)
     y = x * (10. - x)
     y += np.random.normal(0., rand_err, 41)
-    _plot_result(x, y, tol, title='tol={}'.format(tol))
+    plot_segments(x, y, tol, title='tol={}'.format(tol))
 
 
 def _test4(tol=0.1):
     y = pd.DataFrame(pd.read_csv('data/bitmex_1day.csv', parse_dates=True, index_col='time'))['close'].values
     x = np.arange(len(y))
-    _plot_result(x, y, tol, title='tol={}'.format(tol))
+    plot_segments(x, y, tol, title='tol={}'.format(tol))
 
 
-def _plot_result(x, y, tol, title=None):
+def plot_segments(x, y, tol, title=None):
     segs = seg_lin_reg(x, y, tol)
     #plot(x, y, 'o')
     plot(x, y, '-')
     for seg in segs:
-        print(seg[0])
+        # print(seg[0])
         xx = x[seg[0]]
         yy = seg[2] * xx + seg[1]
         plot(xx, yy)
