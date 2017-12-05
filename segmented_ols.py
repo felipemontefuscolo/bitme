@@ -5,15 +5,16 @@ import matplotlib.pyplot as plt
 from scipy.stats import stats
 import statsmodels.api as sm
 import math
+import pandas as pd
 
 
-def seg_lin_reg(x, y, tol=0.5):
+def seg_lin_reg(x, y, tol=0.5, variance=None):
     # if |ynew - ypredicted| > tol*std, new a new segment is started
     # return list of (slice, alpha, beta)
     assert len(x) == len(y)
     assert len(x) > 0
 
-    var_y_global = math.sqrt(np.var(y))
+    var_y_global = math.sqrt(np.var(y)) if not variance else variance
 
     i0 = 0
     mean_x0 = x[i0]
@@ -153,10 +154,18 @@ def _test3(rand_err=0., tol=0.1):
     _plot_result(x, y, tol, title='tol={}'.format(tol))
 
 
+def _test4(tol=0.1):
+    y = pd.DataFrame(pd.read_csv('data/bitmex_1day.csv', parse_dates=True, index_col='time'))['close'].values
+    x = np.arange(len(y))
+    _plot_result(x, y, tol, title='tol={}'.format(tol))
+
+
 def _plot_result(x, y, tol, title=None):
     segs = seg_lin_reg(x, y, tol)
-    plot(x, y, 'o')
+    #plot(x, y, 'o')
+    plot(x, y, '-')
     for seg in segs:
+        print(seg[0])
         xx = x[seg[0]]
         yy = seg[2] * xx + seg[1]
         plot(xx, yy)
@@ -166,16 +175,17 @@ def _plot_result(x, y, tol, title=None):
 
 
 if __name__ == '__main__':
-    _test1()
-    _test2(rand_err=1., tol=0.1)
-    _test2(rand_err=1., tol=.5)
-    _test2(rand_err=1., tol=1.)
-
-    _test2(rand_err=2., tol=0.1)
-    _test2(rand_err=2., tol=.5)
-    _test2(rand_err=2., tol=1.)
-
-    _test3(rand_err=1., tol=0.1)
-    _test3(rand_err=1., tol=.5)
-    _test3(rand_err=1., tol=1.)
+    # _test1()
+    # _test2(rand_err=1., tol=0.1)
+    # _test2(rand_err=1., tol=.5)
+    # _test2(rand_err=1., tol=1.)
+    #
+    # _test2(rand_err=2., tol=0.1)
+    # _test2(rand_err=2., tol=.5)
+    # _test2(rand_err=2., tol=1.)
+    #
+    # _test3(rand_err=1., tol=0.1)
+    # _test3(rand_err=1., tol=.5)
+    # _test3(rand_err=1., tol=1.)
+    _test4(tol=0.4)
     sys.exit(0)
