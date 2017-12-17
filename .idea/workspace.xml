@@ -2,11 +2,10 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="f802fea8-a251-463a-97b6-49659b8de660" name="Default" comment="">
-      <change beforePath="" afterPath="$PROJECT_DIR$/summay.py" />
+      <change beforePath="" afterPath="$PROJECT_DIR$/summary.py" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change beforePath="$PROJECT_DIR$/data/bitmex_1day.csv" afterPath="$PROJECT_DIR$/data/bitmex_1day.csv" />
       <change beforePath="$PROJECT_DIR$/get_bitmex_data.py" afterPath="$PROJECT_DIR$/get_bitmex_data.py" />
-      <change beforePath="$PROJECT_DIR$/segmented_ols.py" afterPath="$PROJECT_DIR$/segmented_ols.py" />
+      <change beforePath="$PROJECT_DIR$/summay.py" afterPath="" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -20,41 +19,21 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="ar.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/ar.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="309">
-              <caret line="84" column="14" lean-forward="false" selection-start-line="84" selection-start-column="9" selection-end-line="84" selection-end-column="14" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="sim.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/sim.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="456">
+            <state relative-caret-position="436">
               <caret line="69" column="14" lean-forward="false" selection-start-line="69" selection-start-column="14" selection-end-line="69" selection-end-column="14" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="tactic_mm.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/tactic_mm.py">
+      <file leaf-file-name="summary.py" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/summary.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="318">
-              <caret line="68" column="45" lean-forward="true" selection-start-line="68" selection-start-column="45" selection-end-line="68" selection-end-column="45" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="summay.py" pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/summay.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="379">
-              <caret line="103" column="23" lean-forward="false" selection-start-line="103" selection-start-column="23" selection-end-line="103" selection-end-column="23" />
+            <state relative-caret-position="84">
+              <caret line="232" column="38" lean-forward="true" selection-start-line="232" selection-start-column="38" selection-end-line="232" selection-end-column="38" />
               <folding>
                 <element signature="e#0#15#0" expanded="true" />
               </folding>
@@ -62,21 +41,71 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="get_bitmex_data.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/get_bitmex_data.py">
+      <file leaf-file-name="fromnumeric.py" pinned="false" current-in-tab="false">
+        <entry file="file:///anaconda/lib/python2.7/site-packages/numpy/core/fromnumeric.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="538">
-              <caret line="62" column="69" lean-forward="false" selection-start-line="62" selection-start-column="69" selection-end-line="62" selection-end-column="69" />
+            <state relative-caret-position="218">
+              <caret line="2173" column="4" lean-forward="false" selection-start-line="2173" selection-start-column="4" selection-end-line="2173" selection-end-column="4" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="trade_api.py" pinned="false" current-in-tab="false">
-        <entry file="file:///anaconda/lib/python2.7/site-packages/swagger_client/apis/trade_api.py">
+      <file leaf-file-name="get_bitmex_data.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/get_bitmex_data.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="144">
+              <caret line="72" column="59" lean-forward="false" selection-start-line="72" selection-start-column="59" selection-end-line="72" selection-end-column="59" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="frame.py" pinned="false" current-in-tab="false">
+        <entry file="file:///anaconda/lib/python2.7/site-packages/pandas/core/frame.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="218">
-              <caret line="160" column="8" lean-forward="false" selection-start-line="160" selection-start-column="8" selection-end-line="160" selection-end-column="8" />
+              <caret line="2927" column="8" lean-forward="false" selection-start-line="2927" selection-start-column="8" selection-end-line="2927" selection-end-column="8" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="format.py" pinned="false" current-in-tab="false">
+        <entry file="file:///anaconda/lib/python2.7/site-packages/pandas/io/formats/format.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="142">
+              <caret line="1892" column="22" lean-forward="false" selection-start-line="1892" selection-start-column="10" selection-end-line="1892" selection-end-column="22" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="generic.py" pinned="false" current-in-tab="false">
+        <entry file="file:///anaconda/lib/python2.7/site-packages/pandas/core/generic.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="-455">
+              <caret line="3897" column="8" lean-forward="false" selection-start-line="3897" selection-start-column="8" selection-end-line="3897" selection-end-column="8" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="multiarray.py" pinned="false" current-in-tab="false">
+        <entry file="file://$USER_HOME$/Library/Caches/PyCharmCE2017.3/python_stubs/-1730649415/numpy/core/multiarray.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="218">
+              <caret line="563" column="4" lean-forward="false" selection-start-line="563" selection-start-column="4" selection-end-line="563" selection-end-column="4" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="simcandles.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/simcandles.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="278">
+              <caret line="33" column="84" lean-forward="true" selection-start-line="33" selection-start-column="12" selection-end-line="33" selection-end-column="84" />
               <folding />
             </state>
           </provider>
@@ -85,41 +114,9 @@
       <file leaf-file-name="tools.py" pinned="false" current-in-tab="false">
         <entry file="file:///anaconda/lib/python2.7/site-packages/plotly/tools.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="263">
-              <caret line="1440" column="28" lean-forward="true" selection-start-line="1440" selection-start-column="28" selection-end-line="1440" selection-end-column="28" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="_candlestick.py" pinned="false" current-in-tab="false">
-        <entry file="file:///anaconda/lib/python2.7/site-packages/plotly/figure_factory/_candlestick.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="225">
-              <caret line="91" column="4" lean-forward="false" selection-start-line="91" selection-start-column="4" selection-end-line="91" selection-end-column="4" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="finance.py" pinned="false" current-in-tab="false">
-        <entry file="file:///anaconda/lib/python2.7/site-packages/matplotlib/finance.py">
-          <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="218">
-              <caret line="697" column="4" lean-forward="false" selection-start-line="697" selection-start-column="4" selection-end-line="697" selection-end-column="4" />
+              <caret line="1437" column="8" lean-forward="false" selection-start-line="1437" selection-start-column="8" selection-end-line="1437" selection-end-column="8" />
               <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="segmented_ols.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/segmented_ols.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="398">
-              <caret line="166" column="20" lean-forward="true" selection-start-line="166" selection-start-column="20" selection-end-line="166" selection-end-column="20" />
-              <folding>
-                <element signature="e#0#18#0" expanded="true" />
-              </folding>
             </state>
           </provider>
         </entry>
@@ -135,29 +132,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>ywm</find>
-      <find>wel</find>
-      <find>boxcar</find>
-      <find>sin_</find>
-      <find>diff</find>
-      <find>def fit</find>
-      <find>fit</find>
-      <find>RegressionResults</find>
-      <find>x[-1] - mean_x</find>
-      <find>alpha0</find>
-      <find>var0</find>
-      <find>y_exp</find>
-      <find>slope ex</find>
-      <find>df</find>
-      <find>close_p</find>
-      <find>datetime</find>
-      <find>candles</find>
-      <find>summa</find>
-      <find>n_pred_ahead</find>
-      <find>var_results</find>
-      <find>seed</find>
-      <find>limit</find>
-      <find>kargs</find>
       <find>lines</find>
       <find>ax</find>
       <find>fig</find>
@@ -165,6 +139,29 @@
       <find>kind</find>
       <find>print</find>
       <find>iloc(i)</find>
+      <find>iloc</find>
+      <find>future_fall_margins</find>
+      <find>create</find>
+      <find>grows[current_grow_length]</find>
+      <find>current_grow_length][2]</find>
+      <find>grows[current_grow_length][2]</find>
+      <find>[current_grow_length][2]</find>
+      <find>[current_fall_length][2]</find>
+      <find>DataFrame</find>
+      <find>growth_ratio</find>
+      <find>keyset</find>
+      <find>float_format</find>
+      <find>argmax</find>
+      <find>growth_bucket</find>
+      <find>max_fall_margins</find>
+      <find>inf</find>
+      <find>low_future</find>
+      <find>max_fall_ratio</find>
+      <find>show_as_percentage</find>
+      <find>best_picks</find>
+      <find>change_ratio</find>
+      <find>update_best_picks</find>
+      <find>future_price_peak</find>
     </findStrings>
     <replaceStrings>
       <replace>x</replace>
@@ -200,6 +197,7 @@
         <option value="$PROJECT_DIR$/segmented_ols.py" />
         <option value="$PROJECT_DIR$/summay.py" />
         <option value="$PROJECT_DIR$/get_bitmex_data.py" />
+        <option value="$PROJECT_DIR$/summary.py" />
       </list>
     </option>
   </component>
@@ -294,7 +292,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python tests.Unittests in correlogram.py">
+  <component name="RunManager" selected="Python.summay">
     <configuration name="sim" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -309,6 +307,24 @@
       <module name="bitme" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/sim.py" />
       <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+    </configuration>
+    <configuration name="summay" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="bitme" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/summary.py" />
+      <option name="PARAMETERS" value="-f data/bitmex_1day.csv" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -391,14 +407,16 @@
       <option name="_new_target" value="&quot;$PROJECT_DIR$/correlogram.py&quot;" />
       <option name="_new_targetType" value="&quot;PATH&quot;" />
     </configuration>
-    <list size="2">
+    <list size="3">
       <item index="0" class="java.lang.String" itemvalue="Python.sim" />
-      <item index="1" class="java.lang.String" itemvalue="Python tests.Unittests in correlogram.py" />
+      <item index="1" class="java.lang.String" itemvalue="Python.summay" />
+      <item index="2" class="java.lang.String" itemvalue="Python tests.Unittests in correlogram.py" />
     </list>
     <recent_temporary>
-      <list size="2">
-        <item index="0" class="java.lang.String" itemvalue="Python tests.Unittests in correlogram.py" />
-        <item index="1" class="java.lang.String" itemvalue="Python.sim" />
+      <list size="3">
+        <item index="0" class="java.lang.String" itemvalue="Python.summay" />
+        <item index="1" class="java.lang.String" itemvalue="Python tests.Unittests in correlogram.py" />
+        <item index="2" class="java.lang.String" itemvalue="Python.sim" />
       </list>
     </recent_temporary>
   </component>
@@ -427,17 +445,17 @@
     <frame x="0" y="23" width="1280" height="773" extended-state="0" />
     <editor active="true" />
     <layout>
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.24609375" sideWeight="0.4892704" order="1" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.24609375" sideWeight="0.48359486" order="1" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="11" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32904148" sideWeight="0.5" order="1" side_tool="true" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3266762" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32904148" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3281027" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3004292" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
-      <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.24609375" sideWeight="0.5107296" order="0" side_tool="true" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.24393724" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
+      <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.24609375" sideWeight="0.51640517" order="0" side_tool="true" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
@@ -454,39 +472,19 @@
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+        <line-breakpoint suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/utils.py</url>
           <option name="timeStamp" value="35" />
         </line-breakpoint>
       </breakpoints>
-      <option name="time" value="36" />
+      <breakpoints-dialog>
+        <breakpoints-dialog />
+      </breakpoints-dialog>
+      <option name="time" value="46" />
     </breakpoint-manager>
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file:///anaconda/lib/python2.7/site-packages/swagger_client/__init__.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="545">
-          <caret line="78" column="33" lean-forward="true" selection-start-line="78" selection-start-column="33" selection-end-line="78" selection-end-column="33" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/Library/Caches/PyCharmCE2017.1/python_stubs/-1730649415/__builtin__.py" />
-    <entry file="file:///anaconda/lib/python2.7/site-packages/swagger_client/models/trade_bin.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="287">
-          <caret line="165" column="16" lean-forward="true" selection-start-line="165" selection-start-column="16" selection-end-line="165" selection-end-column="16" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file:///anaconda/lib/python2.7/site-packages/swagger_client/configuration.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="234">
-          <caret line="52" column="17" lean-forward="false" selection-start-line="52" selection-start-column="8" selection-end-line="52" selection-end-column="17" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/Library/Caches/PyCharmCE2017.1/python_stubs/-1730649415/datetime.py" />
     <entry file="file://$PROJECT_DIR$/get_gdax_data.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="651">
@@ -650,16 +648,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/simcandles.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="278">
-          <caret line="33" column="84" lean-forward="true" selection-start-line="33" selection-start-column="12" selection-end-line="33" selection-end-column="84" />
-          <folding>
-            <element signature="e#0#10#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file:///anaconda/lib/python2.7/site-packages/pandas/io/parsers.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="225">
@@ -672,14 +660,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="178">
           <caret line="1262" column="42" lean-forward="true" selection-start-line="1262" selection-start-column="27" selection-end-line="1262" selection-end-column="42" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/Library/Caches/PyCharmCE2017.3/python_stubs/-1730649415/numpy/core/multiarray.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="218">
-          <caret line="56" column="4" lean-forward="false" selection-start-line="56" selection-start-column="4" selection-end-line="56" selection-end-column="4" />
           <folding />
         </state>
       </provider>
@@ -697,7 +677,7 @@
         <state relative-caret-position="412">
           <caret line="268" column="31" lean-forward="true" selection-start-line="268" selection-start-column="4" selection-end-line="268" selection-end-column="31" />
           <folding>
-            <element signature="e#0#15#0" expanded="true" />
+            <element signature="e#0#15#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -758,14 +738,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/sim.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="456">
-          <caret line="69" column="14" lean-forward="false" selection-start-line="69" selection-start-column="14" selection-end-line="69" selection-end-column="14" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/tactic_mm.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="318">
@@ -774,28 +746,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/segmented_ols.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="398">
-          <caret line="166" column="20" lean-forward="true" selection-start-line="166" selection-start-column="20" selection-end-line="166" selection-end-column="20" />
-          <folding>
-            <element signature="e#0#18#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file:///anaconda/lib/python2.7/site-packages/matplotlib/finance.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="218">
           <caret line="697" column="4" lean-forward="false" selection-start-line="697" selection-start-column="4" selection-end-line="697" selection-end-column="4" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file:///anaconda/lib/python2.7/site-packages/plotly/tools.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="263">
-          <caret line="1440" column="28" lean-forward="true" selection-start-line="1440" selection-start-column="28" selection-end-line="1440" selection-end-column="28" />
           <folding />
         </state>
       </provider>
@@ -816,18 +770,100 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/get_bitmex_data.py">
+    <entry file="file:///anaconda/lib/python2.7/site-packages/plotly/plotly/plotly.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="538">
-          <caret line="62" column="69" lean-forward="false" selection-start-line="62" selection-start-column="69" selection-end-line="62" selection-end-column="69" />
+        <state relative-caret-position="225">
+          <caret line="108" column="4" lean-forward="false" selection-start-line="108" selection-start-column="4" selection-end-line="108" selection-end-column="4" />
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/summay.py">
+    <entry file="file://$PROJECT_DIR$/segmented_ols.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="379">
-          <caret line="103" column="23" lean-forward="false" selection-start-line="103" selection-start-column="23" selection-end-line="103" selection-end-column="23" />
+        <state relative-caret-position="2205">
+          <caret line="166" column="20" lean-forward="true" selection-start-line="166" selection-start-column="20" selection-end-line="166" selection-end-column="20" />
+          <folding>
+            <element signature="e#0#18#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/sim.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="436">
+          <caret line="69" column="14" lean-forward="false" selection-start-line="69" selection-start-column="14" selection-end-line="69" selection-end-column="14" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/simcandles.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="278">
+          <caret line="33" column="84" lean-forward="true" selection-start-line="33" selection-start-column="12" selection-end-line="33" selection-end-column="84" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///anaconda/lib/python2.7/site-packages/pandas/core/generic.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-455">
+          <caret line="3897" column="8" lean-forward="false" selection-start-line="3897" selection-start-column="8" selection-end-line="3897" selection-end-column="8" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///anaconda/lib/python2.7/site-packages/plotly/tools.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="218">
+          <caret line="1437" column="8" lean-forward="false" selection-start-line="1437" selection-start-column="8" selection-end-line="1437" selection-end-column="8" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///anaconda/lib/python2.7/site-packages/pandas/io/formats/format.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="142">
+          <caret line="1892" column="22" lean-forward="false" selection-start-line="1892" selection-start-column="10" selection-end-line="1892" selection-end-column="22" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///anaconda/lib/python2.7/site-packages/pandas/core/frame.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="218">
+          <caret line="2927" column="8" lean-forward="false" selection-start-line="2927" selection-start-column="8" selection-end-line="2927" selection-end-column="8" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/Library/Caches/PyCharmCE2017.3/python_stubs/-1730649415/numpy/core/multiarray.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="218">
+          <caret line="563" column="4" lean-forward="false" selection-start-line="563" selection-start-column="4" selection-end-line="563" selection-end-column="4" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/get_bitmex_data.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="144">
+          <caret line="72" column="59" lean-forward="false" selection-start-line="72" selection-start-column="59" selection-end-line="72" selection-end-column="59" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///anaconda/lib/python2.7/site-packages/numpy/core/fromnumeric.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="218">
+          <caret line="2173" column="4" lean-forward="false" selection-start-line="2173" selection-start-column="4" selection-end-line="2173" selection-end-column="4" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/summary.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="84">
+          <caret line="232" column="38" lean-forward="true" selection-start-line="232" selection-start-column="38" selection-end-line="232" selection-end-column="38" />
           <folding>
             <element signature="e#0#15#0" expanded="true" />
           </folding>
