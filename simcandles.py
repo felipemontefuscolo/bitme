@@ -33,11 +33,14 @@ class SimCandles(Candles):
         if filename:
             timeparser = lambda s: pd.datetime.strptime(str(s), '%Y-%m-%dT%H:%M:%S')
             self.data = pd.DataFrame(  # is this conversion inefficient?
-                pd.read_csv(filename, parse_dates='time', index_col='time', date_parser=timeparser))
+                pd.read_csv(filename, parse_dates=True, index_col='time', date_parser=timeparser))
         elif data is not None:
             self.data = data
         else:
             raise ValueError("filename or data should be different of None")
+
+    def at(self, index):
+        return self.data.iloc[index]
 
     def views(self):
         return CandlesViewIterator(self)

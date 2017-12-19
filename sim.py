@@ -1,20 +1,23 @@
+# NOTES:
+# timestamps are of type pd.Timestamp
+# side are of type str ('buy' or 'sell')
+
+
 import sys
+
+from orders import LimitOrder, to_str, TWOPLACES, EIGHPLACES, MarketOrder
 from simcandles import SimCandles
 from tactic_mm import *
-from utils import Hour, to_iso_utc
-from orders import LimitOrder, Orders, to_str, TWOPLACES, EIGHPLACES, MarketOrder
-import math
-import pandas as pd
-import numpy as np
 
 
 class Fill:
-    def __init__(self, order_id, side, size, price, order_type, fill_time):
-        self.order_id = order_id
-        self.side = side
-        self.size = size
-        self.price = price
-        self.order_type = order_type
+    def __init__(self, order, size_filled, price_fill, fill_time):
+        # type: (OrderCommon, int, float, pd.Timestamp) -> None
+        self.order_id = order.id
+        self.side = order.side
+        self.size = size_filled
+        self.price = price_fill
+        self.order_type = order.type
         self.fill_time = fill_time
 
     def __repr__(self):
@@ -25,7 +28,7 @@ class Fill:
 
     def to_json(self):
         params = {
-            'time': self.fill_time,
+            'time': str(self.fill_time),
             'order_id': self.order_id,
             'side': self.side,
             'price': to_str(self.price, TWOPLACES),  # USD
@@ -67,10 +70,10 @@ def main():
     candles = SimCandles(file_name)
     opened_orders = Orders()
     #tac = TacticTest(product_id)
-    tac = Tactic1(product_id)
+    tac = Tactic2(product_id)
 
     initial_position_btc = 0
-    initial_position_usd = 6000
+    initial_position_usd = 20000
     close_p = -999999999
 
     fills = []
@@ -113,7 +116,7 @@ def main():
         open_p = last_candle.open
 
         # fill sim
-        for order in opened_orders.data:
+        for order in opened_orders.data.values():
             is_sell = order.side[0] == 's'
             is_buy = not is_sell
 
@@ -128,7 +131,7 @@ def main():
                 position_btc += size_filled
                 position_usd -= size_filled * price_fill + cost
 
-                fill = Fill(order.order_id, order.side, size_filled, price_fill, order.order_type, str(current_time))
+                fill = Fill(order, size_filled, price_fill, current_time)
                 fills += [fill]
 
                 fills_file.write(fills[-1].to_line() + "\n")
@@ -151,7 +154,7 @@ def main():
 
                 if vol_fill > 0:
                     size_filled = order.fill(vol_fill)
-                    fill = Fill(order.order_id, order.side, size_filled, order.price, order.order_type, str(current_time))
+                    fill = Fill(order, size_filled, order.price, current_time)
                     fills += [fill]
 
                     size_filled = size_filled if is_buy else -size_filled

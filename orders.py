@@ -1,48 +1,51 @@
+import base64
+import uuid
 from cdecimal import Decimal
+import pandas as pd
 
 TWOPLACES = Decimal(10) ** -2
 EIGHPLACES = Decimal(10) ** -8
 
 
-# Array of orders
+# Order container util
 class Orders:
-    order_id = 0
-
     def __init__(self):
-        self.data = []
+        self.data = dict()  # id -> OrderCommon
         pass
 
     def __iter__(self):
-        return iter(self.data)
+        return iter(self.data.values())
+
+    def _gen_order_id(self):
+        return str('bitme_' + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n'))
 
     def size(self):
         return len(self.data)
 
     def post_limit_order(self, side, price, size, product_id, time_posted):
-        order = LimitOrder(Orders.order_id, side, price, size, product_id, time_posted)
-        Orders.order_id += 1
-        self.data += [order]
+        id = self._gen_order_id()
+        self.data[id] = LimitOrder(id, side, price, size, product_id, time_posted)
 
     def post_market_order(self, side, size, product_id, time_posted):
-        order = MarketOrder(Orders.order_id, side, size, product_id, time_posted)
-        Orders.order_id += 1
-        self.data += [order]
+        id = self._gen_order_id()
+        self.data[id] = MarketOrder(id, side, size, product_id, time_posted)
 
     def merge(self, orders):
         # type: (Orders) -> None
-        self.data += orders.data
+        self.data.update(orders.data)
 
     def clean_filled(self):
-        self.data = [order for order in self.data if order.size > 0]
+        self.data = dict([(oid, order) for oid, order in self.data.iteritems() if order.size > 0])
 
     def remove_no_fund_orders(self, position_coin, position_usd):
-        self.data = [o for o in self.data if (o.side[0] == 's' and o.size <= position_coin) or
-                                             (o.side[0] == 'b' and o.size * o.price <= position_usd)]
+        self.data = dict([(i, o) for i, o in self.data.iteritems()
+                          if (o.side[0] == 's' and o.size <= position_coin) or
+                             (o.side[0] == 'b' and o.size * o.price <= position_usd)])
 
     def to_csv(self, header=True):
         # type: () -> str
         r = ['time,side,size,price'] if header else []
-        for o in self.data:
+        for o in self.data.values():
             try:
                 price = str(o.price)
             except AttributeError:
@@ -51,15 +54,15 @@ class Orders:
         return '\n'.join(r)
 
 
-class _OrderCommon:
+class OrderCommon:
     def __init__(self, order_id, side, size, product_id, order_type, time_posted):
-        self.order_id = order_id
+        # type: (int, str, int, str, str, pd.Timestamp) -> None
+        self.id = order_id
         self.side = side
         self.size = size
-        self.order_type = order_type
+        self.type = order_type
         self.ts = time_posted
         self.product_id = product_id
-        pass
 
     def fill(self, size):
         filled = min(abs(self.size), abs(size))
@@ -71,9 +74,9 @@ class _OrderCommon:
         pass
 
 
-class LimitOrder(_OrderCommon):
+class LimitOrder(OrderCommon):
     def __init__(self, order_id, side, price, size, product_id, time_posted):
-        _OrderCommon.__init__(self, order_id, side, size, product_id, 'limit', time_posted)
+        OrderCommon.__init__(self, order_id, side, size, product_id, 'limit', time_posted)
         self.price = price
         pass
 
@@ -100,9 +103,9 @@ class LimitOrder(_OrderCommon):
         return False
 
 
-class MarketOrder(_OrderCommon):
+class MarketOrder(OrderCommon):
     def __init__(self, order_id, side, size, product_id, time_posted):
-        _OrderCommon.__init__(self, order_id, side, size, product_id, 'market', time_posted)
+        OrderCommon.__init__(self, order_id, side, size, product_id, 'market', time_posted)
         raise RuntimeError("Not implemented. Need to implement full depth book first")
         pass
 
@@ -127,9 +130,9 @@ class MarketOrder(_OrderCommon):
         return True
 
 
-class StopOrder(_OrderCommon):
+class StopOrder(OrderCommon):
     def __init__(self, order_id, side, price, size, product_id, time_posted):
-        _OrderCommon.__init__(self, order_id, side, size, product_id, 'stop', time_posted)
+        OrderCommon.__init__(self, order_id, side, size, product_id, 'stop', time_posted)
         self.price = price
         raise RuntimeError("Not implemented. Need to implement full depth book first")
         pass

@@ -2,6 +2,10 @@ class Candles:
     def __init__(self):
         pass
 
+    def at(self, index):
+        # similar to iloc for pd.DataFrame
+        raise AttributeError("interface class")
+
     def views(self):
         raise AttributeError("interface class")
 
