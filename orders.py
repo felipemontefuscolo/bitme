@@ -2,6 +2,7 @@ import base64
 import uuid
 from cdecimal import Decimal
 import pandas as pd
+from enum import Enum
 
 TWOPLACES = Decimal(10) ** -2
 EIGHPLACES = Decimal(10) ** -8
@@ -9,9 +10,17 @@ EIGHPLACES = Decimal(10) ** -8
 
 # Order container util
 class Orders:
-    def __init__(self):
-        self.data = dict()  # id -> OrderCommon
+    def __init__(self, id_to_order_map=None):
+        # type: (dict) -> None
+        if id_to_order_map is None:
+            self.data = dict()  # id -> OrderCommon
+        else:
+            self.data = dict(id_to_order_map)
         pass
+
+    def __getitem__(self, index):
+        # type: (index) -> OrderCommon
+        return self.data[index]
 
     def __iter__(self):
         return iter(self.data.values())
@@ -22,25 +31,27 @@ class Orders:
     def size(self):
         return len(self.data)
 
-    def post_limit_order(self, side, price, size, product_id, time_posted):
-        id = self._gen_order_id()
-        self.data[id] = LimitOrder(id, side, price, size, product_id, time_posted)
-
-    def post_market_order(self, side, size, product_id, time_posted):
-        id = self._gen_order_id()
-        self.data[id] = MarketOrder(id, side, size, product_id, time_posted)
-
     def merge(self, orders):
         # type: (Orders) -> None
         self.data.update(orders.data)
 
+    def pop_cancels(self):
+        c = Orders()
+        nc = Orders()
+        for o in self.data.values():
+            if o.status is OrderStatus.canceled:
+                c.add(o)
+            else:
+                nc.add(o)
+        self.data = nc.data
+        return c
+
+    # replace old order with same id
+    def add(self, order):
+        self.data[order.id] = order
+
     def clean_filled(self):
         self.data = dict([(oid, order) for oid, order in self.data.iteritems() if order.size > 0])
-
-    def remove_no_fund_orders(self, position_coin, position_usd):
-        self.data = dict([(i, o) for i, o in self.data.iteritems()
-                          if (o.side[0] == 's' and o.size <= position_coin) or
-                             (o.side[0] == 'b' and o.size * o.price <= position_usd)])
 
     def to_csv(self, header=True):
         # type: () -> str
@@ -55,108 +66,92 @@ class Orders:
 
 
 class OrderCommon:
-    def __init__(self, order_id, side, size, product_id, order_type, time_posted):
-        # type: (int, str, int, str, str, pd.Timestamp) -> None
-        self.id = order_id
-        self.side = side
-        self.size = size
-        self.type = order_type
-        self.ts = time_posted
-        self.product_id = product_id
+    def __init__(self, **kargs):
+        self.id = str('bitme_' + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n'))  # type: str
+        self.symbol = kargs['symbol']  # type: Enum
+        self.signed_qty = get_or_none(kargs, 'signed_qty')  # type: float
+        # self.signed_simple_qty = get_or_none(kargs, 'signed_simple_qty') # type: float
+        self.price = get_or_none(kargs, 'price')  # type: float
+        self.stop_price = get_or_none(kargs, 'stop_price')  # type: float
+        self.linked_order_id = get_or_none(kargs, 'linked_order_id')  # type: str
+        self.order_type = get_or_none(kargs, 'order_type')  # type: OrderType
+        self.time_in_force = get_or_none(kargs, 'time_in_foce')  # type: TimeInForce
+        self.contingency_type = get_or_none(kargs, 'contingency_type')  # type: ContingencyType
+
+        # data change by the exchange
+        self.filled = 0.  # type: float
+        self.time_posted = None  # type: pd.Timestamp
+        self.status = OrderStatus.opened  # type: OrderStatus
+        self.status_msg = None  # type: OrderSubmissionError
+
+    def qty_sign(self):
+        self._sign(self.signed_qty)
+
+    def is_sell(self):
+        return self.signed_qty < 0
+
+    def is_buy(self):
+        return self.signed_qty > 0
+
+    @staticmethod
+    def _sign(x):
+        return -1 if x < 0 else +1
 
     def fill(self, size):
-        filled = min(abs(self.size), abs(size))
-        self.size -= filled
-        return filled
-
-    def set_filled(self):
-        self.size = 0
-        pass
-
-
-class LimitOrder(OrderCommon):
-    def __init__(self, order_id, side, price, size, product_id, time_posted):
-        OrderCommon.__init__(self, order_id, side, size, product_id, 'limit', time_posted)
-        self.price = price
-        pass
-
-    def __repr__(self):
-        return str(self.to_json())
-
-    def __str__(self):
-        return str(self.to_json())
-
-    def to_json(self):
-        params = {
-            'side': self.side,
-            'price': to_str(self.price, TWOPLACES),  # USD
-            'size': to_str(self.size, EIGHPLACES),  # BTC
-            'post_only': 'true',
-            'product_id': self.product_id,
-            'type': 'limit',
-            'overdraft_enabled': 'true'
-        }
-        return params
-
-    @staticmethod
-    def is_ioc():
+        # type: (float) -> bool
+        """ :return: True if fully filled, False otherwise  """
+        assert self._sign(size) == self._sign(self.signed_qty)
+        remaining = self.signed_qty - self.filled
+        if abs(size) >= abs(remaining):
+            size = remaining
+            self.status = OrderStatus.filled
+            self.filled += size
+            return True
+        self.filled += size
         return False
 
-
-class MarketOrder(OrderCommon):
-    def __init__(self, order_id, side, size, product_id, time_posted):
-        OrderCommon.__init__(self, order_id, side, size, product_id, 'market', time_posted)
-        raise RuntimeError("Not implemented. Need to implement full depth book first")
-        pass
-
-    def __repr__(self):
-        return str(self.to_json())
-
-    def __str__(self):
-        return str(self.to_json())
-
-    def to_json(self):
-        params = {
-            'side': self.side,
-            'size': to_str(self.size, EIGHPLACES),  # BTC
-            'product_id': self.product_id,
-            'type': 'market',
-            'overdraft_enabled': 'true'
-        }
-        return params
-
-    @staticmethod
-    def is_ioc():
-        return True
+    def type(self):
+        raise AttributeError("interface class")
 
 
-class StopOrder(OrderCommon):
-    def __init__(self, order_id, side, price, size, product_id, time_posted):
-        OrderCommon.__init__(self, order_id, side, size, product_id, 'stop', time_posted)
-        self.price = price
-        raise RuntimeError("Not implemented. Need to implement full depth book first")
-        pass
+class OrderStatus(Enum):
+    opened = 1
+    filled = 2
+    canceled = 3
 
-    def __repr__(self):
-        return str(self.to_json())
 
-    def __str__(self):
-        return str(self.to_json())
+class OrderSubmissionError(Enum):
+    insufficient_funds = 1
+    invalid_price = 2
+    end_of_sim = 3
+    unknown = 4
 
-    def to_json(self):
-        params = {
-            'side': self.side,
-            'price': to_str(self.price, TWOPLACES),  # USD
-            'size': to_str(self.size, EIGHPLACES),  # BTC
-            'product_id': self.product_id,
-            'type': 'stop',
-            'overdraft_enabled': 'true'
-        }
-        return params
 
-    @staticmethod
-    def is_ioc():
-        return False
+class OrderType(Enum):
+    market = 1
+    limit = 2
+    stop = 3
+
+
+class TimeInForce(Enum):
+    day = 'day'
+    good_til_cancel = 'good_til_cancel'
+    immediate_or_cancel = 'immediate_or_cancel'
+    fill_or_kill = 'fill_or_kill'
+
+
+class ContingencyType(Enum):
+    one_cancels_the_other = 'one_cancels_the_other'
+    one_triggers_the_other = 'one_triggers_the_other'
+    one_updates_the_other_absolute = 'one_updates_the_other_absolute'
+    one_updates_the_other_proportional = 'one_updates_the_other_proportional'
+
+
+def get_or_none(dicti, key):
+    try:
+        return dicti[key]
+    except KeyError:
+        return None
 
 
 def to_str(number, precision=TWOPLACES):

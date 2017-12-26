@@ -55,3 +55,11 @@ def to_iso_local(ts):
 def to_ts(iso_time):
     # return time.mktime(dateutil.parser.parse(iso_time).timetuple())
     return calendar.timegm(dateutil.parser.parse(iso_time).timetuple())
+
+
+def isclose(a, b, rel_tol=1e-09, abs_tol=0.0):
+    return abs(a-b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
+
+
+def sign(x):
+    return -1 if x < 0 else +1

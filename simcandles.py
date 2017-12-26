@@ -30,14 +30,14 @@ class SimCandles(Candles):
     def __init__(self, filename=None, data=None):
         # type: (str, pd.DataFrame) -> None
         Candles.__init__(self)
-        if filename:
+        if filename is not None and data is None:
             timeparser = lambda s: pd.datetime.strptime(str(s), '%Y-%m-%dT%H:%M:%S')
             self.data = pd.DataFrame(  # is this conversion inefficient?
                 pd.read_csv(filename, parse_dates=True, index_col='time', date_parser=timeparser))
-        elif data is not None:
+        elif data is not None and filename is None:
             self.data = data
         else:
-            raise ValueError("filename or data should be different of None")
+            raise ValueError("XOR(filename==None, data==None) should be True")
 
     def at(self, index):
         return self.data.iloc[index]
