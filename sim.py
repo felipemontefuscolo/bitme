@@ -5,6 +5,7 @@ import copy
 import os
 import sys
 
+from collections import defaultdict
 from enum import Enum
 from numpy.core.umath import sign
 
@@ -17,6 +18,7 @@ from utils import floor_5
 class Fill:
     def __init__(self, order, qty_filled, price_fill, fill_time):
         # type: (OrderCommon, float, float, pd.Timestamp) -> None
+        self.symbol = order.symbol
         self.order_id = order.id
         self.side = 'buy' if order.signed_qty > 0 else 'sell'
         self.qty = qty_filled  # signed
@@ -33,6 +35,7 @@ class Fill:
     def to_json(self):
         params = {
             'time': str(self.fill_time),
+            'symbol': str(self.symbol.name),
             'order_id': self.order_id,
             'side': self.side,
             'price': to_str(self.price, TWOPLACES),  # USD
@@ -44,6 +47,7 @@ class Fill:
     def to_line(self):
         return ','.join([
             str(self.fill_time),
+            str(self.symbol.name),
             str(self.order_id),
             str(self.side),
             str(to_str(self.price, TWOPLACES)),  # USD
@@ -53,7 +57,7 @@ class Fill:
 
     @staticmethod
     def get_header():
-        return "time,order_id,side,price,qty,type"
+        return "time,symbol,order_id,side,price,qty,type"
 
 
 class ExchangeCommon:
@@ -173,19 +177,18 @@ class SimExchangeBitMex(ExchangeCommon):
             """
             return abs(self.buy_qty + self.sell_qty + signed_qty) - abs(self.buy_qty + self.sell_qty)
 
-
     def __init__(self, initial_balance, file_name, tactics):
         ExchangeCommon.__init__(self)
         self.xbt_initial_balance = initial_balance
         self.xbt_balance = initial_balance
 
-        self.positions = dict([(i, self.Position()) for i in self.SYMBOLS])  # Symbol -> Position
+        self.positions = defaultdict(self.Position)  # Symbol -> Position
         self.leverage = dict([(i, 1.) for i in self.SYMBOLS])  # 1 means 1%
 
         self.active_orders = Orders()
 
         # liq price for each position
-        self.closed_positions_hist = dict([(i, list()) for i in self.SYMBOLS])
+        self.closed_positions_hist = defaultdict(list)  # Symbol -> list of Position
         self.fills_hist = []
         self.order_hist = Orders()
 
@@ -193,6 +196,9 @@ class SimExchangeBitMex(ExchangeCommon):
         self.time_idx = 0
 
         self.tactics = tactics
+
+        self.n_cancels = 0
+        self.n_liquidations = defaultdict(int)  # Symbol -> int
 
     def __enter__(self):
         return self
@@ -228,6 +234,9 @@ class SimExchangeBitMex(ExchangeCommon):
     def get_candles1m(self):
         return SimCandles(data=self.candles.data.iloc[0:self.time_idx + 1])
 
+    def is_last_candle(self):
+        return self.time_idx == self.candles.size() - 1
+
     # for sims only
     def advance_time(self, print_progress=True):
         if print_progress:
@@ -236,7 +245,7 @@ class SimExchangeBitMex(ExchangeCommon):
                 (self.time_idx, self.candles.size(), 100 * float(self.time_idx) / self.candles.size()))
             sys.stdout.flush()
 
-        if self.time_idx == self.candles.size() - 1:
+        if self.is_last_candle():
             for symbol in self.SYMBOLS:
                 self._execute_liquidation(symbol)
                 self.time_idx += 1
@@ -280,6 +289,7 @@ class SimExchangeBitMex(ExchangeCommon):
             self.active_orders[o.id].status = OrderStatus.canceled
             self.active_orders[o.id].status_msg = OrderSubmissionError.cancel_requested
             self.xbt_balance += o.refund_xbt_value()
+            self.n_cancels += 1
         if drop_canceled:
             orders.drop_closed_orders()
             self.active_orders.drop_closed_orders()  # in case orders does not refers to self.opened_orders
@@ -424,6 +434,8 @@ class SimExchangeBitMex(ExchangeCommon):
         order = OrderCommon(symbol=symbol, signed_qty=position.position(), type=OrderType.market)
         self._execute_order(order)
         assert not position.is_open()
+        if not self.is_last_candle():
+            self.n_liquidations[symbol] += 1
 
     def _close_position(self, symbol, force_close=False):
         position = self.positions[symbol]
@@ -435,18 +447,29 @@ class SimExchangeBitMex(ExchangeCommon):
     def _is_last_candle(self):
         return self.time_idx == len(self.candles.data) - 1
 
+    @staticmethod
+    def count_per_symbol(lista):
+        count_per_symbol = defaultdict(int)
+        for f in lista:
+            count_per_symbol[f.symbol.name] += 1
+        return dict(count_per_symbol)
+
     def print_summary(self):
         print("initial btc " + str(self.xbt_initial_balance))
         print("position btc = " + str(self.xbt_balance))
-        print("num fills = " + str(len(self.fills_hist)))
-        print("num orders = " + str(self.order_hist.size()))
+        print("num fills = " + str(self.count_per_symbol(self.fills_hist)))
+        print("num orders = " + str(self.count_per_symbol(self.order_hist)))
         print("close price = " + str(self.candles.data.iloc[-1].close))
         total_pnl = 0.
-        for s in self.SYMBOLS:
-            pnl = sum([p.realized_pnl for p in self.closed_positions_hist[s]])
-            print(str(s.name) + " pnl = " + str(pnl))
-            total_pnl += pnl
-        print("total pnl = " + str(total_pnl))
+        pnl = defaultdict(float)
+        for symbol in self.closed_positions_hist:
+            pnl[symbol.name] = sum([p.realized_pnl for p in self.closed_positions_hist[symbol]])
+            total_pnl += pnl[symbol.name]
+        print("PNL = " + str(dict(pnl)))
+        print("PNL total = " + str(total_pnl))
+        print("num order cancels = " + str(self.n_cancels))
+        print("num liquidations = " + str(dict(self.n_liquidations)))
+
 
     def print_output_files(self):
         output_dir = os.path.dirname(os.path.realpath(__file__))

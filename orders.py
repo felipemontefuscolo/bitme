@@ -28,14 +28,9 @@ class Orders:
     def __iter__(self):
         return iter(self.data.values())
 
-    @staticmethod
-    def from_orders_list(orders_list):
-        # type: (list) -> Orders
-        return Orders(dict([(o.id, o) for o in orders_list]))
-
     def of_symbol(self, symbol):
         # type: (Enum) -> Orders
-        return Orders(dict([(o.id, o) for o in self.data if o.symbol == symbol]))
+        return Orders(dict([(o_id, o) for o_id, o in self.data.iteritems() if o.symbol == symbol]))
 
     def _gen_order_id(self):
         return str('bitme_' + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n'))
@@ -55,7 +50,7 @@ class Orders:
         self.data[order.id] = order
 
     def clean_filled(self):
-        self.data = dict([(oid, order) for oid, order in self.data.iteritems() if order.size > 0])
+        self.data = dict([(oid, order) for oid, order in self.data.iteritems() if order.status != OrderStatus.filled])
 
     def to_csv(self, header=True):
         # type: () -> str

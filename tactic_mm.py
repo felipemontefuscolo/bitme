@@ -123,11 +123,16 @@ class TacticForBitMex2(TaticInterface):
 
         if self.opened_orders.size() > 2:
             raise ValueError("should have more than 2 orders placed")
+        self.opened_orders.clean_filled()
 
-        num_buys = sum([order.is_buy() for order in self.opened_orders])
-        num_sells = sum([order.is_sell() for order in self.opened_orders])
+        num_buys = sum([order.is_open() and order.is_buy() for order in self.opened_orders])
+        num_sells = sum([order.is_open() and order.is_sell() for order in self.opened_orders])
 
         if num_buys == 0 and num_sells == 0 and self.opened_orders.size() > 0:
+            print("")
+            for o in self.opened_orders:
+                for attr in dir(o):
+                    print("obj.%s = %s" % (attr, getattr(o, attr)))
             raise ValueError("invalid state")
 
         if num_sells > 0:
@@ -182,10 +187,6 @@ class TacticForBitMex2(TaticInterface):
         orders_to_send.add(sell)
 
         if exchange.post_orders(orders_to_send):
-            for o in orders_to_send:
-                if o.status != OrderStatus.opened:
-                    print(o.status_msg)
-            raise ValueError()
-            self.opened_orders = Orders()
+            exchange.cancel_orders(orders_to_send, drop_canceled=True)
         else:
             self.opened_orders.merge(orders_to_send)
