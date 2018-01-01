@@ -123,7 +123,7 @@ class TacticForBitMex2(TaticInterface):
 
         if self.opened_orders.size() > 2:
             raise ValueError("should have more than 2 orders placed")
-        self.opened_orders.clean_filled()
+        self.opened_orders.drop_closed_orders()
 
         num_buys = sum([order.is_open() and order.is_buy() for order in self.opened_orders])
         num_sells = sum([order.is_open() and order.is_sell() for order in self.opened_orders])

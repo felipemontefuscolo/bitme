@@ -9,7 +9,7 @@ from collections import defaultdict
 from enum import Enum
 from numpy.core.umath import sign
 
-from orders import to_str, TWOPLACES, OrderSubmissionError
+from orders import to_str, TWOPLACES, OrderCancelReason
 from simcandles import SimCandles
 from tactic_mm import *
 from utils import floor_5
@@ -183,7 +183,7 @@ class SimExchangeBitMex(ExchangeCommon):
         self.xbt_balance = initial_balance
 
         self.positions = defaultdict(self.Position)  # Symbol -> Position
-        self.leverage = dict([(i, 1.) for i in self.SYMBOLS])  # 1 means 1%
+        self.leverage = dict([(i, 100.) for i in self.SYMBOLS])  # 1 means 1%
 
         self.active_orders = Orders()
 
@@ -197,7 +197,7 @@ class SimExchangeBitMex(ExchangeCommon):
 
         self.tactics = tactics
 
-        self.n_cancels = 0
+        self.n_cancels = defaultdict(int)
         self.n_liquidations = defaultdict(int)  # Symbol -> int
 
     def __enter__(self):
@@ -284,19 +284,18 @@ class SimExchangeBitMex(ExchangeCommon):
         """
         return abs(qty) / (price * self.leverage[symbol])
 
-    def cancel_orders(self, orders, drop_canceled=True):
+    def cancel_orders(self, orders, drop_canceled=True, status=OrderStatus.canceled, reason=OrderCancelReason.cancel_requested):
         for o in orders:
-            self.active_orders[o.id].status = OrderStatus.canceled
-            self.active_orders[o.id].status_msg = OrderSubmissionError.cancel_requested
-            self.xbt_balance += o.refund_xbt_value()
-            self.n_cancels += 1
+            self.active_orders[o.id].status = status
+            self.active_orders[o.id].status_msg = reason
+            self.n_cancels[reason.name] += 1
         if drop_canceled:
             orders.drop_closed_orders()
             self.active_orders.drop_closed_orders()  # in case orders does not refers to self.opened_orders
 
     @staticmethod
     def _reject_order(order, time_posted, reason):
-        # type: (OrderCommon, pd.Timestamp, OrderSubmissionError) -> None
+        # type: (OrderCommon, pd.Timestamp, OrderCancelReason) -> None
         assert order.status is not OrderStatus.opened  # it can only reject order not yet posted
         order.time_posted = time_posted
         order.status = OrderStatus.canceled
@@ -313,7 +312,7 @@ class SimExchangeBitMex(ExchangeCommon):
         if self.time_idx == self.candles.size() - 1:
             #  this is the last candle, cancel all orders
             for o in orders:  # type: OrderCommon
-                self._reject_order(o, current_time, OrderSubmissionError.end_of_sim)
+                self._reject_order(o, current_time, OrderCancelReason.end_of_sim)
             return True
 
         # discard bad orders
@@ -323,7 +322,7 @@ class SimExchangeBitMex(ExchangeCommon):
                 crossed = (o.is_sell() and o.price < current_price) or (o.is_buy() and o.price > current_price)
                 if crossed or o.price < 0:
                     # only post_only are supported, so don't let it cross
-                    self._reject_order(o, current_time, OrderSubmissionError.invalid_price)
+                    self._reject_order(o, current_time, OrderCancelReason.invalid_price)
                     contain_errors = True
                     continue
             elif o.type is not OrderType.market:
@@ -427,15 +426,16 @@ class SimExchangeBitMex(ExchangeCommon):
             self.fills_hist += [fill]
 
     def _execute_liquidation(self, symbol):
-        self.cancel_orders(self.active_orders.of_symbol(symbol))
+        self.cancel_orders(self.active_orders.of_symbol(symbol), reason=OrderCancelReason.liquidation)
         position = self.positions[symbol]
         if not position.is_open():
             return
-        order = OrderCommon(symbol=symbol, signed_qty=position.position(), type=OrderType.market)
+        order = OrderCommon(symbol=symbol, signed_qty=-position.position(), type=OrderType.market)
         self._execute_order(order)
-        assert not position.is_open()
+        if position.is_open():
+            raise AttributeError("position was not close during liquidation. position = %f" % position.position())
         if not self.is_last_candle():
-            self.n_liquidations[symbol] += 1
+            self.n_liquidations[symbol.name] += 1
 
     def _close_position(self, symbol, force_close=False):
         position = self.positions[symbol]
@@ -467,8 +467,10 @@ class SimExchangeBitMex(ExchangeCommon):
             total_pnl += pnl[symbol.name]
         print("PNL = " + str(dict(pnl)))
         print("PNL total = " + str(total_pnl))
-        print("num order cancels = " + str(self.n_cancels))
+        print("num order cancels = " + str(dict(self.n_cancels)))
         print("num liquidations = " + str(dict(self.n_liquidations)))
+
+        assert abs(total_pnl - (self.xbt_balance - self.xbt_initial_balance)) < 1.e-8
 
 
     def print_output_files(self):

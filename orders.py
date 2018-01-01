@@ -80,7 +80,7 @@ class OrderCommon:
         self.fill_price = float('nan') if self.type == OrderType.market else self.price
         self.time_posted = None  # type: pd.Timestamp
         self.status = OrderStatus.opened  # type: OrderStatus
-        self.status_msg = None  # type: OrderSubmissionError
+        self.status_msg = None  # type: OrderCancelReason
 
         # sanity check
         q = abs(self.signed_qty) * 2 + 1.e-10
@@ -125,12 +125,13 @@ class OrderStatus(Enum):
     canceled = 'CANCELED'
 
 
-class OrderSubmissionError(Enum):
+class OrderCancelReason(Enum):
     insufficient_funds = 1
     invalid_price = 2
     end_of_sim = 3
     cancel_requested = 4
-    unknown = 5
+    liquidation = 5
+    unknown = 6
 
 
 class OrderType(Enum):
