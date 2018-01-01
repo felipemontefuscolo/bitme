@@ -4,15 +4,14 @@
 import copy
 import os
 import sys
-
 from collections import defaultdict
+
 from enum import Enum
 from numpy.core.umath import sign
 
 from orders import to_str, TWOPLACES, OrderCancelReason
 from simcandles import SimCandles
 from tactic_mm import *
-from utils import floor_5
 
 
 class Fill:
@@ -218,17 +217,11 @@ class SimExchangeBitMex(ExchangeCommon):
     def current_price(self):
         return self.candles.data.iloc[self.time_idx].close
 
-    def next_price(self):
-        return self.candles.data.iloc[self.time_idx+1].close
-
     def current_time(self):
         return self.candles.data.iloc[self.time_idx].name
 
     def current_candle(self):
         return self.candles.data.iloc[self.time_idx]
-
-    def get_next_candle(self):
-        return self.candles.data.iloc[self.time_idx+1]
 
     def get_candles1m(self):
         return SimCandles(data=self.candles.data.iloc[0:self.time_idx + 1])
@@ -448,11 +441,8 @@ class SimExchangeBitMex(ExchangeCommon):
         self.closed_positions_hist[symbol] += [copy.deepcopy(position)]
         self.xbt_balance += position.close_position()
 
-    def _is_last_candle(self):
-        return self.time_idx == len(self.candles.data) - 1
-
     @staticmethod
-    def count_per_symbol(lista):
+    def _count_per_symbol(lista):
         count_per_symbol = defaultdict(int)
         for f in lista:
             count_per_symbol[f.symbol.name] += 1
@@ -461,8 +451,8 @@ class SimExchangeBitMex(ExchangeCommon):
     def print_summary(self):
         print("initial btc " + str(self.xbt_initial_balance))
         print("position btc = " + str(self.xbt_balance))
-        print("num fills = " + str(self.count_per_symbol(self.fills_hist)))
-        print("num orders = " + str(self.count_per_symbol(self.order_hist)))
+        print("num fills = " + str(self._count_per_symbol(self.fills_hist)))
+        print("num orders = " + str(self._count_per_symbol(self.order_hist)))
         print("close price = " + str(self.candles.data.iloc[-1].close))
         total_pnl = 0.
         pnl = defaultdict(float)
@@ -475,7 +465,6 @@ class SimExchangeBitMex(ExchangeCommon):
         print("num liquidations = " + str(dict(self.n_liquidations)))
 
         assert abs(total_pnl - (self.xbt_balance - self.xbt_initial_balance)) < 1.e-8
-
 
     def print_output_files(self):
         output_dir = os.path.dirname(os.path.realpath(__file__))
@@ -493,7 +482,7 @@ class SimExchangeBitMex(ExchangeCommon):
 
         for s in self.SYMBOLS:
             for p in self.closed_positions_hist[s]:  # type: self.Position
-                pnl_file.write(','.join([str(p.close_ts), str(p.realized_pnl)]))
+                pnl_file.write(','.join([str(p.close_ts), str(p.realized_pnl)]) + '\n')
 
         pnl_file.close()
         fills_file.close()

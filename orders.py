@@ -32,9 +32,6 @@ class Orders:
         # type: (Enum) -> Orders
         return Orders(dict([(o_id, o) for o_id, o in self.data.iteritems() if o.symbol == symbol]))
 
-    def _gen_order_id(self):
-        return str('bitme_' + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n'))
-
     def size(self):
         return len(self.data)
 
