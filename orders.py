@@ -115,9 +115,6 @@ class OrderCommon:
         self.filled += size
         return False
 
-    def type(self):
-        raise AttributeError("interface class")
-
 
 class OrderStatus(Enum):
     opened = 'OPENED'

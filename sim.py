@@ -80,9 +80,7 @@ class ExchangeCommon:
 
 #  only BTC is supported for now
 class SimExchangeBitMex(ExchangeCommon):
-    TAKER_FEE = 0.00075
-    MAKER_FEE = -0.00025
-    FEE = {OrderType.limit: MAKER_FEE, OrderType.market: TAKER_FEE}
+    FEE = {OrderType.limit: -0.00025, OrderType.market: 0.00075}
 
     class Symbol(Enum):
         XBTUSD = 'XBTUSD'
@@ -119,7 +117,7 @@ class SimExchangeBitMex(ExchangeCommon):
             self.__init__()
             return pnl
 
-        def update(self, qty, price, multiplier):
+        def update(self, qty, price, multiplier, fee):
             if self.side is None:
                 self.side = sign(qty)
             """
@@ -131,10 +129,10 @@ class SimExchangeBitMex(ExchangeCommon):
 
             if qty > 0:
                 self.buy_qty += qty
-                self.buy_vol += qty * price
+                self.buy_vol += qty * price * (1. + fee)
             else:
                 self.sell_qty += qty
-                self.sell_vol += qty * price
+                self.sell_vol += qty * price * (1. - fee)
             self.liq_price = self.entry_price() * multiplier / (self.side * .75 + multiplier)
             self.realized_pnl = self.calc_realized_pnl(multiplier)
 
@@ -145,6 +143,7 @@ class SimExchangeBitMex(ExchangeCommon):
                    (self.buy_qty/max(self.buy_vol, 1.e-8) - self.sell_qty/min(self.sell_vol, -1.e-8))
 
         def entry_price(self):
+            # this is not exactly true, but it's a good approximation
             if self.side > 0:
                 return self.buy_vol / self.buy_qty
             else:
@@ -402,20 +401,25 @@ class SimExchangeBitMex(ExchangeCommon):
             order.status = OrderStatus.filled
             order.fill_price = price_fill
 
+        fee = self.FEE[order.type]
+
         if outstanding_qty:
             position.update(qty=qty_to_close,
                             price=price_fill,
-                            multiplier=self.leverage[order.symbol])
+                            multiplier=self.leverage[order.symbol],
+                            fee=fee)
             assert position.is_closeable()
             self._close_position(order.symbol)
             position.update(qty=outstanding_qty,
                             price=price_fill,
-                            multiplier=self.leverage[order.symbol])
+                            multiplier=self.leverage[order.symbol],
+                            fee=fee)
             assert not position.is_closeable()
         else:
             position.update(qty=qty_fill,
                             price=price_fill,
-                            multiplier=self.leverage[order.symbol])
+                            multiplier=self.leverage[order.symbol],
+                            fee=fee)
             if position.is_closeable():
                 self._close_position(order.symbol)
 
