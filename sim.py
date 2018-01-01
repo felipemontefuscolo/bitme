@@ -1,20 +1,17 @@
 # NOTES:
 # timestamps are of type pd.Timestamp
 # side are of type str ('buy' or 'sell')
-
-
+import copy
+import os
 import sys
 
-from collections import defaultdict
-
-import math
 from enum import Enum
+from numpy.core.umath import sign
 
-import utils
-from orders import to_str, TWOPLACES, EIGHPLACES, OrderStatus, OrderSubmissionError, OrderType
+from orders import to_str, TWOPLACES, OrderSubmissionError
 from simcandles import SimCandles
 from tactic_mm import *
-from utils import sign
+from utils import floor_5
 
 
 class Fill:
@@ -39,8 +36,8 @@ class Fill:
             'order_id': self.order_id,
             'side': self.side,
             'price': to_str(self.price, TWOPLACES),  # USD
-            'qty': to_str(self.qty, EIGHPLACES),  # BTC
-            'type': self.order_type
+            'qty': str(int(self.qty)),  # USD
+            'type': self.order_type.name
         }
         return params
 
@@ -50,8 +47,8 @@ class Fill:
             str(self.order_id),
             str(self.side),
             str(to_str(self.price, TWOPLACES)),  # USD
-            str(to_str(self.qty, EIGHPLACES)),  # BTC
-            str(self.order_type)
+            str(int(self.qty)),  # USD
+            str(self.order_type.name)
         ])
 
     @staticmethod
@@ -66,7 +63,11 @@ class ExchangeCommon:
     def get_candles1m(self):
         raise AttributeError("interface class")
 
-    def send_orders(self, orders, tactic_id):
+    def post_orders(self, orders):
+        """
+        :param orders:
+        :return: True if any order was rejected
+        """
         raise AttributeError("interface class")
 
     def current_time(self):
@@ -77,37 +78,119 @@ class ExchangeCommon:
 class SimExchangeBitMex(ExchangeCommon):
     TAKER_FEE = 0.00075
     MAKER_FEE = -0.00025
+    FEE = {OrderType.limit: MAKER_FEE, OrderType.market: TAKER_FEE}
 
     class Symbol(Enum):
         XBTUSD = 'XBTUSD'
-        XBTZ17 = 'XBTZ17'
+        XBTH18 = 'XBTH18'
         __iter__ = Enum.__iter__
+
+    N_SYMBOLS = len(Symbol)
+    SYMBOLS = list(Symbol)
+
+    # reference: https://www.bitmex.com/app/riskLimits#instrument-risk-limits
+    RISK_LIMITS = {Symbol.XBTUSD: 0.0015, Symbol.XBTH18: 0.0015}
+
+    class Position:
+        """
+        Only isolated margin is supported (see isolated vs cross here: https://www.bitmex.com/app/isolatedMargin)
+        It means that when a position is opened, a fixed amount is taken as collateral. Any gains are only credited
+        after the position is closed.
+        """
+
+        def __init__(self):
+            self.buy_qty = 0.
+            self.buy_vol = 0.
+            self.sell_qty = 0.  # always negative
+            self.sell_vol = 0.
+            self.realized_pnl = 0.
+            self.liq_price = 0.
+            self.close_ts = None
+            self.side = None
+            pass
+
+        def close_position(self):
+            assert self.is_closeable()
+            pnl = self.realized_pnl
+            self.__init__()
+            return pnl
+
+        def update(self, qty, price, multiplier):
+            if self.side is None:
+                self.side = sign(qty)
+            """
+            should be updated on every fill
+            """
+            net_qty = self.net_qty()
+            if net_qty * (qty + net_qty) < 0:  # changing position direction
+                raise ValueError("provided qty changes position side. This case should be handled outside this method.")
+
+            if qty > 0:
+                self.buy_qty += qty
+                self.buy_vol += qty * price
+            else:
+                self.sell_qty += qty
+                self.sell_vol += qty * price
+            self.liq_price = self.entry_price() * multiplier / (self.side * .75 + multiplier)
+            self.realized_pnl = self.calc_realized_pnl(multiplier)
+
+        def calc_realized_pnl(self, multiplier):
+            # pnl = Contracts * Multiplier * (1/Entry Price - 1/Exit Price)
+
+            return self.side * multiplier * min(abs(self.buy_qty), abs(self.sell_qty)) * \
+                   (self.buy_qty/max(self.buy_vol, 1.e-8) - self.sell_qty/min(self.sell_vol, -1.e-8))
+
+        def entry_price(self):
+            if self.side > 0:
+                return self.buy_vol / self.buy_qty
+            else:
+                return self.sell_vol / self.sell_qty
+
+        def net_qty(self):
+            return self.buy_qty + self.sell_qty
+
+        def position(self):
+            return self.buy_qty + self.sell_qty
+
+        def is_closeable(self):
+            return abs(self.buy_qty + self.sell_qty) < 1.e-10
+
+        def is_open(self):
+            return self.side is not None
+
+        def does_change_side(self, qty):
+            net_qty = self.net_qty()
+            return net_qty * (qty + net_qty) < 0
+
+        def does_reduce_position(self, qty):
+            return self.position_change(qty) < 0
+
+        def position_change(self, signed_qty):
+            # type: (float) -> float
+            """
+            :param signed_qty:
+            :return: a positive number if signed_qty increase position (positively or negatively) and negative otherwise
+            """
+            return abs(self.buy_qty + self.sell_qty + signed_qty) - abs(self.buy_qty + self.sell_qty)
+
 
     def __init__(self, initial_balance, file_name, tactics):
         ExchangeCommon.__init__(self)
         self.xbt_initial_balance = initial_balance
         self.xbt_balance = initial_balance
-        self.positions = dict(zip([i for i in self.Symbol], [0] * len(self.Symbol)))  # in dollars. 0 mean no position
-        self.position_fills = dict(zip([i for i in self.Symbol], [[]] * len(self.Symbol)))  # fill for the opened
-                                                                                             # positions only. Used to
-                                                                                             # compute pnl
-        self.position_liq_price = dict(zip([i for i in self.Symbol], [float('nan')] * len(self.Symbol)))  # liq. prices for opened positions
-        self.closed_position = dict(zip([i for i in self.Symbol], [[]] * len(self.Symbol)))
-        self.all_fills = []
-        self.all_realized_pnls = []
+
+        self.positions = dict([(i, self.Position()) for i in self.SYMBOLS])  # Symbol -> Position
+        self.leverage = dict([(i, 1.) for i in self.SYMBOLS])  # 1 means 1%
+
+        self.active_orders = Orders()
+
+        # liq price for each position
+        self.closed_positions_hist = dict([(i, list()) for i in self.SYMBOLS])
+        self.fills_hist = []
+        self.order_hist = Orders()
 
         self.candles = SimCandles(file_name)  # all candles
         self.time_idx = 0
-
-        self.tac_sent_orders = defaultdict(lambda: Orders())  # str(TacticID) -> Orders()
-        self.tac_opened_orders = defaultdict(lambda: Orders())  # str(TacticID) -> Orders()
-
-        self.fills_file = open('/Users/felipe/bitme/output.fills', 'w')
-        self.orders_file = open('/Users/felipe/bitme/output.orders', 'w')
-        self.fills_file.write(Fill.get_header() + '\n')
-        self.orders_file.write(Orders().to_csv() + '\n')
-
-        self.leverage = dict(zip([i for i in self.Symbol], [50.] * len(self.Symbol)))  # 1 means 1%
 
         self.tactics = tactics
 
@@ -115,18 +198,12 @@ class SimExchangeBitMex(ExchangeCommon):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.fills_file.close()
-        self.orders_file.close()
-
-    def current_time(self):
-        return self.candles.data.iloc[self.time_idx].name
-
-    def is_position_open(self, symbol):
-        return self.positions[symbol] != 0
+        pass
 
     def set_leverage(self, symbol, value):
         # type: (SimExchangeBitMex.Symbol, float) -> bool
         """
+        :param symbol
         :param value Leverage value. Send a number between 0.01 and 100 to enable isolated margin with a fixed leverage.
                Send 0 to enable cross margin.
         :return: True if succeeded """
@@ -136,188 +213,262 @@ class SimExchangeBitMex(ExchangeCommon):
     def current_price(self):
         return self.candles.data.iloc[self.time_idx].close
 
+    def next_price(self):
+        return self.candles.data.iloc[self.time_idx+1].close
+
+    def current_time(self):
+        return self.candles.data.iloc[self.time_idx].name
+
+    def current_candle(self):
+        return self.candles.data.iloc[self.time_idx]
+
+    def get_next_candle(self):
+        return self.candles.data.iloc[self.time_idx+1]
+
     def get_candles1m(self):
         return SimCandles(data=self.candles.data.iloc[0:self.time_idx + 1])
 
     # for sims only
     def advance_time(self, print_progress=True):
-        is_last_round = self._is_last_candle()
         if print_progress:
             sys.stdout.write(
                 "progress: %d out of %d (%.4f%%)   \r" %
                 (self.time_idx, self.candles.size(), 100 * float(self.time_idx) / self.candles.size()))
             sys.stdout.flush()
-        for tactic in self.tactics:  # type: TaticInterface
-            tactic.handle_candles(self, self.positions, self.xbt_balance)
-        self._execute_all_orders()
-        self.time_idx += 1
-        if is_last_round:
-            sys.stdout.write("progress: %d out of %d (%.4f%%)\n" % (self.time_idx, self.candles.size(), 100.))
 
-
+        if self.time_idx == self.candles.size() - 1:
+            for symbol in self.SYMBOLS:
+                self._execute_liquidation(symbol)
+                self.time_idx += 1
+                sys.stdout.write("progress: %d out of %d (%.4f%%)\n" % (self.time_idx, self.candles.size(), 100.))
+                return
+        else:
+            for tactic in self.tactics:  # type: TaticInterface
+                tactic.handle_candles(self, self.positions, self.xbt_balance)
+            self.time_idx += 1
+            self._execute_all_orders()
+            current_price = self._estimate_price()
+            for symbol in self.SYMBOLS:
+                position = self.positions[symbol]
+                if position.is_open():
+                    side = position.side
+                    liq_price = self.positions[symbol].liq_price
+                    if (side > 0 and current_price < liq_price) or (side < 0 and current_price > liq_price):
+                        self._execute_liquidation(symbol)
 
     def is_open(self):
         return self.time_idx < len(self.candles.data)
 
-    @staticmethod
-    def _compute_xbt_cost(qty, price, margin, fee):
-        return (1. + fee) * abs(qty) / (price * margin)
+    def _execution_cost(self, order, qty_filled, price_filled, apply_fee=True):
+        # type: (OrderCommon, float, float) -> float
+        return (1. + self.FEE[order.type] * apply_fee) * abs(qty_filled) / (price_filled * self.leverage[order.symbol])
+
+    def _execution_profit(self, order, qty_filled, price_filled):
+        # type: (OrderCommon, float, float) -> float
+        return (1. - self.FEE[order.type]) * abs(qty_filled) / (price_filled * self.leverage[order.symbol])
+
+    def _limit_order_margin_cost_xbt(self, qty, price, symbol):
+        # type: (float, float, self.Symbol) -> float
+        """
+        Simplified version of Bitmex cost. It assumes that abs(qty) < 100 XBT.
+        Also, it ignores the mark price and risk price.
+        """
+        return abs(qty) / (price * self.leverage[symbol])
+
+    def cancel_orders(self, orders, drop_canceled=True):
+        for o in orders:
+            self.active_orders[o.id].status = OrderStatus.canceled
+            self.active_orders[o.id].status_msg = OrderSubmissionError.cancel_requested
+            self.xbt_balance += o.refund_xbt_value()
+        if drop_canceled:
+            orders.drop_closed_orders()
+            self.active_orders.drop_closed_orders()  # in case orders does not refers to self.opened_orders
 
     @staticmethod
-    def _max_qty_given_balance(balance, price, margin, fee):
-        # NOTE: return a non signed quantity
-        return balance * price * margin / (1. + fee)
+    def _reject_order(order, time_posted, reason):
+        # type: (OrderCommon, pd.Timestamp, OrderSubmissionError) -> None
+        assert order.status is not OrderStatus.opened  # it can only reject order not yet posted
+        order.time_posted = time_posted
+        order.status = OrderStatus.canceled
+        order.status_msg = reason
 
-    def send_orders(self, orders, tactic_id):
+    def post_orders(self, orders):
         # type: (Orders, str) -> bool
         # may change order status
         # return true if any submission failed
         contain_errors = False
-        current_time = self.candles.data.iloc[self.time_idx].name
-        self.tac_sent_orders[tactic_id].merge(orders)
+        current_time = self.current_time()
+        self.order_hist.merge(orders)
 
         if self.time_idx == self.candles.size() - 1:
             #  this is the last candle, cancel all orders
             for o in orders:  # type: OrderCommon
-                o.time_posted = current_time
-                o.status = OrderStatus.canceled
-                o.status_msg = OrderSubmissionError.end_of_sim
+                self._reject_order(o, current_time, OrderSubmissionError.end_of_sim)
             return True
 
         # discard bad orders
         current_price = self.current_price()
         for o in orders:  # type: OrderCommon
-            if o.order_type is OrderType.limit:
-                if (o.is_sell() and o.price < current_price) or (o.is_buy() and o.price > current_price):
-                    o.status = OrderStatus.canceled
-                    o.status_msg = OrderSubmissionError.invalid_price
+            if o.type is OrderType.limit:
+                crossed = (o.is_sell() and o.price < current_price) or (o.is_buy() and o.price > current_price)
+                if crossed or o.price < 0:
+                    # only post_only are supported, so don't let it cross
+                    self._reject_order(o, current_time, OrderSubmissionError.invalid_price)
                     contain_errors = True
+                    continue
+            elif o.type is not OrderType.market:
+                raise ValueError("invalid order type %s" % str(o.type))
 
-                # set fee as 0 to have a pessimist cost
-                cost = self._compute_xbt_cost(o.signed_qty, o.price, self.leverage[o.symbol], 0.)
-                if self.xbt_balance < cost:
-                    o.status = OrderStatus.canceled
-                    o.status_msg = OrderSubmissionError.insufficient_funds
-                    contain_errors = True
-
-        for o in orders:
+        for o in orders:  # type: OrderCommon
             o.time_posted = current_time
-            if o.status is OrderStatus.opened:
-                self.tac_opened_orders[tactic_id].add(o)
+            if o.status == OrderStatus.opened:
+                self.active_orders.add(o)
 
         return contain_errors
 
-    def close_position_after_fill(self, symbol):
-        assert self.positions[symbol] == 0
-        fills = self.position_fills[symbol]
-        self.all_fills += fills
-        buy_qty = 0.
-        buy_vol = 0.
-        sell_qty = 0.
-        sell_vol = 0.
-        for fill in fills:  # type:
-            if fill.qty > 0:
-                buy_qty += fill.qty
-                buy_vol += fill.qty * fill.price
-            else:
-                sell_qty += fill.qty
-                sell_vol += fill.qty * fill.price
-        pnl_xbt = (buy_qty / buy_vol - sell_qty / sell_vol) * (buy_qty - sell_qty) * self.leverage[symbol]
-        self.all_realized_pnls += [pnl_xbt]
-        self.xbt_balance += pnl_xbt
-        self.all_fills += fills
-        self.position_fills[symbol] = dict(zip([i for i in self.Symbol], [[]] * len(self.Symbol)))
-        self.position_liq_price = dict(zip([i for i in self.Symbol], [float('nan')] * len(self.Symbol)))  # liq. prices for opened positions
-        current_time = self.candles.data.iloc[self.time_idx].name
-        self.closed_position[symbol] += [(current_time, pnl_xbt)]
-
-    def _estimate_current_price(self, current_candle):
-        # type: (pd.Series) -> float
+    def _estimate_price(self, current_candle=None):
+        if current_candle is None:
+            current_candle = self.current_candle()
         high = current_candle.high
         low = current_candle.low
         close_p = current_candle.close
         open_p = current_candle.open
         return (3 * open_p + 2. * (low + high) + close_p) / 8.
 
-    def _average_entry_price(self, symbol):
-        buy_qty = 0.
-        buy_vol = 0.
-        for fill in self.position_fills[symbol]:  # type:
-            if fill.qty > 0:
-                buy_qty += fill.qty
-                buy_vol += fill.qty * fill.price
-        return buy_vol / buy_qty
-
     def _execute_all_orders(self):
-        current_candle = self.candles.data.iloc[self.time_idx]  # type: pd.Series
+        assert self.time_idx < len(self.candles.data)
+        for o in self.active_orders:  # type: OrderCommon
+            self._execute_order(o)
+        self.active_orders.drop_closed_orders()
 
-        for tactic_id, orders in self.tac_opened_orders.iteritems():
-            for o in orders:  # type: OrderCommon
-                self._execute_order(order=o, current_candle=current_candle)
-
-    def _execute_order(self, order, current_candle):
+    def _execute_order(self, order):
+        # type: (OrderCommon) -> None
+        assert self.time_idx < self.candles.size()
+        current_candle = self.current_candle()
         current_time = current_candle.name  # pd.Timestamp
         high = current_candle.high
         low = current_candle.low
-        volume = current_candle.volume
+        open = current_candle.open
+        close = current_candle.close
 
-        price_fill = self._estimate_current_price(current_candle)
+        position = self.positions[order.symbol]  # type: self.Position
+        position_value = position.position()
+        qty_fill = qty_to_close = outstanding_qty = None
+        crossed = False
 
-        qty_fill = None
-        cost_xbt = float('nan')
-        if order.order_type is OrderType.market:  # fills immediately
-            cost_xbt = self._compute_xbt_cost(price_fill, order.signed_qty, self.leverage[order.symbol], self.TAKER_FEE)
-            if cost_xbt > self.xbt_balance:
-                qty_fill = self.xbt_balance / cost_xbt * order.signed_qty
-                cost_xbt = self.xbt_balance
+        if order.type is OrderType.market:
+            crossed = True
+            price_fill = self._estimate_price()
+            qty_fill = order.signed_qty
+        elif order.type is OrderType.limit:
+            price_fill = order.price
+            max_qty_fill = order.signed_qty - order.filled
+            # clip fill
+            if open <= order.price <= close:
+                qty_fill = max_qty_fill
+            elif high == low == order.price:
+                qty_fill = round(0.5 * max_qty_fill)
             else:
-                qty_fill = order.signed_qty
-        elif order.order_type is OrderType.limit:
-            cost_xbt = self._compute_xbt_cost(order.price, order.signed_qty, self.leverage[order.symbol], self.MAKER_FEE)
-            if high == low:
-                if (order.is_sell() and order.price < high) or (order.is_buy() and order.price > low):
-                    qty_fill = 0.5 * volume
-            else:
-                if order.is_sell() and order.price < high:
-                    qty_fill = -((high - order.price) / (high - low)) * volume
-                elif order.is_buy() and order.price > low:
-                    qty_fill = +((low - order.price) / (low - high)) * volume
+                if low < order.price < high:
+                    if order.is_sell():
+                        factor = max((high - order.price) / (high - low), 0.50001)
+                        assert factor >= 0
+                    else:
+                        factor = max((low - order.price) / (low - high), 0.50001)
+                        assert factor >= 0
+                    qty_fill = round(factor * max_qty_fill)
+            if qty_fill is not None:
+                crossed = True
+        else:
+            raise ValueError("order type " + str(order.type) + " not supported")
 
-        # common part between market and limit
-        if qty_fill is not None:
-            order.fill(qty_fill)
-            fill = Fill(order=order, qty_filled=qty_fill, price_fill=price_fill, fill_time=current_time)
-            self.position_fills[order.symbol] += [fill]
-            if self.positions[order.symbol] == 0 or utils.sign(qty_fill) == utils.sign(self.positions[order.symbol]):
-                self.xbt_balance -= cost_xbt
-                self.position_liq_price[order.symbol] = \
-                    self._average_entry_price(order.symbol) * self.leverage[order.symbol] / \
-                    (self.leverage[order.symbol] + utils.sign(qty_fill) * 0.47)
+        if not crossed:
+            return
 
-            self.positions[order.symbol] += qty_fill
-            if self.positions[order.symbol] == 0:
-                # closing position
-                self.close_position_after_fill(order.symbol)
+        if position.does_change_side(qty_fill):
+            qty_to_close = sign(qty_fill) * min(abs(position_value), abs(qty_fill))
+            outstanding_qty = qty_fill - qty_to_close
 
-    def _execute_liquidation(self):
-        current_candle = self.candles.data.iloc[self.time_idx]
-        current_price = self._estimate_current_price(current_candle)
-        for symbol in self.Symbol:
-            liq_price = self.position_liq_price[symbol]
-            if (current_price < liq_price and self.positions[symbol] > 0) or \
-                    (current_price > liq_price and self.positions[symbol] < 0) or \
-                    self._is_last_candle():
-                order = OrderCommon(symbol=symbol, signed_qty=self.positions[symbol], order_type=OrderType.market)
-                self._execute_order(order, current_candle)
+        if order.fill(qty_fill) or order.type == OrderType.market:
+            order.status = OrderStatus.filled
+            order.fill_price = price_fill
+
+        if outstanding_qty:
+            position.update(qty=qty_to_close,
+                            price=price_fill,
+                            multiplier=self.leverage[order.symbol])
+            assert position.is_closeable()
+            self._close_position(order.symbol)
+            position.update(qty=outstanding_qty,
+                            price=price_fill,
+                            multiplier=self.leverage[order.symbol])
+            assert not position.is_closeable()
+        else:
+            position.update(qty=qty_fill,
+                            price=price_fill,
+                            multiplier=self.leverage[order.symbol])
+            if position.is_closeable():
+                self._close_position(order.symbol)
+
+            fill = Fill(order=order,
+                        qty_filled=qty_fill,
+                        price_fill=price_fill,
+                        fill_time=current_time)
+            self.fills_hist += [fill]
+
+    def _execute_liquidation(self, symbol):
+        self.cancel_orders(self.active_orders.of_symbol(symbol))
+        position = self.positions[symbol]
+        if not position.is_open():
+            return
+        order = OrderCommon(symbol=symbol, signed_qty=position.position(), type=OrderType.market)
+        self._execute_order(order)
+        assert not position.is_open()
+
+    def _close_position(self, symbol, force_close=False):
+        position = self.positions[symbol]
+        assert position.is_closeable() or force_close
+        position.close_ts = self.current_time()
+        self.closed_positions_hist[symbol] += [copy.deepcopy(position)]
+        self.xbt_balance += position.close_position()
 
     def _is_last_candle(self):
         return self.time_idx == len(self.candles.data) - 1
 
     def print_summary(self):
+        print("initial btc " + str(self.xbt_initial_balance))
         print("position btc = " + str(self.xbt_balance))
-        print("position usd = " + str(self.positions))
+        print("num fills = " + str(len(self.fills_hist)))
+        print("num orders = " + str(self.order_hist.size()))
         print("close price = " + str(self.candles.data.iloc[-1].close))
-        #print("optimist realized profit = " + str(position_usd + position_btc * close_p - initial_position_usd))
+        total_pnl = 0.
+        for s in self.SYMBOLS:
+            pnl = sum([p.realized_pnl for p in self.closed_positions_hist[s]])
+            print(str(s.name) + " pnl = " + str(pnl))
+            total_pnl += pnl
+        print("total pnl = " + str(total_pnl))
+
+    def print_output_files(self):
+        output_dir = os.path.dirname(os.path.realpath(__file__))
+        print("print results to " + output_dir)
+        fills_file = open(os.path.join(output_dir, 'output.fills'), 'w')
+        orders_file = open(os.path.join(output_dir, 'output.orders'), 'w')
+        pnl_file = open(os.path.join(output_dir, 'output.pnl'), 'w')
+
+        fills_file.write(Fill.get_header() + '\n')
+        orders_file.write(Orders().to_csv() + '\n')
+
+        for f in self.fills_hist:  # type: Fill
+            fills_file.write(f.to_line() + '\n')
+        orders_file.write(self.order_hist.to_csv(header=False))
+
+        for s in self.SYMBOLS:
+            for p in self.closed_positions_hist[s]:  # type: self.Position
+                pnl_file.write(','.join([str(p.close_ts), str(p.realized_pnl)]))
+
+        pnl_file.close()
+        fills_file.close()
+        orders_file.close()
 
 
 def main():
@@ -330,12 +481,11 @@ def main():
     tactics = [TacticForBitMex2(SimExchangeBitMex.Symbol.XBTUSD)]
 
     with SimExchangeBitMex(0.2, file_name, tactics) as exchange:
-
         while exchange.is_open():
-
             exchange.advance_time(print_progress=True)
 
         exchange.print_summary()
+        exchange.print_output_files()
 
     return 0
 

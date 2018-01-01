@@ -2,6 +2,7 @@ import calendar
 import datetime
 import time
 import dateutil.parser
+import math
 
 
 class Day:
@@ -61,5 +62,15 @@ def isclose(a, b, rel_tol=1e-09, abs_tol=0.0):
     return abs(a-b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
 
 
-def sign(x):
-    return -1 if x < 0 else +1
+def floor_5(x):
+    # example 10.75 -> 10.5
+    # 21.5 -> 21.0 -> 10.5
+    if x > 0:
+        return math.floor(2. * x) * 0.5
+    else:
+        return math.ceil(2. * x) * 0.5
+
+
+def round_n(x, n):
+    # example: round_n(0.123456789, 3) = 0.123
+    return round(x * pow(10, n)) / pow(10, n)

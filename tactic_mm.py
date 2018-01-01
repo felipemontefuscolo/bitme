@@ -1,8 +1,8 @@
 import math
 
 from candles import Candles
-from orders import Orders, OrderCommon, OrderType
-from sim import ExchangeCommon
+from orders import Orders, OrderCommon, OrderType, OrderStatus
+from sim import ExchangeCommon, SimExchangeBitMex
 from utils import Min, Hour
 import pandas as pd
 
@@ -109,22 +109,26 @@ class TacticForBitMex2(TaticInterface):
         self.opened_orders = Orders()
 
         #  parameters to be adjusted:
-        self.fixed_size = 100  # in usd contracts
-        self.n_trend_candles = 3
-        self.price_change = 0.013  # (0, 1), trade when price change is this much
-        self.recover_price = 0.5  # (0, 1)
+        self.fixed_size_contracts = 100  # in usd contracts
+        self.n_trend_candles = 2
+        self.price_change = 0.25 / 100.  # (0, 1), trade when price change is this much
+        self.recover_price = 0.9  # (0, 1)
 
-    def handle_candles(self, exchange, position_instrument, available_balance):
-        # type: (ExchangeCommon, float, float) -> Orders
+        self.max_seen_price_change = 0.
 
+    def handle_candles(self, exchange, position_instrument, available_balance_btc):
+        # type: (SimExchangeBitMex, float, float) -> Orders
         candles1m = exchange.get_candles1m()
-        price = candles1m.last_price()
+        price = exchange.current_price()
 
         if self.opened_orders.size() > 2:
             raise ValueError("should have more than 2 orders placed")
 
-        num_buys = sum([order.side[0] == 'b' for order in self.opened_orders])
-        num_sells = sum([order.side[0] == 's' for order in self.opened_orders])
+        num_buys = sum([order.is_buy() for order in self.opened_orders])
+        num_sells = sum([order.is_sell() for order in self.opened_orders])
+
+        if num_buys == 0 and num_sells == 0 and self.opened_orders.size() > 0:
+            raise ValueError("invalid state")
 
         if num_sells > 0:
             # just wait sell be filled
@@ -137,13 +141,20 @@ class TacticForBitMex2(TaticInterface):
         price_change = abs((candles1m.last_price() - candles1m.at(-trend_size).open)) / \
                        candles1m.at(-trend_size).open
 
+        # if price_change > self.max_seen_price_change:
+        #     self.max_seen_price_change = price_change
+        #     print("PRICE CHANGE = " + str(self.price_change))
+
         if not num_buys == 0:
             return Orders()
         if not trend_size >= self.n_trend_candles:
             return Orders()
         if not price_change >= self.price_change:
             return Orders()
-        if not available_balance >= self.fixed_size * price:
+        if not available_balance_btc * price > self.fixed_size_contracts:
+            #raise ValueError(str(available_balance_btc) + " vs " + str(self.fixed_size * price))
+            print("WARNING: Not enough balance : %f vs %f" % (available_balance_btc * price, self.fixed_size_contracts))
+            assert available_balance_btc >= 0
             return Orders()
         #should_trade = num_buys == 0 and trend_size >= self.n_trend_candles and price_change >= self.price_change and \
         #               available_balance >= self.fixed_size * price
@@ -156,18 +167,25 @@ class TacticForBitMex2(TaticInterface):
         buy = OrderCommon(symbol=self.product_id,
                           signed_qty=math.floor(0.01 * price),
                           price=price-0.5,
-                          order_type=OrderType.limit)
+                          type=OrderType.limit)
 
         orders_to_send.add(buy)
 
         self.last_filled_buy_price = price - 0.5
 
         sell = OrderCommon(symbol=self.product_id,
-                           signed_qty=math.floor(0.01 * price),
+                           signed_qty=-math.floor(0.01 * price),
                            price=candles1m.last_price() * (1. - self.recover_price) +
                                  candles1m.at(-trend_size).open * self.recover_price,
-                           order_type=OrderType.limit)
+                           type=OrderType.limit)
 
         orders_to_send.add(sell)
 
-        return orders_to_send
+        if exchange.post_orders(orders_to_send):
+            for o in orders_to_send:
+                if o.status != OrderStatus.opened:
+                    print(o.status_msg)
+            raise ValueError()
+            self.opened_orders = Orders()
+        else:
+            self.opened_orders.merge(orders_to_send)

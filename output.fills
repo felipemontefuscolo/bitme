@@ -1,0 +1,5 @@
+time,order_id,side,price,qty,type
+2017-12-01 19:37:00,bitme_PQVGzlwdS4So40v3Afa1XA,buy,10630.50,95,limit
+2017-12-01 19:39:00,bitme_PQVGzlwdS4So40v3Afa1XA,buy,10630.50,11,limit
+2017-12-01 19:41:00,bitme_5NQfMVFcSqadEwAfpuFoBg,sell,10656.65,-53,limit
+2017-12-01 19:45:00,bitme_5NQfMVFcSqadEwAfpuFoBg,sell,10656.65,-53,limit

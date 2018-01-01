@@ -1,9 +1,12 @@
 import base64
 import uuid
 from cdecimal import Decimal
+
+import math
 import pandas as pd
 from enum import Enum
 
+ONEPLACE = Decimal(10) ** -1
 TWOPLACES = Decimal(10) ** -2
 EIGHPLACES = Decimal(10) ** -8
 
@@ -15,7 +18,7 @@ class Orders:
         if id_to_order_map is None:
             self.data = dict()  # id -> OrderCommon
         else:
-            self.data = dict(id_to_order_map)
+            self.data = id_to_order_map
         pass
 
     def __getitem__(self, index):
@@ -24,6 +27,15 @@ class Orders:
 
     def __iter__(self):
         return iter(self.data.values())
+
+    @staticmethod
+    def from_orders_list(orders_list):
+        # type: (list) -> Orders
+        return Orders(dict([(o.id, o) for o in orders_list]))
+
+    def of_symbol(self, symbol):
+        # type: (Enum) -> Orders
+        return Orders(dict([(o.id, o) for o in self.data if o.symbol == symbol]))
 
     def _gen_order_id(self):
         return str('bitme_' + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n'))
@@ -35,16 +47,8 @@ class Orders:
         # type: (Orders) -> None
         self.data.update(orders.data)
 
-    def pop_cancels(self):
-        c = Orders()
-        nc = Orders()
-        for o in self.data.values():
-            if o.status is OrderStatus.canceled:
-                c.add(o)
-            else:
-                nc.add(o)
-        self.data = nc.data
-        return c
+    def drop_closed_orders(self):
+        self.data = dict([(o.id, o) for o in self.data.values() if o.status == OrderStatus.opened])
 
     # replace old order with same id
     def add(self, order):
@@ -55,13 +59,11 @@ class Orders:
 
     def to_csv(self, header=True):
         # type: () -> str
-        r = ['time,side,size,price'] if header else []
-        for o in self.data.values():
-            try:
-                price = str(o.price)
-            except AttributeError:
-                price = 'market'  # market order
-            r += [','.join([o.ts.strftime('%Y-%m-%dT%H:%M:%S'), o.side, str(o.size), price])]
+        r = ['time,symbol,side,qty,price,type,status'] if header else []
+        for o in self.data.values(): # type: OrderCommon
+            side = 'buy' if o.signed_qty > 0 else 'sell'
+            r += [','.join([o.time_posted.strftime('%Y-%m-%dT%H:%M:%S'), str(o.symbol), side, str(o.signed_qty),
+                            str(o.price), str(o.type.name), str(o.status.name)])]
         return '\n'.join(r)
 
 
@@ -74,15 +76,20 @@ class OrderCommon:
         self.price = get_or_none(kargs, 'price')  # type: float
         self.stop_price = get_or_none(kargs, 'stop_price')  # type: float
         self.linked_order_id = get_or_none(kargs, 'linked_order_id')  # type: str
-        self.order_type = get_or_none(kargs, 'order_type')  # type: OrderType
+        self.type = kargs['type']  # type: OrderType
         self.time_in_force = get_or_none(kargs, 'time_in_foce')  # type: TimeInForce
         self.contingency_type = get_or_none(kargs, 'contingency_type')  # type: ContingencyType
 
         # data change by the exchange
         self.filled = 0.  # type: float
+        self.fill_price = float('nan') if self.type == OrderType.market else self.price
         self.time_posted = None  # type: pd.Timestamp
         self.status = OrderStatus.opened  # type: OrderStatus
         self.status_msg = None  # type: OrderSubmissionError
+
+        # sanity check
+        q = abs(self.signed_qty) * 2 + 1.e-10
+        assert abs(q - math.floor(q)) < 1.e-8
 
     def qty_sign(self):
         self._sign(self.signed_qty)
@@ -92,6 +99,9 @@ class OrderCommon:
 
     def is_buy(self):
         return self.signed_qty > 0
+
+    def is_open(self):
+        return self.status == OrderStatus.opened
 
     @staticmethod
     def _sign(x):
@@ -115,22 +125,23 @@ class OrderCommon:
 
 
 class OrderStatus(Enum):
-    opened = 1
-    filled = 2
-    canceled = 3
+    opened = 'OPENED'
+    filled = 'FILLED'
+    canceled = 'CANCELED'
 
 
 class OrderSubmissionError(Enum):
     insufficient_funds = 1
     invalid_price = 2
     end_of_sim = 3
-    unknown = 4
+    cancel_requested = 4
+    unknown = 5
 
 
 class OrderType(Enum):
-    market = 1
-    limit = 2
-    stop = 3
+    market = 'MARKET'
+    limit = 'LIMIT'
+    stop = 'STOP'
 
 
 class TimeInForce(Enum):

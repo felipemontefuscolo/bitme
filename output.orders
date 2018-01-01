@@ -1,0 +1,3 @@
+time,symbol,side,qty,price,type,status
+2017-12-01T19:36:00,Symbol.XBTUSD,buy,106.0,10630.5,limit,filled
+2017-12-01T19:36:00,Symbol.XBTUSD,sell,-106.0,10656.65,limit,filled
