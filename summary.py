@@ -201,7 +201,7 @@ def trend_reversal_analysis(time_ahead, data, direction=-1, change_ratio_margins
             df.index = ['{0:.2f}%'.format((100 * x)) for x in change_ratio_margins]
             df.index.name = 'given $ change >='
             df.columns.name = 'obtained reversal $ >='
-            print(df.to_string())
+            #print(df.to_string())
 
         if True:  # print S
             # df = pd.DataFrame(data=data, index=growth_ratio_margins, columns=max_fall_margins)
@@ -219,7 +219,7 @@ def trend_reversal_analysis(time_ahead, data, direction=-1, change_ratio_margins
             df.index = ['{0:.2f}%'.format((100 * x)) for x in change_ratio_margins]
             df.index.name = 'given $ change >='
             df.columns.name = 'obtained reversal $ >='
-            print(df.to_string())
+            #print(df.to_string())
         #break
 
     print("")

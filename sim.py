@@ -9,7 +9,7 @@ from collections import defaultdict
 from enum import Enum
 from numpy.core.umath import sign
 
-from orders import to_str, TWOPLACES, OrderCancelReason
+from orders import to_str, TWOPLACES, OrderCancelReason, OrderStatus
 from simcandles import SimCandles
 from tactic_mm import *
 
@@ -45,7 +45,7 @@ class Fill:
 
     def to_line(self):
         return ','.join([
-            str(self.fill_time),
+            str(self.fill_time.strftime('%Y-%m-%dT%H:%M:%S')),  # type: pd.Timestamp
             str(self.symbol.name),
             str(self.order_id),
             str(self.side),
@@ -482,7 +482,7 @@ class SimExchangeBitMex(ExchangeCommon):
 
         for s in self.SYMBOLS:
             for p in self.closed_positions_hist[s]:  # type: self.Position
-                pnl_file.write(','.join([str(p.close_ts), str(p.realized_pnl)]) + '\n')
+                pnl_file.write(','.join([str(p.close_ts.strftime('%Y-%m-%dT%H:%M:%S')), str(p.realized_pnl)]) + '\n')
 
         pnl_file.close()
         fills_file.close()

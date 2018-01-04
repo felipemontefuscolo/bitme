@@ -70,8 +70,8 @@ def print_file(file_or_stdout, api_instance, bin_size, partial, symbol, reverse,
 
 
 def main():
-    start_time = dateutil.parser.parse('2017-12-01T00:00:01')  # datetime | Starting date filter for results. (optional)
-    end_time = dateutil.parser.parse('2017-12-13T23:59:59')  # datetime | Ending date filter for results. (optional)
+    start_time = dateutil.parser.parse('2017-12-12T00:00:01')  # datetime | Starting date filter for results. (optional)
+    end_time = dateutil.parser.parse('2017-12-31T00:00:01')  # datetime | Ending date filter for results. (optional)
     file_or_stdout = 'data/bitmex_2weeks.csv'
 
     # create an instance of the API class
