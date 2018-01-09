@@ -1,20 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="BookmarkManager">
-    <bookmark url="file://$PROJECT_DIR$/sim.py" description="cost = self._compute_xbt_cost(o.signed_qty, o.pric..." line="316" />
+    <bookmark url="file://$PROJECT_DIR$/sim.py" description="cost = self._compute_xbt_cost(o.signed_qty, o.pric..." line="354" />
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f802fea8-a251-463a-97b6-49659b8de660" name="Default" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change beforePath="$PROJECT_DIR$/data/bitmex_2weeks.csv" afterPath="$PROJECT_DIR$/data/bitmex_2weeks.csv" />
-      <change beforePath="$PROJECT_DIR$/get_bitmex_data.py" afterPath="$PROJECT_DIR$/get_bitmex_data.py" />
-      <change beforePath="$PROJECT_DIR$/output.fills" afterPath="$PROJECT_DIR$/output.fills" />
-      <change beforePath="$PROJECT_DIR$/output.orders" afterPath="$PROJECT_DIR$/output.orders" />
-      <change beforePath="$PROJECT_DIR$/output.pnl" afterPath="$PROJECT_DIR$/output.pnl" />
+      <change beforePath="$PROJECT_DIR$/fills.txt" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/output.fills" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/output.orders" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/output.pnl" afterPath="" />
       <change beforePath="$PROJECT_DIR$/sim.py" afterPath="$PROJECT_DIR$/sim.py" />
       <change beforePath="$PROJECT_DIR$/sim_show.py" afterPath="$PROJECT_DIR$/sim_show.py" />
-      <change beforePath="$PROJECT_DIR$/summary.py" afterPath="$PROJECT_DIR$/summary.py" />
       <change beforePath="$PROJECT_DIR$/tactic_mm.py" afterPath="$PROJECT_DIR$/tactic_mm.py" />
+      <change beforePath="$PROJECT_DIR$/utils.py" afterPath="$PROJECT_DIR$/utils.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -31,8 +30,8 @@
       <file leaf-file-name="sim_show.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/sim_show.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="506">
-              <caret line="68" column="0" lean-forward="true" selection-start-line="68" selection-start-column="0" selection-end-line="68" selection-end-column="0" />
+            <state relative-caret-position="383">
+              <caret line="90" column="0" lean-forward="true" selection-start-line="90" selection-start-column="0" selection-end-line="90" selection-end-column="0" />
               <folding>
                 <element signature="e#0#15#0" expanded="true" />
               </folding>
@@ -40,44 +39,49 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="correlogram.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/correlogram.py">
+      <file leaf-file-name="offline.py" pinned="false" current-in-tab="false">
+        <entry file="file:///anaconda/lib/python2.7/site-packages/plotly/offline/offline.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-947">
-              <caret line="162" column="4" lean-forward="false" selection-start-line="162" selection-start-column="2" selection-end-line="162" selection-end-column="4" />
+            <state relative-caret-position="135">
+              <caret line="22" column="0" lean-forward="false" selection-start-line="22" selection-start-column="0" selection-end-line="22" selection-end-column="0" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="frame.py" pinned="false" current-in-tab="false">
-        <entry file="file:///anaconda/lib/python2.7/site-packages/pandas/core/frame.py">
+      <file leaf-file-name="axis.py" pinned="false" current-in-tab="false">
+        <entry file="file:///anaconda/lib/python2.7/site-packages/matplotlib/axis.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="225">
-              <caret line="2927" column="8" lean-forward="false" selection-start-line="2927" selection-start-column="8" selection-end-line="2927" selection-end-column="8" />
+            <state relative-caret-position="278">
+              <caret line="1485" column="55" lean-forward="true" selection-start-line="1485" selection-start-column="28" selection-end-line="1485" selection-end-column="55" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="tactic_mm.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="tactic_mm.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/tactic_mm.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="284">
-              <caret line="112" column="50" lean-forward="false" selection-start-line="112" selection-start-column="50" selection-end-line="112" selection-end-column="50" />
+            <state relative-caret-position="518">
+              <caret line="239" column="0" lean-forward="false" selection-start-line="239" selection-start-column="0" selection-end-line="239" selection-end-column="0" />
               <folding>
-                <element signature="e#1045#3496#0" expanded="false" />
+                <element signature="e#0#11#0" expanded="true" />
+                <element signature="e#988#4478#0" expanded="false" />
+                <element signature="e#4960#5569#0" expanded="false" />
+                <element signature="e#5619#8113#0" expanded="false" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="_axes.py" pinned="false" current-in-tab="false">
-        <entry file="file:///anaconda/lib/python2.7/site-packages/matplotlib/axes/_axes.py">
+      <file leaf-file-name="utils.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/utils.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="225">
-              <caret line="1281" column="8" lean-forward="false" selection-start-line="1281" selection-start-column="8" selection-end-line="1281" selection-end-column="8" />
-              <folding />
+            <state relative-caret-position="406">
+              <caret line="79" column="4" lean-forward="false" selection-start-line="79" selection-start-column="4" selection-end-line="79" selection-end-column="4" />
+              <folding>
+                <element signature="e#0#15#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -85,50 +89,51 @@
       <file leaf-file-name="segmented_ols.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/segmented_ols.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="240">
-              <caret line="166" column="20" lean-forward="false" selection-start-line="166" selection-start-column="20" selection-end-line="166" selection-end-column="20" />
+            <state relative-caret-position="45">
+              <caret line="10" column="34" lean-forward="false" selection-start-line="10" selection-start-column="34" selection-end-line="10" selection-end-column="34" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="detect_peaks.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/detect_peaks.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-291">
-              <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="pyplot.py" pinned="false" current-in-tab="false">
-        <entry file="file:///anaconda/lib/python2.7/site-packages/matplotlib/pyplot.py">
+      <file leaf-file-name="series.py" pinned="false" current-in-tab="false">
+        <entry file="file:///anaconda/lib/python2.7/site-packages/pandas/core/series.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="225">
-              <caret line="3145" column="4" lean-forward="false" selection-start-line="3145" selection-start-column="4" selection-end-line="3145" selection-end-column="4" />
+              <caret line="119" column="6" lean-forward="false" selection-start-line="119" selection-start-column="6" selection-end-line="119" selection-end-column="6" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="finance.py" pinned="false" current-in-tab="false">
-        <entry file="file:///anaconda/lib/python2.7/site-packages/matplotlib/finance.py">
+      <file leaf-file-name="moments.py" pinned="false" current-in-tab="false">
+        <entry file="file:///anaconda/lib/python2.7/site-packages/pandas/stats/moments.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="218">
-              <caret line="1063" column="4" lean-forward="false" selection-start-line="1063" selection-start-column="4" selection-end-line="1063" selection-end-column="4" />
+            <state relative-caret-position="225">
+              <caret line="330" column="7" lean-forward="true" selection-start-line="330" selection-start-column="7" selection-end-line="330" selection-end-column="7" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="sim.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="simcandles.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/simcandles.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="345">
+              <caret line="28" column="6" lean-forward="false" selection-start-line="28" selection-start-column="6" selection-end-line="28" selection-end-column="6" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="sim.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/sim.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="144">
-              <caret line="484" column="55" lean-forward="false" selection-start-line="484" selection-start-column="55" selection-end-line="484" selection-end-column="55" />
+            <state relative-caret-position="233">
+              <caret line="256" column="32" lean-forward="false" selection-start-line="256" selection-start-column="32" selection-end-line="256" selection-end-column="32" />
               <folding>
-                <element signature="e#88#99#0" expanded="true" />
+                <element signature="e#88#103#0" expanded="true" />
+                <element signature="e#3520#6596#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -145,18 +150,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>tmp_balance</find>
-      <find>OrderStatus.o</find>
-      <find>qty_to_close</find>
-      <find>execute_order(</find>
-      <find>price_fill</find>
-      <find>factor</find>
-      <find>post_order`</find>
-      <find>execute</find>
-      <find>post</find>
-      <find>post_order</find>
-      <find>execute_o</find>
-      <find>qty_fill</find>
       <find>post_o</find>
       <find>levera</find>
       <find>current_price</find>
@@ -175,6 +168,18 @@
       <find>max_reversal_ratio</find>
       <find>print</find>
       <find>ohlc</find>
+      <find>args.</find>
+      <find>position_instrument</find>
+      <find>filename</find>
+      <find>file_name</find>
+      <find>args.file</find>
+      <find>output_dir</find>
+      <find>read_data</find>
+      <find>date2</find>
+      <find>step</find>
+      <find>fills</find>
+      <find>cum_pnls</find>
+      <find>var</find>
     </findStrings>
     <replaceStrings>
       <replace>x</replace>
@@ -186,6 +191,8 @@
       <replace>self.N_SYMBOLS</replace>
       <replace>self.SYMBOLS</replace>
       <replace>self.fills_hist</replace>
+      <replace>args.log_dir</replace>
+      <replace>self.log_dir</replace>
     </replaceStrings>
   </component>
   <component name="Git.Settings">
@@ -211,13 +218,13 @@
         <option value="$PROJECT_DIR$/summay.py" />
         <option value="$PROJECT_DIR$/candles.py" />
         <option value="$PROJECT_DIR$/simcandles.py" />
-        <option value="$PROJECT_DIR$/utils.py" />
         <option value="$PROJECT_DIR$/orders.py" />
-        <option value="$PROJECT_DIR$/tactic_mm.py" />
         <option value="$PROJECT_DIR$/get_bitmex_data.py" />
         <option value="$PROJECT_DIR$/summary.py" />
+        <option value="$PROJECT_DIR$/utils.py" />
         <option value="$PROJECT_DIR$/sim.py" />
         <option value="$PROJECT_DIR$/sim_show.py" />
+        <option value="$PROJECT_DIR$/tactic_mm.py" />
       </list>
     </option>
   </component>
@@ -498,12 +505,12 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/tactic_mm.py</url>
-          <line>192</line>
+          <line>222</line>
           <option name="timeStamp" value="91" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/sim.py</url>
-          <line>454</line>
+          <line>492</line>
           <option name="timeStamp" value="97" />
         </line-breakpoint>
       </breakpoints>
@@ -528,75 +535,6 @@
     </expressions>
   </component>
   <component name="editorHistoryManager">
-    <entry file="file:///anaconda/lib/python2.7/site-packages/statsmodels/tsa/ar_model.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="929">
-          <caret line="456" column="8" lean-forward="false" selection-start-line="456" selection-start-column="8" selection-end-line="456" selection-end-column="8" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file:///anaconda/lib/python2.7/site-packages/statsmodels/regression/linear_model.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="250">
-          <caret line="608" column="30" lean-forward="true" selection-start-line="608" selection-start-column="12" selection-end-line="608" selection-end-column="30" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file:///anaconda/lib/python2.7/site-packages/numpy/lib/function_base.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="42825">
-          <caret line="2887" column="36" lean-forward="false" selection-start-line="2887" selection-start-column="32" selection-end-line="2887" selection-end-column="36" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/Library/Caches/PyCharmCE2017.3/python_stubs/-1730649415/datetime.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="225">
-          <caret line="213" column="8" lean-forward="false" selection-start-line="213" selection-start-column="8" selection-end-line="213" selection-end-column="8" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file:///anaconda/lib/python2.7/site-packages/pandas/io/parsers.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="225">
-          <caret line="712" column="0" lean-forward="false" selection-start-line="712" selection-start-column="0" selection-end-line="712" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file:///anaconda/lib/python2.7/argparse.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="178">
-          <caret line="1262" column="42" lean-forward="true" selection-start-line="1262" selection-start-column="27" selection-end-line="1262" selection-end-column="42" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file:///anaconda/lib/python2.7/site-packages/statsmodels/tsa/vector_ar/var_model.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="209">
-          <caret line="381" column="64" lean-forward="false" selection-start-line="381" selection-start-column="55" selection-end-line="381" selection-end-column="64" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/var.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="412">
-          <caret line="268" column="31" lean-forward="true" selection-start-line="268" selection-start-column="4" selection-end-line="268" selection-end-column="31" />
-          <folding>
-            <element signature="e#0#15#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file:///anaconda/lib/python2.7/site-packages/matplotlib/figure.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-74">
-          <caret line="924" column="8" lean-forward="false" selection-start-line="924" selection-start-column="8" selection-end-line="924" selection-end-column="8" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file:///anaconda/lib/python2.7/site-packages/statsmodels/graphics/tsaplots.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="296">
@@ -718,14 +656,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file:///anaconda/lib/python2.7/site-packages/pandas/core/series.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="225">
-          <caret line="119" column="6" lean-forward="false" selection-start-line="119" selection-start-column="6" selection-end-line="119" selection-end-column="6" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/stats_tools.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="290">
@@ -766,16 +696,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/utils.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="384">
-          <caret line="64" column="10" lean-forward="false" selection-start-line="64" selection-start-column="10" selection-end-line="64" selection-end-column="10" />
-          <folding>
-            <element signature="e#0#15#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/data/plot_example.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="45">
@@ -810,14 +730,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/simcandles.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="8">
-          <caret line="28" column="6" lean-forward="false" selection-start-line="28" selection-start-column="6" selection-end-line="28" selection-end-column="6" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/candles.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
@@ -846,36 +758,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/orders.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="218">
-          <caret line="51" column="8" lean-forward="false" selection-start-line="51" selection-start-column="8" selection-end-line="51" selection-end-column="8" />
-          <folding>
-            <element signature="e#0#13#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file:///anaconda/lib/python2.7/site-packages/matplotlib/pyplot.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="225">
           <caret line="3145" column="4" lean-forward="false" selection-start-line="3145" selection-start-column="4" selection-end-line="3145" selection-end-column="4" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/segmented_ols.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="240">
-          <caret line="166" column="20" lean-forward="false" selection-start-line="166" selection-start-column="20" selection-end-line="166" selection-end-column="20" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/detect_peaks.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-291">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding />
         </state>
       </provider>
@@ -888,56 +774,184 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/sim.py">
+    <entry file="file://$PROJECT_DIR$/orders.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="144">
-          <caret line="484" column="55" lean-forward="false" selection-start-line="484" selection-start-column="55" selection-end-line="484" selection-end-column="55" />
+        <state relative-caret-position="225">
+          <caret line="62" column="8" lean-forward="false" selection-start-line="62" selection-start-column="8" selection-end-line="62" selection-end-column="8" />
           <folding>
-            <element signature="e#88#99#0" expanded="true" />
+            <element signature="e#0#13#0" expanded="false" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file:///anaconda/lib/python2.7/site-packages/pandas/core/frame.py">
+    <entry file="file://$PROJECT_DIR$/detect_peaks.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="225">
-          <caret line="2927" column="8" lean-forward="false" selection-start-line="2927" selection-start-column="8" selection-end-line="2927" selection-end-column="8" />
+        <state relative-caret-position="-291">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/correlogram.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-947">
-          <caret line="162" column="4" lean-forward="false" selection-start-line="162" selection-start-column="2" selection-end-line="162" selection-end-column="4" />
+        <state relative-caret-position="294">
+          <caret line="253" column="46" lean-forward="false" selection-start-line="253" selection-start-column="29" selection-end-line="253" selection-end-column="46" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///anaconda/lib/python2.7/genericpath.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="225">
+          <caret line="45" column="4" lean-forward="false" selection-start-line="45" selection-start-column="4" selection-end-line="45" selection-end-column="4" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/Library/Caches/PyCharmCE2017.3/python_stubs/-1730649415/errno.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="180">
+          <caret line="12" column="0" lean-forward="false" selection-start-line="12" selection-start-column="0" selection-end-line="12" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///anaconda/lib/python2.7/shutil.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="203">
+          <caret line="208" column="0" lean-forward="false" selection-start-line="208" selection-start-column="0" selection-end-line="208" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///anaconda/lib/python2.7/site-packages/matplotlib/figure.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="121">
+          <caret line="924" column="8" lean-forward="false" selection-start-line="924" selection-start-column="8" selection-end-line="924" selection-end-column="8" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///anaconda/lib/python2.7/site-packages/pandas/core/frame.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="225">
+          <caret line="5172" column="8" lean-forward="false" selection-start-line="5172" selection-start-column="8" selection-end-line="5172" selection-end-column="8" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file:///anaconda/lib/python2.7/site-packages/matplotlib/finance.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="218">
-          <caret line="1063" column="4" lean-forward="false" selection-start-line="1063" selection-start-column="4" selection-end-line="1063" selection-end-column="4" />
+        <state relative-caret-position="426">
+          <caret line="256" column="16" lean-forward="true" selection-start-line="256" selection-start-column="16" selection-end-line="256" selection-end-column="16" />
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/sim_show.py">
+    <entry file="file:///anaconda/lib/python2.7/site-packages/matplotlib/dates.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="506">
-          <caret line="68" column="0" lean-forward="true" selection-start-line="68" selection-start-column="0" selection-end-line="68" selection-end-column="0" />
+        <state relative-caret-position="225">
+          <caret line="362" column="4" lean-forward="false" selection-start-line="362" selection-start-column="4" selection-end-line="362" selection-end-column="4" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///anaconda/lib/python2.7/site-packages/matplotlib/ticker.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="218">
+          <caret line="315" column="8" lean-forward="false" selection-start-line="315" selection-start-column="8" selection-end-line="315" selection-end-column="8" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///anaconda/lib/python2.7/site-packages/plotly/offline/offline.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="135">
+          <caret line="22" column="0" lean-forward="false" selection-start-line="22" selection-start-column="0" selection-end-line="22" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///anaconda/lib/python2.7/site-packages/matplotlib/axis.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="278">
+          <caret line="1485" column="55" lean-forward="true" selection-start-line="1485" selection-start-column="28" selection-end-line="1485" selection-end-column="55" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///anaconda/lib/python2.7/site-packages/pandas/stats/moments.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="225">
+          <caret line="330" column="7" lean-forward="true" selection-start-line="330" selection-start-column="7" selection-end-line="330" selection-end-column="7" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/simcandles.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="345">
+          <caret line="28" column="6" lean-forward="false" selection-start-line="28" selection-start-column="6" selection-end-line="28" selection-end-column="6" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///anaconda/lib/python2.7/site-packages/pandas/core/series.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="225">
+          <caret line="119" column="6" lean-forward="false" selection-start-line="119" selection-start-column="6" selection-end-line="119" selection-end-column="6" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/segmented_ols.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="45">
+          <caret line="10" column="34" lean-forward="false" selection-start-line="10" selection-start-column="34" selection-end-line="10" selection-end-column="34" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tactic_mm.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="518">
+          <caret line="239" column="0" lean-forward="false" selection-start-line="239" selection-start-column="0" selection-end-line="239" selection-end-column="0" />
+          <folding>
+            <element signature="e#0#11#0" expanded="true" />
+            <element signature="e#988#4478#0" expanded="false" />
+            <element signature="e#4960#5569#0" expanded="false" />
+            <element signature="e#5619#8113#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/utils.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="406">
+          <caret line="79" column="4" lean-forward="false" selection-start-line="79" selection-start-column="4" selection-end-line="79" selection-end-column="4" />
           <folding>
             <element signature="e#0#15#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/tactic_mm.py">
+    <entry file="file://$PROJECT_DIR$/sim_show.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="284">
-          <caret line="112" column="50" lean-forward="false" selection-start-line="112" selection-start-column="50" selection-end-line="112" selection-end-column="50" />
+        <state relative-caret-position="383">
+          <caret line="90" column="0" lean-forward="true" selection-start-line="90" selection-start-column="0" selection-end-line="90" selection-end-column="0" />
           <folding>
-            <element signature="e#1045#3496#0" expanded="false" />
+            <element signature="e#0#15#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/sim.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="233">
+          <caret line="256" column="32" lean-forward="false" selection-start-line="256" selection-start-column="32" selection-end-line="256" selection-end-column="32" />
+          <folding>
+            <element signature="e#88#103#0" expanded="true" />
+            <element signature="e#3520#6596#0" expanded="false" />
           </folding>
         </state>
       </provider>

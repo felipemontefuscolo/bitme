@@ -1,8 +1,10 @@
 # NOTES:
 # timestamps are of type pd.Timestamp
 # side are of type str ('buy' or 'sell')
+import argparse
 import copy
 import os
+import shutil
 import sys
 from collections import defaultdict
 
@@ -12,6 +14,32 @@ from numpy.core.umath import sign
 from orders import to_str, TWOPLACES, OrderCancelReason, OrderStatus
 from simcandles import SimCandles
 from tactic_mm import *
+
+
+def get_args():
+    parser = argparse.ArgumentParser(description='Simulation')
+    parser.add_argument('-f', '--file', type=str, help='csv filename with candles data', required=True)
+    parser.add_argument('-l', '--log_dir', type=str, help='log directory', default='./output')
+    parser.add_argument('-b', '--begin', type=str, help='begin time')
+    parser.add_argument('-e', '--end', type=str, help='end time')
+
+    args = parser.parse_args()
+
+    if not os.path.isfile(args.file):
+        raise ValueError("invalid file {}".format(args.file))
+
+    if os.path.isfile(args.log_dir):
+        raise ValueError(args.log_dir + " is a file")
+    if os.path.isdir(args.log_dir):
+        shutil.rmtree(args.log_dir)
+    os.makedirs(args.log_dir)
+
+    if args.begin:
+        args.begin = pd.Timestamp(args.begin)
+    if args.end:
+        args.end = pd.Timestamp(args.end)
+
+    return args
 
 
 class Fill:
@@ -175,7 +203,7 @@ class SimExchangeBitMex(ExchangeCommon):
             """
             return abs(self.buy_qty + self.sell_qty + signed_qty) - abs(self.buy_qty + self.sell_qty)
 
-    def __init__(self, initial_balance, file_name, tactics):
+    def __init__(self, initial_balance, file_name, log_dir, tactics):
         ExchangeCommon.__init__(self)
         self.xbt_initial_balance = initial_balance
         self.xbt_balance = initial_balance
@@ -190,6 +218,8 @@ class SimExchangeBitMex(ExchangeCommon):
         self.fills_hist = []
         self.order_hist = Orders()
 
+        self.file_name = os.path.abspath(file_name)
+        self.log_dir = log_dir
         self.candles = SimCandles(file_name)  # all candles
         self.time_idx = 0
 
@@ -224,10 +254,18 @@ class SimExchangeBitMex(ExchangeCommon):
         return self.candles.data.iloc[self.time_idx]
 
     def get_candles1m(self):
+        # type: (None) -> SimCandles
         return SimCandles(data=self.candles.data.iloc[0:self.time_idx + 1])
 
     def is_last_candle(self):
         return self.time_idx == self.candles.size() - 1
+
+    def get_position(self, symbol):
+        # type: (self.Symbol) -> float
+        return self.positions[symbol]
+
+    def get_xbt_balance(self):
+        return self.xbt_balance
 
     # for sims only
     def advance_time(self, print_progress=True):
@@ -244,8 +282,8 @@ class SimExchangeBitMex(ExchangeCommon):
                 sys.stdout.write("progress: %d out of %d (%.4f%%)\n" % (self.time_idx, self.candles.size(), 100.))
                 return
         else:
-            for tactic in self.tactics:  # type: TaticInterface
-                tactic.handle_candles(self, self.positions, self.xbt_balance)
+            for tactic in self.tactics:  # type: TacticInterface
+                tactic.handle_candles(self)
             self.time_idx += 1
             self._execute_all_orders()
             current_price = self._estimate_price()
@@ -467,11 +505,11 @@ class SimExchangeBitMex(ExchangeCommon):
         assert abs(total_pnl - (self.xbt_balance - self.xbt_initial_balance)) < 1.e-8
 
     def print_output_files(self):
-        output_dir = os.path.dirname(os.path.realpath(__file__))
-        print("print results to " + output_dir)
-        fills_file = open(os.path.join(output_dir, 'output.fills'), 'w')
-        orders_file = open(os.path.join(output_dir, 'output.orders'), 'w')
-        pnl_file = open(os.path.join(output_dir, 'output.pnl'), 'w')
+        print("printing results to " + self.log_dir)
+        fills_file = open(os.path.join(self.log_dir, 'fills.csv'), 'w')
+        orders_file = open(os.path.join(self.log_dir, 'orders.csv'), 'w')
+        pnl_file = open(os.path.join(self.log_dir, 'pnl.csv'), 'w')
+        data_used_file = open(os.path.join(self.log_dir, 'parameters_used'), 'w')
 
         fills_file.write(Fill.get_header() + '\n')
         orders_file.write(Orders().to_csv() + '\n')
@@ -480,10 +518,19 @@ class SimExchangeBitMex(ExchangeCommon):
             fills_file.write(f.to_line() + '\n')
         orders_file.write(self.order_hist.to_csv(header=False))
 
+        pnl_file.write('time,symbol,pnl,cum_pnl\n')
         for s in self.SYMBOLS:
+            sum = 0
             for p in self.closed_positions_hist[s]:  # type: self.Position
-                pnl_file.write(','.join([str(p.close_ts.strftime('%Y-%m-%dT%H:%M:%S')), str(p.realized_pnl)]) + '\n')
+                sum += p.realized_pnl
+                pnl_file.write(','.join([str(p.close_ts.strftime('%Y-%m-%dT%H:%M:%S')),
+                                         s.name,
+                                         str(p.realized_pnl),
+                                         str(sum)])
+                               + '\n')
+        data_used_file.write(self.file_name)
 
+        data_used_file.close()
         pnl_file.close()
         fills_file.close()
         orders_file.close()
@@ -491,14 +538,15 @@ class SimExchangeBitMex(ExchangeCommon):
 
 def main():
     print("starting sim")
-    # candles = Candles.fromfilename('/Users/felipe/bitme/data/test')
+    args = get_args()
 
-    # file_name = '/Users/felipe/bitme/data/data1s.csv'
-    file_name = '/Users/felipe/bitme/data/bitmex_1day.csv'
-    # file_name = '/Users/felipe/bitme/data/test'
     tactics = [TacticForBitMex2(SimExchangeBitMex.Symbol.XBTUSD)]
 
-    with SimExchangeBitMex(0.2, file_name, tactics) as exchange:
+    with SimExchangeBitMex(0.2, args.file, args.log_dir, tactics) as exchange:
+
+        for tac in exchange.tactics:
+            tac.init(exchange)
+
         while exchange.is_open():
             exchange.advance_time(print_progress=True)
 
