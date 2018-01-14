@@ -81,9 +81,11 @@ liqs = reset_idx(fills.loc[fills['type'] == 'market'][['price']])
 axes[0].plot(buys['price'], linestyle='', color='g', marker='o')
 axes[0].plot(sells['price'], linestyle='', color='b', marker='o')
 axes[0].plot(liqs['price'], linestyle='', color='y', marker='o', markersize=10, markerfacecolor='none')
+axes[0].set_title('fills')
 
 cum_pnls = reset_idx(pnl[['cum_pnl']])
 axes[1].plot(cum_pnls['cum_pnl'], '-o', markersize=3)
+axes[1].set_title('cum pnl')
 
 ax_pnl = axes[0].twinx()
 ax_pnl.plot(cum_pnls['cum_pnl'], '-o', markersize=3)
