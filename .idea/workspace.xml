@@ -1,18 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="BookmarkManager">
-    <bookmark url="file://$PROJECT_DIR$/sim.py" description="cost = self._compute_xbt_cost(o.signed_qty, o.pric..." line="330" />
+    <bookmark url="file://$PROJECT_DIR$/sim.py" description="cost = self._compute_xbt_cost(o.signed_qty, o.pric..." line="329" />
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f802fea8-a251-463a-97b6-49659b8de660" name="Default" comment="">
-      <change beforePath="" afterPath="$PROJECT_DIR$/fill.py" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change beforePath="$PROJECT_DIR$/orders.py" afterPath="$PROJECT_DIR$/orders.py" />
       <change beforePath="$PROJECT_DIR$/output/fills.csv" afterPath="$PROJECT_DIR$/output/fills.csv" />
       <change beforePath="$PROJECT_DIR$/output/orders.csv" afterPath="$PROJECT_DIR$/output/orders.csv" />
+      <change beforePath="$PROJECT_DIR$/output/parameters_used" afterPath="$PROJECT_DIR$/output/parameters_used" />
       <change beforePath="$PROJECT_DIR$/output/pnl.csv" afterPath="$PROJECT_DIR$/output/pnl.csv" />
       <change beforePath="$PROJECT_DIR$/sim.py" afterPath="$PROJECT_DIR$/sim.py" />
-      <change beforePath="$PROJECT_DIR$/sim_show.py" afterPath="$PROJECT_DIR$/sim_show.py" />
       <change beforePath="$PROJECT_DIR$/tactic_mm.py" afterPath="$PROJECT_DIR$/tactic_mm.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -52,8 +49,8 @@
       <file leaf-file-name="tactic_mm.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/tactic_mm.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="444">
-              <caret line="251" column="0" lean-forward="false" selection-start-line="251" selection-start-column="0" selection-end-line="251" selection-end-column="0" />
+            <state relative-caret-position="522">
+              <caret line="265" column="9" lean-forward="false" selection-start-line="265" selection-start-column="9" selection-end-line="265" selection-end-column="9" />
               <folding>
                 <element signature="e#0#11#0" expanded="true" />
                 <element signature="e#1226#4971#0" expanded="false" />
@@ -62,11 +59,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="orders.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="orders.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/orders.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="431">
-              <caret line="155" column="10" lean-forward="true" selection-start-line="155" selection-start-column="10" selection-end-line="155" selection-end-column="10" />
+            <state relative-caret-position="218">
+              <caret line="177" column="6" lean-forward="false" selection-start-line="177" selection-start-column="6" selection-end-line="177" selection-end-column="6" />
               <folding>
                 <element signature="e#0#13#0" expanded="true" />
               </folding>
@@ -106,14 +103,14 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="sim.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="sim.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/sim.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="418">
-              <caret line="514" column="36" lean-forward="true" selection-start-line="514" selection-start-column="36" selection-end-line="514" selection-end-column="36" />
+            <state relative-caret-position="309">
+              <caret line="470" column="64" lean-forward="false" selection-start-line="470" selection-start-column="64" selection-end-line="470" selection-end-column="64" />
               <folding>
                 <element signature="e#88#103#0" expanded="true" />
-                <element signature="e#12088#12372#0" expanded="false" />
+                <element signature="e#12034#12318#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -142,13 +139,8 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>value</find>
-      <find>post_order</find>
-      <find>lista</find>
-      <find>pnl</find>
       <find>update</find>
       <find>SIMM</find>
-      <find>liqui</find>
       <find>self.positions</find>
       <find>liquida</find>
       <find>exec</find>
@@ -170,8 +162,13 @@
       <find>reduced_position</find>
       <find>~</find>
       <find>SIMMM</find>
-      <find>cancel_o</find>
       <find>status_msg</find>
+      <find>POSIT</find>
+      <find>cancel_o</find>
+      <find>post_orders</find>
+      <find>liqui</find>
+      <find>print</find>
+      <find>liquidat</find>
     </findStrings>
     <replaceStrings>
       <replace>x</replace>
@@ -216,9 +213,9 @@
         <option value="$PROJECT_DIR$/utils.py" />
         <option value="$PROJECT_DIR$/sim_show.py" />
         <option value="$PROJECT_DIR$/fill.py" />
-        <option value="$PROJECT_DIR$/sim.py" />
-        <option value="$PROJECT_DIR$/tactic_mm.py" />
         <option value="$PROJECT_DIR$/orders.py" />
+        <option value="$PROJECT_DIR$/tactic_mm.py" />
+        <option value="$PROJECT_DIR$/sim.py" />
       </list>
     </option>
   </component>
@@ -906,10 +903,20 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/orders.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="218">
+          <caret line="177" column="6" lean-forward="false" selection-start-line="177" selection-start-column="6" selection-end-line="177" selection-end-column="6" />
+          <folding>
+            <element signature="e#0#13#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/tactic_mm.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="444">
-          <caret line="251" column="0" lean-forward="false" selection-start-line="251" selection-start-column="0" selection-end-line="251" selection-end-column="0" />
+        <state relative-caret-position="522">
+          <caret line="265" column="9" lean-forward="false" selection-start-line="265" selection-start-column="9" selection-end-line="265" selection-end-column="9" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
             <element signature="e#1226#4971#0" expanded="false" />
@@ -919,21 +926,11 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/sim.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="418">
-          <caret line="514" column="36" lean-forward="true" selection-start-line="514" selection-start-column="36" selection-end-line="514" selection-end-column="36" />
+        <state relative-caret-position="309">
+          <caret line="470" column="64" lean-forward="false" selection-start-line="470" selection-start-column="64" selection-end-line="470" selection-end-column="64" />
           <folding>
             <element signature="e#88#103#0" expanded="true" />
-            <element signature="e#12088#12372#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/orders.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="431">
-          <caret line="155" column="10" lean-forward="true" selection-start-line="155" selection-start-column="10" selection-end-line="155" selection-end-column="10" />
-          <folding>
-            <element signature="e#0#13#0" expanded="true" />
+            <element signature="e#12034#12318#0" expanded="false" />
           </folding>
         </state>
       </provider>

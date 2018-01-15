@@ -174,7 +174,10 @@ class TacticBitEwm(TacticInterface):
     def handle_cancel(self, exchange, order):
         # type: (SimExchangeBitMex, OrderCommon) -> None
         self.position = exchange.get_position(self.product_id)  # type: Position
-        if self.position.is_closeable():
+        if self.position.is_closeable() or \
+                order.status_msg == OrderCancelReason.liquidation or \
+                order.status_msg == OrderCancelReason.end_of_sim or \
+                order.status_msg == OrderCancelReason.cancel_requested:
             return
         self.send_order(exchange, OrderCommon(symbol=order.symbol,
                                               signed_qty=order.signed_qty,
@@ -206,11 +209,13 @@ class TacticBitEwm(TacticInterface):
             # create a profit order to reduce position
             ema, std = self.last_ema_std
             price = (ema + sign(qty_filled) * std) * self.greediness + ema * (1. - self.greediness)
-            self.send_order(exchange, OrderCommon(symbol=self.product_id,
-                                                  signed_qty=-qty_filled,
-                                                  price=price,
-                                                  type=OrderType.limit,
-                                                  tactic=self))
+            failed = self.send_order(exchange, OrderCommon(symbol=self.product_id,
+                                                           signed_qty=-qty_filled,
+                                                           price=price,
+                                                           type=OrderType.limit,
+                                                           tactic=self))
+            #if not failed:
+            #    print ("POSTED ORDER THRU HANDLE FILL")
 
     def handle_candles(self, exchange):
         # type: (SimExchangeBitMex, float, float) -> None
@@ -257,3 +262,5 @@ class TacticBitEwm(TacticInterface):
 
         if self.send_order(exchange, order_to_send) and not self.has_position():
             exchange.cancel_orders(Orders({order_to_send.id: order_to_send}))
+        #else:
+        #    print("POSTED ORDER THRU HANDLE CANDLE")

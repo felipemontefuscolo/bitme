@@ -120,7 +120,6 @@ class Position:
             self.sell_vol += qty * price * (1. - fee)
         self.liq_price = self.entry_price() * multiplier / (self.side * .75 + multiplier)
         self.realized_pnl = self.calc_realized_pnl(multiplier)
-        #print "POSITIONNN is " + str(self.to_json())
 
     def calc_realized_pnl(self, multiplier):
         # pnl = Contracts * Multiplier * (1/Entry Price - 1/Exit Price)
@@ -459,13 +458,17 @@ class SimExchangeBitMex(ExchangeCommon):
         if not position.is_open():
             return
         order = OrderCommon(symbol=symbol, signed_qty=-position.position(), type=OrderType.market, tactic=Liquidator)
-        order.status_msg = OrderCancelReason.liquidation
+        order.status_msg = order_cancel_reason
         self.post_orders(Orders({order.id: order}))
         self._execute_order(order)
         if position.is_open():
             raise AttributeError("position was not close during liquidation. position = %f" % position.position())
         if not self.is_last_candle():
             self.n_liquidations[symbol.name] += 1
+        if order_cancel_reason == OrderCancelReason.liquidation:
+            closed = self.closed_positions_hist[symbol][-1]  # type: Position
+            if closed.realized_pnl >= 0:
+                raise AttributeError("Liquidation caused profit!")
 
     def _close_position(self, symbol, force_close=False):
         position = self.positions[symbol]
