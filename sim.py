@@ -153,6 +153,10 @@ class SimExchangeBitMex(ExchangeCommon):
         # type: (self.Symbol) -> Position
         return self.positions[symbol]
 
+    def get_closed_positions(self, symbol):
+        # type: (Enum) -> list()
+        return self.closed_positions_hist[symbol]
+
     def get_xbt_balance(self):
         return self.xbt_balance
 

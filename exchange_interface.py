@@ -34,6 +34,10 @@ class ExchangeCommon:
         # type: (Enum) -> Position
         raise AttributeError("interface class")
 
+    def get_closed_positions(self, symbol):
+        # type: (Enum) -> list()
+        raise AttributeError("interface class")
+
     def set_leverage(self, symbol, value):
         # type: (Enum, float) -> bool
         """
