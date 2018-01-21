@@ -14,8 +14,8 @@ class TacticInterface:
     def __init__(self):
         pass
 
-    def init(self, exchange):
-        # type: (ExchangeCommon) -> None
+    def init(self, exchange, preferences):
+        # type: (ExchangeCommon, dict) -> None
         raise AttributeError("interface class")
 
     def handle_candles(self, exchange):
@@ -54,9 +54,12 @@ class TacticBitEwm(TacticInterface):
         self.last_ema_std = (float('nan'), float('nan'))
         self.last_fill = None
 
-    def init(self, exchange):
-        # type: (ExchangeCommon) -> None
+    def init(self, exchange, preferences):
+        # type: (ExchangeCommon, dict) -> None
         exchange.set_leverage(self.product_id, 100.)
+
+        if 'span' in preferences:
+            self.span = int(preferences['span'])
 
     def has_position(self):
         return not self.position.is_closeable()
@@ -86,6 +89,7 @@ class TacticBitEwm(TacticInterface):
                                               type=order.type,
                                               tactic=self))
         self.opened_orders.drop_closed_orders()
+        raise ValueError()  # test
 
     def handle_fill(self, exchange, fill):
         # type: (ExchangeCommon, Fill) -> None

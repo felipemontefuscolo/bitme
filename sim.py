@@ -28,6 +28,7 @@ def get_args():
     parser.add_argument('-l', '--log_dir', type=str, help='log directory', default='./output')
     parser.add_argument('-b', '--begin', type=str, help='begin time')
     parser.add_argument('-e', '--end', type=str, help='end time')
+    parser.add_argument('-x', '--pref', action='append', help='args for tactics, given in the format "key=value"')
 
     args = parser.parse_args()
 
@@ -45,6 +46,12 @@ def get_args():
     if args.end:
         args.end = pd.Timestamp(args.end)
 
+    if not args.pref:
+        args.pref = list()
+    for i in range(len(args.pref)):
+        args.pref[i] = args.pref[i].split("=")
+    args.pref = dict(args.pref)
+
     return args
 
 
@@ -52,7 +59,7 @@ class Liquidator(TacticInterface):
     def __init__(self):
         pass
 
-    def init(self, exchange):
+    def init(self, exchange, preferences):
         pass
 
     def handle_candles(self, exchange):
@@ -467,7 +474,7 @@ def main():
     with SimExchangeBitMex(0.2, args.file, args.log_dir, tactics) as exchange:
 
         for tac in exchange.tactics:
-            tac.init(exchange)
+            tac.init(exchange, args.pref)
 
         while exchange.is_open():
             exchange.advance_time(print_progress=True)
