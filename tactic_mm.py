@@ -60,6 +60,8 @@ class TacticBitEwm(TacticInterface):
 
         if 'span' in preferences:
             self.span = int(preferences['span'])
+        if 'greediness' in preferences:
+            self.greediness = float(preferences['greediness'])
 
     def has_position(self):
         return not self.position.is_closeable()
