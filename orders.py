@@ -49,8 +49,11 @@ class Orders:
             self.data[k] = orders.data[k]
 
     def drop_closed_orders(self):
+        # return num of dropped orders
+        l = len(self.data)
         self.data = dict([(o.id, o) for o in self.data.values()
                           if o.status == OrderStatus.opened or o.status == OrderStatus.pending])
+        return l - len(self.data)
 
     def market_orders(self):
         return Orders(dict([(o.id, o) for o in self.data.values()
@@ -83,7 +86,7 @@ class OrderCommon:
         self.id = str('bitme_' + str(OrderCommon._count))  # type: str
         OrderCommon._count += 1
         self.symbol = kargs['symbol']  # type: Enum
-        self.signed_qty = floor_5(_get(kargs, 'signed_qty', float('nan')))  # type: float
+        self.signed_qty = math.floor(_get(kargs, 'signed_qty', float('nan')))  # type: float
         # self.signed_simple_qty = get_or_none(kargs, 'signed_simple_qty') # type: float
         self.price = round_n(_get(kargs, 'price', float('nan')), 1)  # type: float
         self.stop_price = _get(kargs, 'stop_price', float('nan'))  # type: float
@@ -179,7 +182,7 @@ class OrderCancelReason(Enum):
     insufficient_funds = "insufficient funds"
     invalid_price = "invalid price"
     end_of_sim = "end of sim"
-    cancel_requested = "cancel requested"
+    requested_by_user = "requested by user"
     liquidation = "liquidation"
     unknown = "unknown"
 

@@ -8,10 +8,18 @@ import shutil
 import sys
 from collections import defaultdict
 
+from enum import Enum
 from numpy.core.umath import sign
 
-from orders import *
-from tactic_mm import *
+from candles import Candles
+from exchange_interface import ExchangeCommon
+from fill import Fill, FillType
+from orders import OrderType, Orders, OrderCancelReason, OrderStatus, OrderCommon
+from position import Position
+from simcandles import SimCandles
+from tactic_mm import TacticBitEwm, TacticInterface
+
+import pandas as pd
 
 
 def get_args():
@@ -40,127 +48,27 @@ def get_args():
     return args
 
 
-class ExchangeCommon:
+class Liquidator(TacticInterface):
     def __init__(self):
         pass
 
-    def get_candles1m(self):
-        raise AttributeError("interface class")
-
-    def post_orders(self, orders):
-        """
-        :param orders:
-        :return: True if any order was rejected
-        """
-        raise AttributeError("interface class")
-
-    def current_time(self):
-        raise AttributeError("interface class")
-
-
-class Liquidator:
-    def __init__(self):
+    def init(self, exchange):
         pass
 
-
-class Position:
-    """
-    Only isolated margin is supported (see isolated vs cross here: https://www.bitmex.com/app/isolatedMargin)
-    It means that when a position is opened, a fixed amount is taken as collateral. Any gains are only credited
-    after the position is closed.
-    """
-
-    def __init__(self):
-        self.buy_qty = 0.
-        self.buy_vol = 0.
-        self.sell_qty = 0.  # always negative
-        self.sell_vol = 0.
-        self.realized_pnl = 0.
-        self.liq_price = 0.
-        self.close_ts = None
-        self.side = None
+    def handle_candles(self, exchange):
         pass
 
-    def __repr__(self):
-        return str(self.to_json())
+    def handle_submission_error(self, failed_order):
+        pass
 
-    def to_json(self):
-        params = {
-            'buy_qty': str(self.buy_qty),
-            'buy_vol': str(self.buy_vol),
-            'sell_qty': str(self.sell_qty),
-            'sell_vol': str(self.sell_vol),
-            'realized_pnl': str(self.realized_pnl),
-            'close_ts': str(self.close_ts.strftime('%Y-%m-%dT%H:%M:%S') if self.close_ts else "None"),
-            'side': str(self.side),  # USD
-        }
-        return params
+    def handle_fill(self, exchange, fill):
+        pass
 
-    def close_position(self):
-        assert self.is_closeable()
-        pnl = self.realized_pnl
-        self.__init__()
-        return pnl
+    def handle_cancel(self, exchange, order):
+        pass
 
-    def update(self, qty, price, multiplier, fee):
-        if self.side is None:
-            self.side = sign(qty)
-        """
-        should be updated on every fill
-        """
-        net_qty = self.net_qty()
-        if net_qty * (qty + net_qty) < 0:  # changing position direction
-            raise ValueError("provided qty changes position side. This case should be handled outside this method.")
-
-        if qty > 0:
-            self.buy_qty += qty
-            self.buy_vol += qty * price * (1. + fee)
-        else:
-            self.sell_qty += qty
-            self.sell_vol += qty * price * (1. - fee)
-        self.liq_price = self.entry_price() * multiplier / (self.side * .75 + multiplier)
-        self.realized_pnl = self.calc_realized_pnl(multiplier)
-
-    def calc_realized_pnl(self, multiplier):
-        # pnl = Contracts * Multiplier * (1/Entry Price - 1/Exit Price)
-
-        dprice = self.buy_qty / max(self.buy_vol, 1.e-8) - self.sell_qty / min(self.sell_vol, -1.e-8)
-
-        return multiplier * min(abs(self.buy_qty), abs(self.sell_qty)) * dprice
-
-    def entry_price(self):
-        # this is not exactly true, but it's a good approximation
-        if self.side > 0:
-            return self.buy_vol / self.buy_qty
-        else:
-            return self.sell_vol / self.sell_qty
-
-    def net_qty(self):
-        return self.buy_qty + self.sell_qty
-
-    def position(self):
-        return self.buy_qty + self.sell_qty
-
-    def is_closeable(self):
-        return abs(self.buy_qty + self.sell_qty) < 1.e-10
-
-    def is_open(self):
-        return self.side is not None
-
-    def does_change_side(self, qty):
-        net_qty = self.net_qty()
-        return net_qty * (qty + net_qty) < 0
-
-    def does_reduce_position(self, qty):
-        return self.position_change(qty) < 0
-
-    def position_change(self, signed_qty):
-        # type: (float) -> float
-        """
-        :param signed_qty:
-        :return: a positive number if signed_qty increase position (positively or negatively) and negative otherwise
-        """
-        return abs(self.buy_qty + self.sell_qty + signed_qty) - abs(self.buy_qty + self.sell_qty)
+    def id(self):
+        return self.__class__.__name__
 
 
 #  only BTC is supported for now
@@ -172,7 +80,6 @@ class SimExchangeBitMex(ExchangeCommon):
         XBTH18 = 'XBTH18'
         __iter__ = Enum.__iter__
 
-    N_SYMBOLS = len(Symbol)
     SYMBOLS = list(Symbol)
 
     # reference: https://www.bitmex.com/app/riskLimits#instrument-risk-limits
@@ -229,8 +136,8 @@ class SimExchangeBitMex(ExchangeCommon):
         return self.candles.data.iloc[self.time_idx]
 
     def get_candles1m(self):
-        # type: (None) -> SimCandles
-        return SimCandles(data=self.candles.data.iloc[0:self.time_idx + 1])
+        # type: (None) -> Candles
+        return self.candles.subset(0, self.time_idx + 1)
 
     def is_last_candle(self):
         return self.time_idx == self.candles.size() - 1
@@ -263,7 +170,7 @@ class SimExchangeBitMex(ExchangeCommon):
             self._execute_all_orders()
             current_price = self._estimate_price()
             for symbol in self.SYMBOLS:
-                position = self.positions[symbol]
+                position = self.positions[symbol]  # type: Position
                 if position.is_open():
                     side = position.side
                     liq_price = self.positions[symbol].liq_price
@@ -276,23 +183,33 @@ class SimExchangeBitMex(ExchangeCommon):
     def cancel_all_orders(self,
                           drop_canceled=True,
                           status=OrderStatus.canceled,
-                          reason=OrderCancelReason.cancel_requested):
+                          reason=OrderCancelReason.requested_by_user):
         self.cancel_orders(self.active_orders, drop_canceled=drop_canceled, status=status, reason=reason)
 
     def cancel_orders(self,
                       orders,
                       drop_canceled=True,
                       status=OrderStatus.canceled,
-                      reason=OrderCancelReason.cancel_requested):
-        for o in orders:  # type: OrderCommon
-            self.active_orders[o.id].status = status
-            self.active_orders[o.id].status_msg = reason
-            self.n_cancels[reason.name] += 1
-            if o.tactic and o.tactic != Liquidator:
-                o.tactic.handle_cancel(self, o)
+                      reason=OrderCancelReason.requested_by_user):
+        orders_list = [o for o in orders]
+        for o in orders_list:  # type: OrderCommon
+            assert o == self.active_orders[o.id]
+            if o.status != status:
+                o.status = status
+                o.status_msg = reason
+                self.n_cancels[reason.name] += 1
+        if reason != OrderCancelReason.requested_by_user:
+            for o in orders_list:
+                if o.tactic and o.tactic != Liquidator:
+                    o.tactic.handle_cancel(self, o)
+
+        if orders.size() > 0 and not self.active_orders.drop_closed_orders() > 0:  # in case orders does not refers to self.opened_orders
+            print("time at: " + str(self.current_time()))
+            raise AttributeError("no orders were closed")
         if drop_canceled:
-            orders.drop_closed_orders()
-        self.active_orders.drop_closed_orders()  # in case orders does not refers to self.opened_orders
+            if orders.size() > 0 and not orders.drop_closed_orders() > 0:
+                print("time at: " + str(self.current_time()))
+                raise AttributeError("no orders were closed")
 
     @staticmethod
     def _reject_order(order, time_posted, reason):
@@ -341,8 +258,8 @@ class SimExchangeBitMex(ExchangeCommon):
             else:
                 assert o.status == OrderStatus.canceled
 
-        #print " SIMMMMM " + Orders.to_csv(orders.data.values())
-        #print " -------------- "
+        # print " SIMMMMM " + Orders.to_csv(orders.data.values())
+        # print " -------------- "
 
         return contain_errors
 
@@ -357,21 +274,25 @@ class SimExchangeBitMex(ExchangeCommon):
 
     def _execute_all_orders(self):
         assert self.time_idx < len(self.candles.data)
-        for o in self.active_orders:  # type: OrderCommon
-            fill = self._execute_order(o)  # type: Fill
-            if fill is not None:
-                try:
-                    o.tactic.handle_fill(self, fill)
-                except KeyError as e:
-                    print("In tactic " + str(o.tactic.id()))
-                    raise e
+        for o in self.active_orders:
+            assert o.status == OrderStatus.opened
+
+        # print "_______________BEGIN_______________________"
+        # orders status may change in the loop
+        orders_list = [o for o in self.active_orders]
+        for o in orders_list:
+            if o.status == OrderStatus.opened:
+                self._execute_order(o)  # type: Fill
         self.active_orders.drop_closed_orders()
+        # print "_________________END_______________________"
 
     def _execute_order(self, order):
         # type: (OrderCommon) -> Fill
         assert self.time_idx < self.candles.size()
+
         if order.status != OrderStatus.opened:
-            raise ValueError("expected order to be opened, but got " + str(order.status) + ". Order = \n" + str(order))
+            raise ValueError("expected order to be opened, but got " + str(order.status) + ". Order = \n"
+                             + order.get_header() + "\n" + str(order))
         current_candle = self.current_candle()
         current_time = current_candle.name  # pd.Timestamp
         high = current_candle.high
@@ -450,6 +371,7 @@ class SimExchangeBitMex(ExchangeCommon):
                     fill_type=FillType.complete if order.is_fully_filled() else FillType.partial)
         self.fills_hist += [fill]
         self.active_orders.drop_closed_orders()
+        order.tactic.handle_fill(self, fill)
         return fill
 
     def _execute_liquidation(self, symbol, order_cancel_reason=OrderCancelReason.liquidation):
@@ -457,7 +379,7 @@ class SimExchangeBitMex(ExchangeCommon):
         position = self.positions[symbol]
         if not position.is_open():
             return
-        order = OrderCommon(symbol=symbol, signed_qty=-position.position(), type=OrderType.market, tactic=Liquidator)
+        order = OrderCommon(symbol=symbol, signed_qty=-position.position(), type=OrderType.market, tactic=Liquidator())
         order.status_msg = order_cancel_reason
         self.post_orders(Orders({order.id: order}))
         self._execute_order(order)
@@ -468,7 +390,8 @@ class SimExchangeBitMex(ExchangeCommon):
         if order_cancel_reason == OrderCancelReason.liquidation:
             closed = self.closed_positions_hist[symbol][-1]  # type: Position
             if closed.realized_pnl >= 0:
-                raise AttributeError("Liquidation caused profit!")
+                raise AttributeError("Liquidation caused profit! position = \n" + str(position))
+        assert self.active_orders.of_symbol(symbol).size() == 0
 
     def _close_position(self, symbol, force_close=False):
         position = self.positions[symbol]

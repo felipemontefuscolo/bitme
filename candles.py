@@ -1,12 +1,16 @@
+from pandas import Series
+
+
 class Candles:
     def __init__(self):
         pass
 
     def at(self, index):
-        # similar to iloc for pd.DataFrame
+        # type: (int) -> Series
         raise AttributeError("interface class")
 
-    def views(self):
+    def subset(self, idx_begin, idx_end):
+        # type: (int, int) -> Candles
         raise AttributeError("interface class")
 
     def size(self):
