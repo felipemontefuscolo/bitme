@@ -1,6 +1,7 @@
 import math
 
-from pandas import Series, Timedelta
+from enum import Enum
+from pandas import Series, Timedelta, Timestamp
 from sympy import sign
 
 from exchange_interface import ExchangeCommon
@@ -42,13 +43,16 @@ class TacticInterface:
 class TacticBitEwm(TacticInterface):
     def __init__(self, product_id):
         TacticInterface.__init__(self)
-        self.product_id = product_id
+        self.product_id = product_id  # type: Enum
 
         self.opened_orders = Orders()
         self.position = None  # type: Position
+        self.last_activity_time = None  # type: Timestamp
+        self.multiplier = 100.
         self.span = 20
         self.greediness = 0.1  # 0. -> post order at EMA, 1. -> post order at EMA + std
-        self.no_activity_tol = 60  # num of minutes of no activity tolerance.
+        self.qty_to_trade = 0.3  # 1. -> qty=price, 0. -> qty=0
+        self.no_activity_tol = 180  # num of minutes of no activity tolerance.
         # After that, non filled orders are cancelled
 
         self.last_ema_std = (float('nan'), float('nan'))
@@ -56,12 +60,15 @@ class TacticBitEwm(TacticInterface):
 
     def init(self, exchange, preferences):
         # type: (ExchangeCommon, dict) -> None
-        exchange.set_leverage(self.product_id, 100.)
+        exchange.set_leverage(self.product_id, self.multiplier)
+        self.last_activity_time = exchange.current_time()
 
         if 'span' in preferences:
             self.span = int(preferences['span'])
         if 'greediness' in preferences:
             self.greediness = float(preferences['greediness'])
+        if 'qty_to_trade' in preferences:
+            self.qty_to_trade = float(preferences['qty_to_trade'])
 
     def has_position(self):
         return not self.position.is_closeable()
@@ -74,6 +81,7 @@ class TacticBitEwm(TacticInterface):
             orders_to_send.add(order)
             if not exchange.post_orders(orders_to_send):
                 self.opened_orders.merge(orders_to_send)
+                self.last_activity_time = order.time_posted
                 return False
         return True
 
@@ -98,6 +106,7 @@ class TacticBitEwm(TacticInterface):
         qty_filled = fill.qty
         order = self.opened_orders[fill.order_id]  # type: OrderCommon
         self.position = exchange.get_position(self.product_id)  # type: Position
+        self.last_activity_time = fill.fill_time
 
         if fill.fill_type == FillType.complete or order.is_fully_filled():
             self.opened_orders.clean_filled(order)
@@ -149,13 +158,10 @@ class TacticBitEwm(TacticInterface):
             raise AttributeError("Invalid state. We have a position of {} but there is not opened order to reduce this"
                                  " position. Probably a tactic logic error.".format(self.position.position()))
 
-        if self.opened_orders.size() > 0:
-            if self.position.is_closeable():
-                assert self.opened_orders.size() == 1
-                last_order = self.opened_orders.data.values()[0]  # type: OrderCommon
-                if exchange.current_time() - last_order.time_posted > Timedelta(minutes=self.no_activity_tol):
-                    exchange.cancel_orders(Orders({last_order.id: last_order}))
-            return
+        if self.opened_orders.size() > 0 and \
+                exchange.current_time() - self.last_activity_time > Timedelta(minutes=self.no_activity_tol):
+            if self.close_position_if_no_loss(exchange, price):
+                return
 
         df = candles1m.data['close']  # type: Series
         ema = df.ewm(span=self.span).mean()[-1]
@@ -175,10 +181,26 @@ class TacticBitEwm(TacticInterface):
         self.last_ema_std = (ema, std)
 
         order_to_send = OrderCommon(symbol=self.product_id,
-                                    signed_qty=should_trade * math.floor(price),
+                                    signed_qty=should_trade * math.floor(price * self.qty_to_trade),
                                     price=price,
                                     type=OrderType.limit,
                                     tactic=self)
 
         if self.send_order(exchange, order_to_send) and not self.has_position():
             exchange.cancel_orders(Orders({order_to_send.id: order_to_send}))
+
+    def close_position_if_no_loss(self, exchange, current_price):
+        if not self.position.is_open():
+            return
+        pnl = self.position.hypothetical_close_at_price(current_price, self.multiplier)
+        if pnl >= 0:
+            exchange.cancel_orders(self.opened_orders)
+            if not self.position.is_closeable():
+                order_to_send = OrderCommon(symbol=self.product_id,
+                                            signed_qty=-self.position.net_qty(),
+                                            type=OrderType.market,
+                                            tactic=self)
+                if not self.send_order(exchange, order_to_send):
+                    self.last_activity_time = order_to_send.time_posted
+            return True
+        return False

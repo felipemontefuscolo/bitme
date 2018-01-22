@@ -2,6 +2,7 @@ from enum import Enum
 
 from orders import to_str, TWOPLACES, OrderCommon, OrderType
 import pandas as pd
+from pandas import Timestamp
 
 
 class FillType(Enum):
@@ -18,7 +19,7 @@ class Fill:
         self.qty = qty_filled  # type: float
         self.price = price_fill  # type: float
         self.order_type = order.type  # type: OrderType
-        self.fill_time = fill_time  # type: pd.Timestamp
+        self.fill_time = fill_time  # type: Timestamp
         self.fill_type = fill_type  # type: FillType
 
     def __repr__(self):

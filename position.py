@@ -1,3 +1,5 @@
+import copy
+
 from sympy import sign
 
 from constants import ZERO_TOL
@@ -43,7 +45,13 @@ class Position:
         self.__init__()
         return pnl
 
-    def update(self, qty, price, multiplier, fee):
+    def hypothetical_close_at_price(self, price, multiplier):
+        pos = copy.deepcopy(self)
+        pos.update(-self.net_qty(), price, multiplier)
+        assert pos.is_closeable()
+        return pos.realized_pnl
+
+    def update(self, qty, price, multiplier, fee=0.00075):
         qty = float(qty)
         price = float(price)
         multiplier = float(multiplier)
@@ -67,8 +75,6 @@ class Position:
         self.liq_price = self.calc_liq_price(multiplier)
 
         self.realized_pnl = self.calc_realized_pnl(multiplier)
-
-        return self
 
     def calc_liq_price(self, multiplier):
         eprice = self.entry_price()
