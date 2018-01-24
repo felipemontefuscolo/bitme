@@ -19,6 +19,9 @@ from position import Position
 from simcandles import SimCandles
 from tactic_mm import TacticBitEwm, TacticInterface
 
+from autologging import logged
+import logging
+
 import pandas as pd
 
 
@@ -79,6 +82,7 @@ class Liquidator(TacticInterface):
 
 
 #  only BTC is supported for now
+@logged
 class SimExchangeBitMex(ExchangeCommon):
     FEE = {OrderType.limit: -0.00025, OrderType.market: 0.00075}
 
@@ -272,6 +276,11 @@ class SimExchangeBitMex(ExchangeCommon):
         # print " SIMMMMM " + Orders.to_csv(orders.data.values())
         # print " -------------- "
 
+        orders_list = [o for o in self.active_orders]
+        for o in orders_list:
+            if o.status == OrderStatus.opened and o.type == OrderType.market:
+                self._execute_order(o)
+        self.active_orders.drop_closed_orders()
         return contain_errors
 
     def _estimate_price(self, current_candle=None):
@@ -393,7 +402,6 @@ class SimExchangeBitMex(ExchangeCommon):
         order = OrderCommon(symbol=symbol, signed_qty=-position.position(), type=OrderType.market, tactic=Liquidator())
         order.status_msg = order_cancel_reason
         self.post_orders(Orders({order.id: order}))
-        self._execute_order(order)
         if position.is_open():
             raise AttributeError("position was not close during liquidation. position = %f" % position.position())
         if not self.is_last_candle():
@@ -469,7 +477,15 @@ class SimExchangeBitMex(ExchangeCommon):
         orders_file.close()
 
 
+@logged
 def main():
+    logging.basicConfig(
+        filename='messages',
+        filemode='w',
+        level=logging.INFO,
+        format='%(levelname)s:%(name)s:%(funcName)s:%(message)s '
+    )
+    main._log.info("starting SIMMMMMMM")
     print("starting sim")
     args = get_args()
 

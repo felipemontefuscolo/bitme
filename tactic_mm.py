@@ -1,3 +1,4 @@
+import logging
 import math
 
 from enum import Enum
@@ -9,8 +10,10 @@ from fill import FillType, Fill
 from orders import Orders, OrderCommon, OrderType, OrderCancelReason
 from position import Position
 from simcandles import SimCandles
+from autologging import logged
 
 
+@logged
 class TacticInterface:
     def __init__(self):
         pass
@@ -40,6 +43,7 @@ class TacticInterface:
         return self.__class__.__name__
 
 
+@logged
 class TacticBitEwm(TacticInterface):
     def __init__(self, product_id):
         TacticInterface.__init__(self)
@@ -80,7 +84,8 @@ class TacticBitEwm(TacticInterface):
             orders_to_send = Orders()
             orders_to_send.add(order)
             if not exchange.post_orders(orders_to_send):
-                self.opened_orders.merge(orders_to_send)
+                if order.is_open():
+                    self.opened_orders.merge(orders_to_send)
                 self.last_activity_time = order.time_posted
                 return False
         return True
@@ -93,20 +98,26 @@ class TacticBitEwm(TacticInterface):
                 order.status_msg == OrderCancelReason.end_of_sim or \
                 order.status_msg == OrderCancelReason.requested_by_user:
             return
-        self.send_order(exchange, OrderCommon(symbol=order.symbol,
-                                              signed_qty=order.signed_qty,
-                                              price=order.price,
-                                              type=order.type,
-                                              tactic=self))
+        if not self.send_order(exchange, OrderCommon(symbol=order.symbol,
+                                                     signed_qty=order.signed_qty,
+                                                     price=order.price,
+                                                     type=order.type,
+                                                     tactic=self)):
+            self.__log.info("canceling order")
         self.opened_orders.drop_closed_orders()
         raise ValueError()  # test
 
     def handle_fill(self, exchange, fill):
         # type: (ExchangeCommon, Fill) -> None
         qty_filled = fill.qty
-        order = self.opened_orders[fill.order_id]  # type: OrderCommon
+        order = fill.order
+        try:
+            assert order == self.opened_orders[order.id]
+        except KeyError:
+            return
         self.position = exchange.get_position(self.product_id)  # type: Position
         self.last_activity_time = fill.fill_time
+        self.__log.info("handling fill")
 
         if fill.fill_type == FillType.complete or order.is_fully_filled():
             self.opened_orders.clean_filled(order)
@@ -141,6 +152,8 @@ class TacticBitEwm(TacticInterface):
                 self.send_order(exchange, order_to_send, 10)
 
     def handle_candles(self, exchange):
+        self.__log.info("handling candles")
+
         # type: (ExchangeCommon, float, float) -> None
         candles1m = exchange.get_candles1m()  # type: SimCandles
         price = exchange.current_price()
@@ -158,10 +171,11 @@ class TacticBitEwm(TacticInterface):
             raise AttributeError("Invalid state. We have a position of {} but there is not opened order to reduce this"
                                  " position. Probably a tactic logic error.".format(self.position.position()))
 
-        if self.opened_orders.size() > 0 and \
-                exchange.current_time() - self.last_activity_time > Timedelta(minutes=self.no_activity_tol):
-            if self.close_position_if_no_loss(exchange, price):
-                return
+        if self.opened_orders.size() > 0:
+            if exchange.current_time() - self.last_activity_time > Timedelta(minutes=self.no_activity_tol):
+                if self.close_position_if_no_loss(exchange, price):
+                    assert self.opened_orders.size() == 0
+            return
 
         df = candles1m.data['close']  # type: Series
         ema = df.ewm(span=self.span).mean()[-1]
@@ -188,13 +202,16 @@ class TacticBitEwm(TacticInterface):
 
         if self.send_order(exchange, order_to_send) and not self.has_position():
             exchange.cancel_orders(Orders({order_to_send.id: order_to_send}))
+        else:
+            self.__log.info(" -- sending order " + str(order_to_send))
 
+    # this method doesn't drop closed orders
     def close_position_if_no_loss(self, exchange, current_price):
         if not self.position.is_open():
-            return
+            return False
         pnl = self.position.hypothetical_close_at_price(current_price, self.multiplier)
         if pnl >= 0:
-            exchange.cancel_orders(self.opened_orders)
+            exchange.cancel_orders(self.opened_orders, drop_canceled=True)
             if not self.position.is_closeable():
                 order_to_send = OrderCommon(symbol=self.product_id,
                                             signed_qty=-self.position.net_qty(),
@@ -202,5 +219,6 @@ class TacticBitEwm(TacticInterface):
                                             tactic=self)
                 if not self.send_order(exchange, order_to_send):
                     self.last_activity_time = order_to_send.time_posted
+            self.__log.info("closing position due to inactivity " + str([str(o) + '\n' for o in self.opened_orders]))
             return True
         return False

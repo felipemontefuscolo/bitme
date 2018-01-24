@@ -119,6 +119,9 @@ class OrderCommon:
     def is_open(self):
         return self.status == OrderStatus.opened
 
+    def is_pending(self):
+        return self.status == OrderStatus.pending
+
     def is_fully_filled(self):
         return abs(self.filled - self.signed_qty) < 1.e-10
 
