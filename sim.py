@@ -433,12 +433,22 @@ class SimExchangeBitMex(ExchangeCommon):
         print("num orders = " + str(self._count_per_symbol(self.order_hist)))
         print("close price = " + str(self.candles.data.iloc[-1].close))
         total_pnl = 0.
+        total_loss = 0.
+        total_profit = 0.
         pnl = defaultdict(float)
+        profit = defaultdict(float)
+        loss = defaultdict(float)
         for symbol in self.closed_positions_hist:
             pnl[symbol.name] = sum([p.realized_pnl for p in self.closed_positions_hist[symbol]])
+            profit[symbol.name] = sum([p.realized_pnl for p in self.closed_positions_hist[symbol] if p.realized_pnl >= 0])
+            loss[symbol.name] = sum([p.realized_pnl for p in self.closed_positions_hist[symbol] if p.realized_pnl < 0])
             total_pnl += pnl[symbol.name]
+            total_profit += profit[symbol.name]
+            total_loss += loss[symbol.name]
         print("PNL = " + str(dict(pnl)))
         print("PNL total = " + str(total_pnl))
+        print("profit total = " + str(total_profit))
+        print("loss total = " + str(total_loss))
         print("num order cancels = " + str(dict(self.n_cancels)))
         print("num liquidations = " + str(dict(self.n_liquidations)))
 
