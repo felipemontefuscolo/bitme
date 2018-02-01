@@ -17,6 +17,13 @@ class SimCandles(Candles):
             self.data = data
         else:
             raise ValueError("XOR(filename==None, data==None) should be True")
+        self.fix_bitmex_bug()
+
+    def fix_bitmex_bug(self):
+        idx = self.data['low'] > self.data['open']
+        c = self.data.copy()
+        c['low'][idx] = self.data['open']
+        self.data = c
 
     def at(self, index):
         # type: (int) -> Series

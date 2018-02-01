@@ -121,6 +121,8 @@ class SimExchangeBitMex(ExchangeCommon):
         self.n_cancels = defaultdict(int)
         self.n_liquidations = defaultdict(int)  # Symbol -> int
 
+        self.can_call_handles = True  # type: bool
+
     def __enter__(self):
         return self
 
@@ -139,6 +141,9 @@ class SimExchangeBitMex(ExchangeCommon):
 
     def current_price(self):
         return self.candles.data.iloc[self.time_idx].close
+
+    def next_price(self):
+        return self.candles.data.iloc[self.time_idx + 1].open
 
     def current_time(self):
         return self.candles.data.iloc[self.time_idx].name
@@ -179,9 +184,11 @@ class SimExchangeBitMex(ExchangeCommon):
             sys.stdout.write("progress: %d out of %d (%.4f%%)\n" % (self.time_idx, self.candles.size(), 100.))
             return
         else:
-            for tactic in self.tactics:  # type: TacticInterface
-                tactic.handle_candles(self)
+            if self.can_call_handles:
+                for tactic in self.tactics:  # type: TacticInterface
+                    tactic.handle_candles(self)
             self.time_idx += 1
+            assert self.can_call_handles is True
             self._execute_all_orders()
             current_price = self._estimate_price()
             for symbol in self.SYMBOLS:
@@ -195,25 +202,20 @@ class SimExchangeBitMex(ExchangeCommon):
     def is_open(self):
         return self.time_idx < len(self.candles.data)
 
-    def cancel_all_orders(self,
-                          drop_canceled=True,
-                          status=OrderStatus.canceled,
-                          reason=OrderCancelReason.requested_by_user):
-        self.cancel_orders(self.active_orders, drop_canceled=drop_canceled, status=status, reason=reason)
-
     def cancel_orders(self,
                       orders,
                       drop_canceled=True,
                       status=OrderStatus.canceled,
                       reason=OrderCancelReason.requested_by_user):
-        orders_list = [o for o in orders]
+        orders_list = [o for o in orders if o.id in self.active_orders.data]
+        if len(orders_list) == 0:
+            return
         for o in orders_list:  # type: OrderCommon
-            assert o == self.active_orders[o.id]
             if o.status != status:
                 o.status = status
                 o.status_msg = reason
                 self.n_cancels[reason.name] += 1
-        if reason != OrderCancelReason.requested_by_user:
+        if self.can_call_handles and reason != OrderCancelReason.requested_by_user:
             for o in orders_list:
                 if o.tactic and o.tactic != Liquidator:
                     o.tactic.handle_cancel(self, o)
@@ -254,9 +256,12 @@ class SimExchangeBitMex(ExchangeCommon):
 
         # discard bad orders
         current_price = self.current_price()
+        next_price = self.next_price() if not self.is_last_candle() else current_price
         for o in orders:  # type: OrderCommon
             if o.type is OrderType.limit:
-                crossed = (o.is_sell() and o.price < current_price) or (o.is_buy() and o.price > current_price)
+                # in case open is different from close
+                crossed = (o.is_sell() and o.price < current_price) or (o.is_buy() and o.price > current_price) or \
+                          (o.is_sell() and o.price < next_price) or (o.is_buy() and o.price > next_price)
                 if crossed or o.price < 0:
                     # only post_only are supported, so don't let it cross
                     self._reject_order(o, current_time, OrderCancelReason.invalid_price)
@@ -362,6 +367,9 @@ class SimExchangeBitMex(ExchangeCommon):
             order.status = OrderStatus.filled
             order.fill_price = price_fill
 
+        if (open <= order.price <= close) or (close <= order.price <= open):
+            assert order.is_fully_filled()
+
         fee = self.FEE[order.type]
 
         if outstanding_qty:
@@ -391,17 +399,24 @@ class SimExchangeBitMex(ExchangeCommon):
                     fill_type=FillType.complete if order.is_fully_filled() else FillType.partial)
         self.fills_hist += [fill]
         self.active_orders.drop_closed_orders()
-        order.tactic.handle_fill(self, fill)
+        if self.can_call_handles:
+            order.tactic.handle_fill(self, fill)
         return fill
 
     def _execute_liquidation(self, symbol, order_cancel_reason=OrderCancelReason.liquidation):
+        self.can_call_handles = False
         self.cancel_orders(self.active_orders.of_symbol(symbol), reason=order_cancel_reason)
+        self.can_call_handles = True
+        assert self.active_orders.of_symbol(symbol).size() == 0
         position = self.positions[symbol]
         if not position.is_open():
             return
         order = OrderCommon(symbol=symbol, signed_qty=-position.position(), type=OrderType.market, tactic=Liquidator())
         order.status_msg = order_cancel_reason
+        self.can_call_handles = False
         self.post_orders(Orders({order.id: order}))
+        self.can_call_handles = True
+        assert order.status == OrderStatus.filled
         if position.is_open():
             raise AttributeError("position was not close during liquidation. position = %f" % position.position())
         if not self.is_last_candle():
