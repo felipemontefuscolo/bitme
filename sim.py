@@ -338,7 +338,7 @@ class SimExchangeBitMex(ExchangeCommon):
             price_fill = order.price
             max_qty_fill = order.signed_qty - order.filled
             # clip fill
-            if open <= order.price <= close:
+            if (open <= order.price <= close) or (close <= order.price <= open):
                 qty_fill = max_qty_fill
             elif high == low == order.price:
                 qty_fill = round(0.5 * max_qty_fill)
@@ -510,7 +510,7 @@ def main():
         level=logging.INFO,
         format='%(levelname)s:%(name)s:%(funcName)s:%(message)s '
     )
-    main._log.info("starting SIMMMMMMM")
+    main._log.info("starting SIM")
     print("starting sim")
     args = get_args()
 
