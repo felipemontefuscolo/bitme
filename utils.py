@@ -1,10 +1,27 @@
 import calendar
+import contextlib
 import datetime
 import time
 import dateutil.parser
 import math
+import sys
 
 import pandas as pd
+
+
+@contextlib.contextmanager
+def smart_open(filename=None):
+    if filename and filename != '-':
+        fh = open(filename, 'w')
+    else:
+        fh = sys.stdout
+
+    try:
+        yield fh
+    finally:
+        if fh is not sys.stdout:
+            fh.close()
+
 
 class Day:
     def __init__(self, x):
@@ -60,7 +77,7 @@ def to_ts(iso_time):
 
 
 def isclose(a, b, rel_tol=1e-09, abs_tol=0.0):
-    return abs(a-b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
+    return abs(a - b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
 
 
 def floor_5(x):

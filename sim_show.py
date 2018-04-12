@@ -43,7 +43,8 @@ args = get_args()
 fills_file = os.path.join(args.log_dir, 'fills.csv')
 orders_file = os.path.join(args.log_dir, 'orders.csv')
 pnl_file = os.path.join(args.log_dir, 'pnl.csv')
-candles_file = open(os.path.join(args.log_dir, 'parameters_used'), 'r').readline()
+parameters_used = eval(open(os.path.join(args.log_dir, 'parameters_used'), 'r').readline())
+candles_file = parameters_used[parameters_used.index('-f') + 1]
 
 candles = read_data(candles_file)
 ts_to_idx = dict(zip(candles.index, range(len(candles))))

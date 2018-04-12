@@ -35,7 +35,7 @@ class ExchangeCommon:
         raise AttributeError("interface class")
 
     def get_closed_positions(self, symbol):
-        # type: (Enum) -> list()
+        # type: (Enum) -> list(Position)
         raise AttributeError("interface class")
 
     def set_leverage(self, symbol, value):

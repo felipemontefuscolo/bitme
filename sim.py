@@ -8,6 +8,8 @@ import shutil
 import sys
 from collections import defaultdict
 
+import pandas as pd
+# from autologging import logged
 from enum import Enum
 from numpy.core.umath import sign
 
@@ -16,33 +18,36 @@ from exchange_interface import ExchangeCommon
 from fill import Fill, FillType
 from orders import OrderType, Orders, OrderCancelReason, OrderStatus, OrderCommon
 from position import Position
+from sim_stats import SimSummary
 from simcandles import SimCandles
-from tactic_mm import TacticBitEwm, TacticInterface
-
-from autologging import logged
-import logging
-
-import pandas as pd
+from tactic_mm import TacticInterface, TacticBitEwmWithStop
 
 
-def get_args():
+# import logging
+
+
+def get_args(input_args=None):
     parser = argparse.ArgumentParser(description='Simulation')
     parser.add_argument('-f', '--file', type=str, help='csv filename with candles data', required=True)
-    parser.add_argument('-l', '--log_dir', type=str, help='log directory', default='./output')
+    parser.add_argument('-l', '--log-dir', type=str, help='log directory')
     parser.add_argument('-b', '--begin', type=str, help='begin time')
     parser.add_argument('-e', '--end', type=str, help='end time')
     parser.add_argument('-x', '--pref', action='append', help='args for tactics, given in the format "key=value"')
+    parser.add_argument('--no-summary', action="store_true", default=False)
+    parser.add_argument('--no-output', action="store_true", default=False)
 
-    args = parser.parse_args()
+    args = parser.parse_args(args=input_args)
 
     if not os.path.isfile(args.file):
         raise ValueError("invalid file {}".format(args.file))
 
-    if os.path.isfile(args.log_dir):
-        raise ValueError(args.log_dir + " is a file")
-    if os.path.isdir(args.log_dir):
-        shutil.rmtree(args.log_dir)
-    os.makedirs(args.log_dir)
+    if args.log_dir is not None:
+        if os.path.isfile(args.log_dir):
+            raise ValueError(args.log_dir + " is a file")
+        args.log_dir = os.path.abspath(args.log_dir)
+        if os.path.isdir(args.log_dir):
+            shutil.rmtree(args.log_dir)
+        os.makedirs(args.log_dir)
 
     if args.begin:
         args.begin = pd.Timestamp(args.begin)
@@ -82,7 +87,7 @@ class Liquidator(TacticInterface):
 
 
 #  only BTC is supported for now
-@logged
+# @logged
 class SimExchangeBitMex(ExchangeCommon):
     FEE = {OrderType.limit: -0.00025, OrderType.market: 0.00075}
 
@@ -101,13 +106,13 @@ class SimExchangeBitMex(ExchangeCommon):
         self.xbt_initial_balance = initial_balance
         self.xbt_balance = initial_balance
 
-        self.positions = defaultdict(Position)  # Symbol -> Position
+        self.positions = defaultdict(Position)  # type: defaultdict(Position)
         self.leverage = dict([(i, 100.) for i in self.SYMBOLS])  # 1 means 1%
 
         self.active_orders = Orders()
 
         # liq price for each position
-        self.closed_positions_hist = defaultdict(list)  # Symbol -> list of Position
+        self.closed_positions_hist = defaultdict(list)  # type: defaultdict(Position)
         self.fills_hist = []
         self.order_hist = []
 
@@ -117,11 +122,18 @@ class SimExchangeBitMex(ExchangeCommon):
         self.time_idx = 0
 
         self.tactics = tactics
+        ss = [tac.get_symbol() for tac in tactics]
+        zz = set(ss)
+        if len(zz) != len(ss):
+            raise ValueError("Tactics with same symbol")
 
         self.n_cancels = defaultdict(int)
         self.n_liquidations = defaultdict(int)  # Symbol -> int
 
         self.can_call_handles = True  # type: bool
+
+        # should be None until end of sim
+        self.summary = None  # type: SimSummary
 
     def __enter__(self):
         return self
@@ -163,7 +175,7 @@ class SimExchangeBitMex(ExchangeCommon):
         return self.positions[symbol]
 
     def get_closed_positions(self, symbol):
-        # type: (Enum) -> list()
+        # type: (Enum) -> list(Position)
         return self.closed_positions_hist[symbol]
 
     def get_xbt_balance(self):
@@ -200,7 +212,11 @@ class SimExchangeBitMex(ExchangeCommon):
                         self._execute_liquidation(symbol)
 
     def is_open(self):
-        return self.time_idx < len(self.candles.data)
+        if self.time_idx < len(self.candles.data):
+            return True
+        else:
+            self.summary = self.get_summary()
+            return False
 
     def cancel_orders(self,
                       orders,
@@ -325,7 +341,7 @@ class SimExchangeBitMex(ExchangeCommon):
         open = current_candle.open
         close = current_candle.close
 
-        position = self.positions[order.symbol]  # type: self.Position
+        position = self.positions[order.symbol]  # type: Position
         position_value = position.position()
         qty_fill = qty_to_close = outstanding_qty = None
         crossed = False
@@ -428,7 +444,7 @@ class SimExchangeBitMex(ExchangeCommon):
         assert self.active_orders.of_symbol(symbol).size() == 0
 
     def _close_position(self, symbol, force_close=False):
-        position = self.positions[symbol]
+        position = self.positions[symbol]  # type: Position
         assert position.is_closeable() or force_close
         position.close_ts = self.current_time()
         self.closed_positions_hist[symbol] += [copy.deepcopy(position)]
@@ -441,12 +457,8 @@ class SimExchangeBitMex(ExchangeCommon):
             count_per_symbol[f.symbol.name] += 1
         return dict(count_per_symbol)
 
-    def print_summary(self):
-        print("initial btc " + str(self.xbt_initial_balance))
-        print("position btc = " + str(self.xbt_balance))
-        print("num fills = " + str(self._count_per_symbol(self.fills_hist)))
-        print("num orders = " + str(self._count_per_symbol(self.order_hist)))
-        print("close price = " + str(self.candles.data.iloc[-1].close))
+    def get_summary(self):
+        # type: () -> SimSummary
         total_pnl = 0.
         total_loss = 0.
         total_profit = 0.
@@ -455,26 +467,37 @@ class SimExchangeBitMex(ExchangeCommon):
         loss = defaultdict(float)
         for symbol in self.closed_positions_hist:
             pnl[symbol.name] = sum([p.realized_pnl for p in self.closed_positions_hist[symbol]])
-            profit[symbol.name] = sum([p.realized_pnl for p in self.closed_positions_hist[symbol] if p.realized_pnl >= 0])
+            profit[symbol.name] = sum(
+                [p.realized_pnl for p in self.closed_positions_hist[symbol] if p.realized_pnl >= 0])
             loss[symbol.name] = sum([p.realized_pnl for p in self.closed_positions_hist[symbol] if p.realized_pnl < 0])
             total_pnl += pnl[symbol.name]
             total_profit += profit[symbol.name]
             total_loss += loss[symbol.name]
-        print("PNL = " + str(dict(pnl)))
-        print("PNL total = " + str(total_pnl))
-        print("profit total = " + str(total_profit))
-        print("loss total = " + str(total_loss))
-        print("num order cancels = " + str(dict(self.n_cancels)))
-        print("num liquidations = " + str(dict(self.n_liquidations)))
 
         assert abs(total_pnl - (self.xbt_balance - self.xbt_initial_balance)) < 1.e-8
+        return SimSummary(
+            initial_xbt=self.xbt_initial_balance,
+            position_xbt=self.xbt_balance,
+            num_fills=self._count_per_symbol(self.fills_hist),
+            num_orders=self._count_per_symbol(self.order_hist),
+            num_cancels=dict(self.n_cancels),
+            num_liq=dict(self.n_liquidations),
+            close_price=self.candles.data.iloc[-1].close,
+            pnl=dict(pnl),
+            pnl_total=total_pnl,
+            profit_total=total_profit,
+            loss_total=total_loss
+        )
 
-    def print_output_files(self):
+    def print_output_files(self, input_args):
+        if self.log_dir is None:
+            raise ValueError("asked to print results, but log_dir is None")
         print("printing results to " + self.log_dir)
         fills_file = open(os.path.join(self.log_dir, 'fills.csv'), 'w')
         orders_file = open(os.path.join(self.log_dir, 'orders.csv'), 'w')
         pnl_file = open(os.path.join(self.log_dir, 'pnl.csv'), 'w')
-        data_used_file = open(os.path.join(self.log_dir, 'parameters_used'), 'w')
+        pars_used_file = open(os.path.join(self.log_dir, 'parameters_used'), 'w')
+        summary_file = open(os.path.join(self.log_dir, 'summary'), 'w')
 
         fills_file.write(Fill.get_header() + '\n')
         orders_file.write(OrderCommon.get_header() + '\n')
@@ -487,34 +510,37 @@ class SimExchangeBitMex(ExchangeCommon):
         pnl_file.write('time,symbol,pnl,cum_pnl\n')
         for s in self.SYMBOLS:
             sum = 0
-            for p in self.closed_positions_hist[s]:  # type: self.Position
+            for p in self.closed_positions_hist[s]:  # type: Position
                 sum += p.realized_pnl
                 pnl_file.write(','.join([str(p.close_ts.strftime('%Y-%m-%dT%H:%M:%S')),
                                          s.name,
                                          str(p.realized_pnl),
                                          str(sum)])
                                + '\n')
-        data_used_file.write(self.file_name)
+        pars_used_file.write(str(input_args))
+        pars_used_file.write("")
 
-        data_used_file.close()
+        summary_file.write(self.summary.to_str())
+
+        pars_used_file.close()
         pnl_file.close()
         fills_file.close()
         orders_file.close()
+        summary_file.close()
 
 
-@logged
-def main():
-    logging.basicConfig(
-        filename='messages',
-        filemode='w',
-        level=logging.INFO,
-        format='%(levelname)s:%(name)s:%(funcName)s:%(message)s '
-    )
-    main._log.info("starting SIM")
-    print("starting sim")
-    args = get_args()
+# @logged
+def main(input_args=None):
+    # logging.basicConfig(
+    #     filename='messages',
+    #     filemode='w',
+    #     level=logging.INFO,
+    #     format='%(levelname)s:%(name)s:%(funcName)s:%(message)s '
+    # )
+    # main._log.info("starting SIM")
+    args = get_args(input_args)
 
-    tactics = [TacticBitEwm(SimExchangeBitMex.Symbol.XBTUSD)]
+    tactics = [TacticBitEwmWithStop(SimExchangeBitMex.Symbol.XBTUSD)]
 
     with SimExchangeBitMex(0.2, args.file, args.log_dir, tactics) as exchange:
 
@@ -524,10 +550,16 @@ def main():
         while exchange.is_open():
             exchange.advance_time(print_progress=True)
 
-        exchange.print_summary()
-        exchange.print_output_files()
+        summary = exchange.summary  # type: SimSummary
+        if not args.no_summary:
+            print(summary.to_str())
+        if args.log_dir is not None and not args.no_output:
+            exchange.print_output_files(input_args if input_args else sys.argv)
 
-    return 0
+    if __name__ == "__main__":
+        return 0
+    else:
+        return summary
 
 
 if __name__ == "__main__":

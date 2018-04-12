@@ -1,60 +1,42 @@
 #!/usr/bin/env python
 import contextlib
-import datetime
 import sys
 import time
-from optparse import OptionParser
 
-import dateutil
-import dateutil.parser
 import swagger_client
+from pandas import Timestamp, Timedelta
 from swagger_client.rest import ApiException
+
+from utils import smart_open
 
 MAX_NUM_CANDLES_BITMEX = 500
 
 
-@contextlib.contextmanager
-def smart_open(filename=None):
-    if filename and filename != '-':
-        fh = open(filename, 'w')
-    else:
-        fh = sys.stdout
-
-    try:
-        yield fh
-    finally:
-        if fh is not sys.stdout:
-            fh.close()
-
-
-def get_duration_in_min(start, end):
-    # type: (datetime.datetime, datetime.datetime) -> int
-    c = end - start
-    x = divmod(c.days * 86400 + c.seconds, 60)
-    return x[0] + (x[1] > 0)
-
-
 def print_file(file_or_stdout, api_instance, bin_size, partial, symbol, reverse, start_time, end_time):
-
-    duration_min = get_duration_in_min(start_time, end_time)
-    assert duration_min > 0
-
-    tmp = divmod(duration_min, MAX_NUM_CANDLES_BITMEX)
-    num_pages = tmp[0] + (tmp[1] > 0)  # extra page for left over
+    chunks = split_in_chunks(start_time, end_time, MAX_NUM_CANDLES_BITMEX, bin_size)
 
     with smart_open(file_or_stdout) as fh:
         print >> fh, "time,open,high,low,close,volume"
 
-        count = tmp[1] + 1 if tmp[1] > 0 else MAX_NUM_CANDLES_BITMEX
-        for i in reversed(range(num_pages)):
-            sys.stdout.write(
-                "progress: %d out of %d pages (%.2f%%)   \r" % (num_pages-i, num_pages, 100 * float(num_pages-i) / num_pages))
-            sys.stdout.flush()
+        num_pages = len(chunks)
+        for i in range(num_pages):
+            chunk = chunks[i]
+            s = chunk[0]
+            e = chunk[1]
 
-            page = api_instance.trade_get_bucketed(bin_size=bin_size, partial=partial, symbol=symbol,
-                                                   count=count, start=i * MAX_NUM_CANDLES_BITMEX,
+            count = (e - s) / Timedelta(bin_size)
 
-                                                   reverse=reverse, start_time=start_time, end_time=end_time)
+            page = api_instance.trade_get_bucketed(
+                bin_size=bin_size,
+                partial=partial,
+                symbol=symbol,
+                count=count,
+                start=0.0,
+                reverse=reverse,
+                start_time=s,
+                end_time=e)
+
+            print "from {} to {}: {} candles downloaded".format(s, e, len(page))
 
             #  TODO: bitmex has a bug where the high is not the highest value !!!!!
             for line in reversed(page):
@@ -64,15 +46,31 @@ def print_file(file_or_stdout, api_instance, bin_size, partial, symbol, reverse,
                                        str(min(line.low, line.open)),
                                        str(line.close),
                                        str(line.volume)])
+            sys.stdout.write(
+                "progress: completed %d out of %d pages (%.2f%%)   \r" %
+                (i + 1, num_pages, 100 * float(i + 1) / num_pages))
+            sys.stdout.flush()
             time.sleep(1.001)
-            count = MAX_NUM_CANDLES_BITMEX
         print ""
 
 
+def split_in_chunks(start, end, chunk_size, bucket_size):
+    # type: (Timestamp, Timestamp, int, str) -> list
+    # bucket size options:  1m, 5m, 1h, 1d
+    i = start
+    r = []
+    dt = chunk_size * Timedelta(bucket_size)
+    while i <= end:
+        r += [(i, min(end, i + dt))]
+        i += dt
+    return r
+
+
 def main():
-    start_time = dateutil.parser.parse('2017-12-12T00:00:01')  # datetime | Starting date filter for results. (optional)
-    end_time = dateutil.parser.parse('2017-12-31T00:00:01')  # datetime | Ending date filter for results. (optional)
-    file_or_stdout = 'data/bitmex_2weeks.csv'
+    start_time = Timestamp('2017-12-12T00:00:01')
+    end_time = Timestamp('2018-01-12T00:00:01')
+
+    file_or_stdout = 'data/bitmex_1month.csv'
 
     # create an instance of the API class
     configuration = swagger_client.Configuration()
@@ -81,7 +79,7 @@ def main():
     bin_size = '1m'  # str | Time interval to bucket by. Available options: [1m,5m,1h,1d]. (optional) (default to 1m)
     partial = False  # bool | If true, will send in-progress (incomplete) bins for the current time period. (optional) (default to false)
     symbol = 'XBTUSD'  # str | Instrument symbol. Send a bare series (e.g. XBU) to get data for the nearest expiring contract in that series.  You can also send a timeframe, e.g. `XBU:monthly`. Timeframes are `daily`, `weekly`, `monthly`, `quarterly`, and `biquarterly`. (optional)
-    reverse = True  # bool | If true, will sort results newest first. (optional) (default to false)
+    reverse = False  # bool | If true, will sort results newest first. (optional) (default to false)
 
     print "print to file " + (file_or_stdout if file_or_stdout is not '-' else 'std output')
     try:
