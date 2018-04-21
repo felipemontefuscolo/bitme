@@ -7,7 +7,7 @@ import swagger_client
 from pandas import Timestamp, Timedelta
 from swagger_client.rest import ApiException
 
-from utils import smart_open
+from tools.utils import smart_open
 
 MAX_NUM_CANDLES_BITMEX = 500
 
@@ -67,10 +67,10 @@ def split_in_chunks(start, end, chunk_size, bucket_size):
 
 
 def main():
-    start_time = Timestamp('2017-12-12T00:00:01')
-    end_time = Timestamp('2018-01-12T00:00:01')
+    start_time = Timestamp('2018-03-01T00:00:01')
+    end_time = Timestamp('2018-04-01T00:00:01')
 
-    file_or_stdout = 'data/bitmex_1month.csv'
+    file_or_stdout = 'data/bitmex_201803.csv'
 
     # create an instance of the API class
     configuration = swagger_client.Configuration()

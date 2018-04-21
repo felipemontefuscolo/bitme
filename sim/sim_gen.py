@@ -1,6 +1,5 @@
 import itertools
 import sys
-from multiprocessing.dummy import Pool as ThreadPool
 
 import sim
 
@@ -19,7 +18,7 @@ def main():
                '--no-summary ' \
                '--no-output'
 
-    input_dir = 'data/bitmex_1day.csv'
+    input_dir = 'data/bitmex_201803.csv'
     # span = [5, 10, 20, 40, 60, 80, 100]
     # greediness = [1., .75, .5, .25]
     # qty_to_trade = [.2]

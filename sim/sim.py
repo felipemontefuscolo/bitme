@@ -13,14 +13,10 @@ import pandas as pd
 from enum import Enum
 from numpy.core.umath import sign
 
-from candles import Candles
-from exchange_interface import ExchangeCommon
-from fill import Fill, FillType
-from orders import OrderType, Orders, OrderCancelReason, OrderStatus, OrderCommon
-from position import Position
+from common import ExchangeCommon, Fill, FillType, OrderType, Orders, OrderCancelReason, \
+                   OrderStatus, OrderCommon, Position, Candles
 from sim_stats import SimSummary
-from simcandles import SimCandles
-from tactic_mm import TacticInterface, TacticBitEwmWithStop
+from tactic import TacticInterface, TacticBitEwmWithStop
 
 
 # import logging
@@ -118,14 +114,14 @@ class SimExchangeBitMex(ExchangeCommon):
 
         self.file_name = os.path.abspath(file_name)
         self.log_dir = log_dir
-        self.candles = SimCandles(file_name)  # all candles
+        self.candles = Candles(file_name)  # all candles
         self.time_idx = 0
 
         self.tactics = tactics
         ss = [tac.get_symbol() for tac in tactics]
         zz = set(ss)
         if len(zz) != len(ss):
-            raise ValueError("Tactics with same symbol")
+            raise ValueError("Tactics trading same symbol is not allowed.")
 
         self.n_cancels = defaultdict(int)
         self.n_liquidations = defaultdict(int)  # Symbol -> int
@@ -540,6 +536,7 @@ def main(input_args=None):
     # main._log.info("starting SIM")
     args = get_args(input_args)
 
+    # defin here the tactic you want to activate
     tactics = [TacticBitEwmWithStop(SimExchangeBitMex.Symbol.XBTUSD)]
 
     with SimExchangeBitMex(0.2, args.file, args.log_dir, tactics) as exchange:

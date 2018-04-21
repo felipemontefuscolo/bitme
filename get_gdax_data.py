@@ -6,7 +6,7 @@ import contextlib
 import GDAX
 import re
 
-from utils import Hour, get_current_ts, to_iso_utc, to_iso_local, Min, to_ts
+from tools.utils import Hour, get_current_ts, to_iso_utc, to_iso_local, Min, to_ts
 from optparse import OptionParser
 
 NUM_CANDLES_GDAX_LIMIT = 200

@@ -2,7 +2,7 @@ import copy
 
 from sympy import sign
 
-from constants import ZERO_TOL
+from common.constants import ZERO_TOL
 
 
 class Position:

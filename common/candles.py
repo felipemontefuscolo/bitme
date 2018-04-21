@@ -1,13 +1,10 @@
 import pandas as pd
 from pandas import Series, DataFrame, Timestamp
 
-from candles import Candles
 
-
-class SimCandles(Candles):
+class Candles:
     def __init__(self, filename=None, data=None):
         # type: (str, DataFrame) -> None
-        Candles.__init__(self)
         if filename is not None and data is None:
             timeparser = lambda s: pd.datetime.strptime(str(s), '%Y-%m-%dT%H:%M:%S')
             self.data = pd.DataFrame(  # is this conversion inefficient?
@@ -30,8 +27,8 @@ class SimCandles(Candles):
         return self.data.iloc[index]
 
     def subset(self, idx_begin, idx_end):
-        # type: (int, int) -> SimCandles
-        return SimCandles(data=self.data.iloc[idx_begin:idx_end])
+        # type: (int, int) -> Candles
+        return Candles(data=self.data.iloc[idx_begin:idx_end])
 
     def size(self):
         return self.data.shape[0]
@@ -43,17 +40,17 @@ class SimCandles(Candles):
         # type: () -> Timestamp
         return self.data.iloc[-1].name
 
-    def last_price(self):
+    def last_trade_price(self):
         # type: () -> float
         return self.data.iloc[-1].close
 
     def sample_candles(self, granularity, begin_ts, end_ts):
-        # type: (pd.Timedelta, Timestamp, Timestamp) -> SimCandles
+        # type: (pd.Timedelta, Timestamp, Timestamp) -> Candles
         '''
         :param granularity: example: pd.Timedelta(hours=1)'
-        :param begin_ts: example: SimCandles().iloc[0].name - pd.Timedelta(hours=1)
-        :param end_ts: example: SimCandles().iloc[0].name
-        :return: sampled SimCandles
+        :param begin_ts: example: Candles().iloc[0].name - pd.Timedelta(hours=1)
+        :param end_ts: example: Candles().iloc[0].name
+        :return: sampled Candles
         '''
         sliced = self.data.loc[begin_ts:end_ts]
 
@@ -65,4 +62,5 @@ class SimCandles(Candles):
 
         result = pd.concat([l, h, o, c, v], axis=1)
 
-        return SimCandles(data=result)
+        return Candles(data=result)
+

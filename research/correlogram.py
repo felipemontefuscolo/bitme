@@ -1,14 +1,13 @@
-import sys, os
+import sys
 import numpy as np
 import pandas as pd
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 from statsmodels.tsa.stattools import acf, pacf
 import matplotlib.pyplot as plt
-from pandas.plotting import autocorrelation_plot
 import random as rd
 import scipy.signal as sg  # for scipy.signal.welch
 from statsmodels.tsa.stattools import adfuller
-from detect_peaks import strong_peak
+from research.detect_peaks import strong_peak
 
 
 # how to do forecast and detect rolling mean http://www.seanabu.com/2016/03/22/time-series-seasonal-ARIMA-model-in-python/

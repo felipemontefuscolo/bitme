@@ -1,16 +1,10 @@
 from statsmodels.tsa.ar_model import AR
-from statsmodels.tsa.arima_model import ARIMA, ARMA
-from statsmodels.tsa.statespace.sarimax import SARIMAX
-from statsmodels.tsa.stattools import *
 from statsmodels.graphics.tsaplots import *
-import numpy as np
 from matplotlib.pyplot import *
 import scipy.signal as sg  # for scipy.signal.welch
-import math
 from scipy.ndimage.interpolation import shift
 
 # this script is just to understand how AR model works
-from stats_tools import get_best_pdq_sarimax
 
 
 def diff(x, n, remove_nan=True):

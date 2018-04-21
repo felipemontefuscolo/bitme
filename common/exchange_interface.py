@@ -3,7 +3,7 @@ from pandas import Timestamp
 
 from orders import Orders
 from position import Position
-from simcandles import SimCandles
+from common.candles import Candles
 
 
 class ExchangeCommon:
@@ -11,7 +11,7 @@ class ExchangeCommon:
         pass
 
     def get_candles1m(self):
-        # type: (None) -> SimCandles
+        # type: (None) -> Candles
         raise AttributeError("interface class")
 
     def post_orders(self, orders):
