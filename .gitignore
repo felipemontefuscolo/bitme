@@ -102,3 +102,7 @@ ENV/
 
 #vim
 *.swp
+
+# intellij
+.idea/
+.idea/workspace.xml
