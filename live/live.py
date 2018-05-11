@@ -2,12 +2,12 @@ from collections import OrderedDict
 
 import sys
 from enum import Enum
-from swagger_client import Quote, Position
+# import swagger_client
 
-from common import ExchangeCommon, Orders, Position, Candles
+from common import ExchangeCommon, Position, Orders, Candles
 import pandas as pd
 
-import swagger_client
+import swagger_client  # bitmex lib
 from pandas import Timestamp, Timedelta
 
 MAX_NUM_CANDLES_BITMEX = 500
@@ -79,7 +79,7 @@ class LiveBitMex(ExchangeCommon):
 
     def current_price(self):
         # type: () -> float
-        q = self.quote_api.quote_get(count=1)[0]  # type: Quote
+        q = self.quote_api.quote_get(count=1)[0]  # type: swagger_client.Quote
         return q.ask_price
 
     def get_position(self, symbol='XBTUSD'):
@@ -106,9 +106,8 @@ class LiveBitMex(ExchangeCommon):
 
 
 if __name__ == "__main__":
-    sys.path.append('')
     live = LiveBitMex()
-    print(live.get_candles1m())
-    # for i in live.get_position():
-    #    print(i)
+    #print(live.get_candles1m())
+    for i in live.get_position():
+        print(i)
 

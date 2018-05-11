@@ -1,8 +1,8 @@
 from enum import Enum
 from pandas import Timestamp
 
-from orders import Orders
-from position import Position
+from common.orders import Orders
+from common.position import Position
 from common.candles import Candles
 
 

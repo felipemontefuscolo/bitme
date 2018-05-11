@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 from setuptools import setup
-from os.path import dirname, join
+import os
+from os.path import dirname, join, realpath
 
-import market_maker
+here = dirname(realpath(__file__))
 
-
-here = dirname(__file__)
-
+packs = [dir for dir in os.listdir(here) if os.path.isdir(dir) if '__init__.py' in os.listdir(dir)]
 
 setup(name='bitmex-trader',
-      version=101,
+      version=0.01,
       description='bot for BitMEX API',
       url='https://github.com/felipemontefuscolo/bitme',
       long_description=open(join(here, 'README.md')).read(),
@@ -18,16 +17,9 @@ setup(name='bitmex-trader',
       install_requires=[
           'requests',
           'websocket-client',
-          'future'
+          'cdecimal',
+          'pandas',
+          'simpy'
       ],
-      packages=['auth',
-                'common',
-                'live',
-                'research',
-                'sim',
-                'tactic'
-                'tools']#,
-      #entry_points={
-      #    'console_scripts': ['entry_point = market_maker:run']
-      #}
+      packages=packs
       )
