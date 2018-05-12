@@ -15,7 +15,7 @@ from numpy.core.umath import sign
 
 from common import ExchangeCommon, Fill, FillType, OrderType, Orders, OrderCancelReason, \
                    OrderStatus, OrderCommon, Position, Candles
-from sim_stats import SimSummary
+from .sim_stats import SimSummary
 from tactic import TacticInterface, TacticBitEwmWithStop
 
 

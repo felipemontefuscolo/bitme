@@ -1,6 +1,6 @@
 from enum import Enum
 
-from orders import to_str, TWOPLACES, OrderCommon, OrderType
+from .orders import to_str, OrderCommon, OrderType
 import pandas as pd
 from pandas import Timestamp
 
@@ -34,7 +34,7 @@ class Fill:
             'order_id': self.order.id,
             'side': self.side,
             'qty': str(int(self.qty)),  # USD
-            'price': to_str(self.price, TWOPLACES),  # USD
+            'price': to_str(self.price, 2),  # USD
             'order_type': self.order.type.name,
             'type': self.fill_type.name
         }
@@ -47,7 +47,7 @@ class Fill:
             str(self.order.id),
             str(self.side),
             str(int(self.qty)),  # USD
-            str(to_str(self.price, TWOPLACES)),  # USD
+            str(to_str(self.price, 2)),  # USD
             str(self.order.type.name),
             str(self.fill_type.name)
         ])

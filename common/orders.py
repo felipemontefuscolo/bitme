@@ -1,16 +1,11 @@
 import base64
 import uuid
-from cdecimal import Decimal
 
 import math
 import pandas as pd
 from enum import Enum
 
 from tools import floor_5, round_n
-
-ONEPLACE = Decimal(10) ** -1
-TWOPLACES = Decimal(10) ** -2
-EIGHPLACES = Decimal(10) ** -8
 
 
 # Order container util
@@ -217,5 +212,5 @@ def _get(dicti, key, default):
         return default
 
 
-def to_str(number, precision=TWOPLACES):
-    return str(Decimal(str(number)).quantize(precision))
+def to_str(number, precision=2):
+    return "%.{}f".format(precision) % round(float(number), precision)

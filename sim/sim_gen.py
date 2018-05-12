@@ -9,7 +9,7 @@ def pp(x):
 
 
 def main():
-    sim_args = 'python sim.py -f {input_data} ' \
+    sim_args = 'python __main__.py -f {input_data} ' \
                '-x span={span} ' \
                '-x greediness={greediness} ' \
                '-x qty_to_trade={qty_to_trade} ' \

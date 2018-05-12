@@ -17,9 +17,8 @@ setup(name='bitmex-trader',
       install_requires=[
           'requests',
           'websocket-client',
-          'cdecimal',
           'pandas',
-          'simpy'
+          'sympy'
       ],
       packages=packs
       )
