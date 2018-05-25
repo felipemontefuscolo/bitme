@@ -18,7 +18,8 @@ setup(name='bitmex-trader',
           'requests',
           'websocket-client',
           'pandas',
-          'sympy'
+          'sympy',
+          'future'
       ],
       packages=packs
       )

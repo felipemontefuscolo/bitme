@@ -1,6 +1,6 @@
 from requests.auth import AuthBase
 import time
-from market_maker.auth.APIKeyAuth import generate_signature
+from live.auth.APIKeyAuth import generate_signature
 
 
 class APIKeyAuthWithExpires(AuthBase):

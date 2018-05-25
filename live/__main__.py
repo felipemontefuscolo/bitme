@@ -2,19 +2,27 @@ from collections import OrderedDict
 
 import sys
 from enum import Enum
-# import swagger_client
+
+import os
 
 from common import ExchangeCommon, Position, Orders, Candles
 import pandas as pd
 
+from urllib.parse import urlparse, urlunparse
 import swagger_client  # bitmex lib
 from pandas import Timestamp, Timedelta
+from live import bitmex
+from live.settings import settings
+from tools import log
 
 MAX_NUM_CANDLES_BITMEX = 500
 
 
 def time_parser(s):
     pd.datetime.strptime(str(s), '%Y-%m-%dT%H:%M:%S')
+
+
+logger = log.setup_custom_logger('root')
 
 
 class LiveBitMex(ExchangeCommon):
@@ -24,12 +32,15 @@ class LiveBitMex(ExchangeCommon):
         assert self.span <= MAX_NUM_CANDLES_BITMEX
 
         configuration = swagger_client.Configuration()
-        configuration.host = 'https://www.bitmex.com/api/v1'
         self.api_client = swagger_client.ApiClient(configuration)
         self.trade_api = swagger_client.TradeApi(self.api_client)
         self.quote_api = swagger_client.QuoteApi(self.api_client)
         self.position_api = swagger_client.PositionApi(self.api_client)
 
+        self.bitmex = bitmex.BitMEX(base_url=settings.BASE_URL, symbol='XBTUSD',
+                                    apiKey=settings.API_KEY, apiSecret=settings.API_SECRET,
+                                    orderIDPrefix=settings.ORDERID_PREFIX, postOnly=settings.POST_ONLY,
+                                    timeout=settings.TIMEOUT)
         pass
 
     def get_candles1m(self):
@@ -84,7 +95,9 @@ class LiveBitMex(ExchangeCommon):
 
     def get_position(self, symbol='XBTUSD'):
         # type: (Enum) -> Position
-        self.position_api.position_get(count=3)
+        #self.position_api.position_get(count=3)
+        return self.bitmex.position(symbol)
+
 
     def get_closed_positions(self, symbol='XBTUSD'):
         # type: (Enum) -> list(Position)
@@ -108,6 +121,7 @@ class LiveBitMex(ExchangeCommon):
 if __name__ == "__main__":
     live = LiveBitMex()
     #print(live.get_candles1m())
-    for i in live.get_position():
-        print(i)
+    g = live.get_position()
+    print(type(g))
+    print(g)
 
