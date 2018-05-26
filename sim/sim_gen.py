@@ -36,7 +36,7 @@ def main():
     for s in itertools.product(*pars):
         c += [sim_args.format(input_data=input_dir, span=s[0], greediness=s[1], qty_to_trade=s[2], loss_limit=s[3],
                               dir=len(c)).split()]
-        print ' '.join(c[-1])
+        print(' '.join(c[-1]))
         t += [(s[0], s[1], s[2], s[3])]
 
 
