@@ -1,1 +1,0 @@
-['sim.py', '-f', 'data/bitmex_1day.csv', '-x', 'span=40', '-x', 'greediness=1.0', '-x', 'qty_to_trade=0.2', '-x', 'loss_limit=3', '-l', 'output', '--no-summary']

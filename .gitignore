@@ -107,3 +107,7 @@ ENV/
 # intellij
 .idea/
 .idea/workspace.xml
+
+outdir/
+output/
+
