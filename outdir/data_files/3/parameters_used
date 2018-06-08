@@ -1,0 +1,1 @@
+['/Users/felipe/bitme/sim/__main__.py', '-x', 'span=100', '-x', 'loss_limit=3', '-x', 'qty_to_trade=0.2', '-x', 'greediness=1.', '-l', '/Users/felipe/bitme/outdir/data_files/3', '-f', '/Users/felipe/bitme/data/bitmex_1day.csv']

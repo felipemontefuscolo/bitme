@@ -90,13 +90,7 @@ def floor_5(x):
         return math.ceil(2. * x) * 0.5
 
 
-def round_n(x, n):
-    # example: round_n(0.123456789, 3) = 0.123
-    return round(x * pow(10, n)) / pow(10, n)
-
-
-def read_data(file, begin=None, end=None):
-    # type: (str, pd.Timestamp, pd.Timestamp) -> pd.DataFramew
+def read_data(file: str, begin: pd.Timestamp=None, end: pd.Timestamp=None) -> pd.DataFrame:
     timeparser = lambda s: pd.datetime.strptime(str(s), '%Y-%m-%dT%H:%M:%S')
     data = pd.DataFrame(pd.read_csv(file, parse_dates=True, index_col='time', date_parser=timeparser))
 

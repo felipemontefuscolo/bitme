@@ -1,12 +1,6 @@
 import itertools
 import sys
 
-import sim
-
-
-def pp(x):
-    return sim.main(x)
-
 
 def main():
     sim_args = 'python __main__.py -f {input_data} ' \

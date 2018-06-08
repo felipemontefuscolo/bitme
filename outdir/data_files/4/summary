@@ -1,0 +1,11 @@
+initial_xbt: 0.2
+position_xbt: 35.77409086307479
+num_fills: {'XBTUSD': 40}
+num_orders: {'XBTUSD': 45}
+num_cancels: {'requested_by_user': 1, 'liquidation': 5, 'end_of_sim': 1}
+num_liq: {'XBTUSD': 5}
+close_price: 11127.0
+pnl: {'XBTUSD': 35.574090863074794}
+pnl_total: 35.574090863074794
+profit_total: 49.464160433404174
+loss_total: -13.89006957032938

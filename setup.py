@@ -23,7 +23,7 @@ setup(name='bitmex-trader',
           'matplotlib',  # maybe exclude this
           'plotly',  # maybe exclude this
           'nb_conda_kernels',  # to control envs in jupiter
-          'altair'  # to plot sim results
+          'altair', 'numpy'  # to plot sim results
       ],
       packages=packs
       )

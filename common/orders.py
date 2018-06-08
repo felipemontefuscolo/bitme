@@ -5,8 +5,6 @@ import math
 import pandas as pd
 from enum import Enum
 
-from tools import floor_5, round_n
-
 
 # Order container util
 class Orders:
@@ -27,7 +25,7 @@ class Orders:
 
     def of_symbol(self, symbol):
         # type: (Enum) -> Orders
-        return Orders(dict([(o_id, o) for o_id, o in self.data.iteritems() if o.symbol == symbol]))
+        return Orders(dict([(o_id, o) for o_id, o in self.data.items() if o.symbol == symbol]))
 
     def size(self):
         return len(self.data)
@@ -83,7 +81,7 @@ class OrderCommon:
         self.symbol = kargs['symbol']  # type: Enum
         self.signed_qty = math.floor(_get(kargs, 'signed_qty', float('nan')))  # type: float
         # self.signed_simple_qty = get_or_none(kargs, 'signed_simple_qty') # type: float
-        self.price = round_n(_get(kargs, 'price', float('nan')), 1)  # type: float
+        self.price = round(_get(kargs, 'price', float('nan')), 1)  # type: float
         self.stop_price = _get(kargs, 'stop_price', float('nan'))  # type: float
         self.linked_order_id = _get(kargs, 'linked_order_id', None)  # type: str
         self.type = kargs['type']  # type: OrderType
