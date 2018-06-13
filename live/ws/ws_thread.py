@@ -13,6 +13,7 @@ from tools.log import setup_custom_logger
 from tools.utils import to_nearest
 from future.utils import iteritems
 from future.standard_library import hooks
+
 with hooks():  # Python 2/3 compat
     from urllib.parse import urlparse, urlunparse
 
@@ -26,7 +27,6 @@ with hooks():  # Python 2/3 compat
 # Right after, the MM can start using its data. It will be updated in realtime, so the MM can
 # poll as often as it wants.
 class BitMEXWebsocket():
-
     # Don't grow a table larger than this amount. Helps cap memory usage.
     MAX_TABLE_LEN = 200
 
@@ -47,6 +47,7 @@ class BitMEXWebsocket():
         # We can subscribe right in the connection querystring, so let's build that.
         # Subscribe to all pertinent endpoints
         subscriptions = [sub + ':' + symbol for sub in ["quote", "trade"]]
+        subscriptions += ['tradeBin1m:' + symbol]
         subscriptions += ["instrument"]  # We want all of them
         if self.shouldAuth:
             subscriptions += [sub + ':' + symbol for sub in ["order", "execution"]]
@@ -127,6 +128,9 @@ class BitMEXWebsocket():
     def recent_trades(self):
         return self.data['trade']
 
+    def trades1min_bin(self):
+        return self.data['tradeBin1m']
+
     #
     # Lifecycle methods
     #
@@ -164,13 +168,14 @@ class BitMEXWebsocket():
         self.logger.info("Started thread")
 
         # Wait for connect before continuing
-        conn_timeout = 5
+        conn_timeout = 10
         while (not self.ws.sock or not self.ws.sock.connected) and conn_timeout and not self._error:
             sleep(1)
             conn_timeout -= 1
 
         if not conn_timeout or self._error:
-            self.logger.error("Couldn't connect to WS! Exiting.")
+            self.logger.error(
+                "Couldn't connect to WS! Exiting. (timeout, error) = ({}, {})".format(conn_timeout==0, self._error))
             self.exit()
             sys.exit(1)
 
@@ -201,12 +206,14 @@ class BitMEXWebsocket():
         while not {'instrument', 'trade', 'quote'} <= set(self.data):
             sleep(0.1)
 
-    def __send_command(self, command, args):
-        '''Send a raw command.'''
-        self.ws.send(json.dumps({"op": command, "args": args or []}))
+    # def __send_command(self, command, args):
+    #    '''Send a raw command.'''
+    #    self.ws.send(json.dumps({"op": command, "args": args or []}))
 
     def __on_message(self, ws, message):
         '''Handler for parsing WS messages.'''
+        if 'tradeBin1m' in message:
+            print(message)
         message = json.loads(message)
         self.logger.debug(json.dumps(message))
 
@@ -268,8 +275,8 @@ class BitMEXWebsocket():
                                 if contExecuted > 0:
                                     instrument = self.get_instrument(item['symbol'])
                                     self.logger.info("Execution: %s %d Contracts of %s at %.*f" %
-                                             (item['side'], contExecuted, item['symbol'],
-                                              instrument['tickLog'], item['price']))
+                                                     (item['side'], contExecuted, item['symbol'],
+                                                      instrument['tickLog'], item['price']))
 
                         # Update this item.
                         item.update(updateData)
@@ -330,6 +337,5 @@ if __name__ == "__main__":
     ws = BitMEXWebsocket()
     ws.logger = logger
     ws.connect("https://testnet.bitmex.com/api/v1")
-    while(ws.ws.sock.connected):
+    while (ws.ws.sock.connected):
         sleep(1)
-

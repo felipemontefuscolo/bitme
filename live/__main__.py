@@ -5,6 +5,8 @@ from enum import Enum
 
 import os
 
+import time
+
 from common import ExchangeCommon, Position, Orders, Candles
 import pandas as pd
 
@@ -14,6 +16,7 @@ from pandas import Timestamp, Timedelta
 from live import bitmex
 from live.settings import settings
 from tools import log
+import json
 
 MAX_NUM_CANDLES_BITMEX = 500
 
@@ -73,7 +76,6 @@ class LiveBitMex(ExchangeCommon):
                                    ('volume', p.volume)])
 
         data = pd.DataFrame.from_records(page[::-1], index='time')
-        print(data)
         return Candles(data=data)
 
     def post_orders(self, orders):
@@ -98,6 +100,12 @@ class LiveBitMex(ExchangeCommon):
         #self.position_api.position_get(count=3)
         return self.bitmex.position(symbol)
 
+    def recent_trades(self):
+        return self.bitmex.recent_trades()
+
+    def trades1min_bin(self):
+        r = self.bitmex.trades1min_bin()
+        return r
 
     def get_closed_positions(self, symbol='XBTUSD'):
         # type: (Enum) -> list(Position)
@@ -121,7 +129,23 @@ class LiveBitMex(ExchangeCommon):
 if __name__ == "__main__":
     live = LiveBitMex()
     #print(live.get_candles1m())
-    g = live.get_position()
-    print(type(g))
-    print(g)
+    #g = live.get_position()
+    g = None
+    for i in range(120):
+        print("SLEEP")
+        time.sleep(1)
+
+
+        new_g = live.trades1min_bin()
+        if g != new_g:
+            g = new_g
+            json.dumps(g, indent=4, sort_keys=True)
+        else:
+            print("NONE")
+
+        print("WAKE! {}".format(json.dumps(g, indent=4, sort_keys=True)))
+
+
+    #print(type(g))
+    #print(g)
 

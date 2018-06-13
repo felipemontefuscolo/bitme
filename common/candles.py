@@ -1,22 +1,41 @@
 import pandas as pd
 from pandas import Series, DataFrame, Timestamp
+from typing import Union
 
 
 class Candles:
     def __init__(self, filename=None, data=None):
-        # type: (str, DataFrame) -> None
-        if filename is not None and data is None:
-            timeparser = lambda s: pd.datetime.strptime(str(s), '%Y-%m-%dT%H:%M:%S')
-            self.data = pd.DataFrame(  # is this conversion inefficient?
-                pd.read_csv(filename, parse_dates=True, index_col='time', date_parser=timeparser))
-        elif data is not None and filename is None:
-            assert isinstance(data, DataFrame)
-            self.data = data
-        else:
-            raise ValueError("XOR(filename==None, data==None) should be True")
-        self.fix_bitmex_bug()
+        self.data = self.to_ohlcv(data, filename)
 
-    def fix_bitmex_bug(self):
+    @staticmethod
+    def to_ohlcv(data: Union[pd.DataFrame, list] = None, filename=None) -> pd.DataFrame:
+
+        if filename is not None:
+            if data is not None:
+                raise ValueError("XOR(filename==None, data==None) should be True")
+            data = pd.read_csv(filename)
+
+        if isinstance(data, list):
+            df = pd.DataFrame(data=data, dtype='float64')
+        else:
+            df = data
+        if 'timestamp' in df.columns:
+            df.set_index('timestamp', inplace=True)
+        elif 'time' in df.columns:
+            df.set_index('time', inplace=True)
+        df = df[['open', 'high', 'low', 'close', 'volume']]
+        df.index = pd.to_datetime(df.index)
+
+        # dirty fix of bitmex bug
+        idx = df['low'] > df['open']
+        c = df.copy()
+        c['low'][idx] = df['open']
+        idx = df['high'] < df['open']
+        c['high'][idx] = df['open']
+
+        return c
+
+    def _fix_bitmex_bug(self):
         idx = self.data['low'] > self.data['open']
         c = self.data.copy()
         c['low'][idx] = self.data['open']
@@ -32,17 +51,6 @@ class Candles:
 
     def size(self):
         return self.data.shape[0]
-
-    def to_csv(self):
-        return self.data.to_csv()
-
-    def last_timestamp(self):
-        # type: () -> Timestamp
-        return self.data.iloc[-1].name
-
-    def last_trade_price(self):
-        # type: () -> float
-        return self.data.iloc[-1].close
 
     def sample_candles(self, granularity, begin_ts, end_ts):
         # type: (pd.Timedelta, Timestamp, Timestamp) -> Candles
