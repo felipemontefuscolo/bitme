@@ -1,6 +1,6 @@
 import math
 
-from pandas._libs.tslib import Timedelta
+import pandas as pd
 from sympy import sign
 
 from common.fill import FillType
@@ -15,7 +15,7 @@ class TacticBitEwm(TacticInterface):
 
         self.opened_orders = Orders()
         self.position = None  # type: Position
-        self.last_activity_time = None  # type: Timestamp
+        self.last_activity_time = None  # type: pd.Timestamp
         self.multiplier = 100.
         self.span = 20
         self.greediness = 0.1  # 0. -> post order at EMA, 1. -> post order at EMA + std
@@ -124,14 +124,14 @@ class TacticBitEwm(TacticInterface):
         #self.__log.info("handling candles")
 
         # type: (ExchangeCommon, float, float) -> None
-        candles1m = exchange.get_candles1m()  # type: Candles
+        candles1m = exchange.get_candles1m()  # type: pd.DataFrame
         price = exchange.current_price()
-        assert price == candles1m.at(-1)['close']
+        #assert price == candles1m.tail(1)['close']
 
         self.position = exchange.get_position(self.product_id)  # type: Position
 
         # warming up
-        if candles1m.size() < self.span:
+        if len(candles1m) < self.span:
             return
 
         self.opened_orders.drop_closed_orders()
@@ -146,7 +146,7 @@ class TacticBitEwm(TacticInterface):
                     assert self.opened_orders.size() == 0
             return
 
-        df = candles1m.data['close']  # type: Series
+        df = candles1m['close']  # type: pd.Series
         ema = df.ewm(span=self.span).mean()[-1]
         std = df.tail(self.span).std()
 

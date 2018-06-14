@@ -1,6 +1,6 @@
 import math
 
-from pandas._libs.tslib import Timedelta
+from pandas import Timedelta, DataFrame, Series
 from sympy import sign
 
 from common.fill import FillType
@@ -136,14 +136,14 @@ class TacticBitEwmWithStop(TacticInterface):
         # self.__log.info("handling candles")
 
         # type: (ExchangeCommon, float, float) -> None
-        candles1m = exchange.get_candles1m()  # type: Candles
+        candles1m = exchange.get_candles1m()  # type: DataFrame
         price = exchange.current_price()
-        assert price == candles1m.at(-1)['close']
+        # assert price == candles1m.iloc[-1]['close']
 
         self.position = exchange.get_position(self.product_id)  # type: Position
 
         # warming up
-        if candles1m.size() < self.span:
+        if len(candles1m) < self.span:
             return
 
         self.opened_orders.drop_closed_orders()
@@ -164,7 +164,7 @@ class TacticBitEwmWithStop(TacticInterface):
             #print("STOPPPPPPPPPPPP LOSING IT!!!")
             #return
 
-        df = candles1m.data['close']  # type: Series
+        df = candles1m['close']  # type: Series
         ema = df.ewm(span=self.span).mean()[-1]
         std = df.tail(self.span).std()
 

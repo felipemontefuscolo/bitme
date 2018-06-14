@@ -6,13 +6,14 @@
   <component name="ChangeListManager">
     <list default="true" id="f802fea8-a251-463a-97b6-49659b8de660" name="Default" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change beforePath="$PROJECT_DIR$/Untitled1.ipynb" afterPath="$PROJECT_DIR$/Untitled1.ipynb" />
       <change beforePath="$PROJECT_DIR$/common/candles.py" afterPath="$PROJECT_DIR$/common/candles.py" />
+      <change beforePath="$PROJECT_DIR$/common/exchange_interface.py" afterPath="$PROJECT_DIR$/common/exchange_interface.py" />
+      <change beforePath="$PROJECT_DIR$/common/orders.py" afterPath="$PROJECT_DIR$/common/orders.py" />
       <change beforePath="$PROJECT_DIR$/live/__main__.py" afterPath="$PROJECT_DIR$/live/__main__.py" />
-      <change beforePath="$PROJECT_DIR$/live/bitmex.py" afterPath="$PROJECT_DIR$/live/bitmex.py" />
-      <change beforePath="$PROJECT_DIR$/live/settings_base.py" afterPath="$PROJECT_DIR$/live/settings_base.py" />
-      <change beforePath="$PROJECT_DIR$/live/ws/ws_thread.py" afterPath="$PROJECT_DIR$/live/ws/ws_thread.py" />
-      <change beforePath="$PROJECT_DIR$/sim/sim_gen.py" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/sim/__main__.py" afterPath="$PROJECT_DIR$/sim/__main__.py" />
+      <change beforePath="$PROJECT_DIR$/sim/simcandles.py" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/tactic/TacticBitEwm.py" afterPath="$PROJECT_DIR$/tactic/TacticBitEwm.py" />
+      <change beforePath="$PROJECT_DIR$/tactic/TacticBitEwmWithStop.py" afterPath="$PROJECT_DIR$/tactic/TacticBitEwmWithStop.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -29,11 +30,9 @@
       <file leaf-file-name="__main__.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/live/__main__.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="2055">
-              <caret line="137" column="0" lean-forward="false" selection-start-line="137" selection-start-column="0" selection-end-line="137" selection-end-column="0" />
-              <folding>
-                <element signature="e#0#35#0" expanded="true" />
-              </folding>
+            <state relative-caret-position="195">
+              <caret line="13" column="54" lean-forward="false" selection-start-line="13" selection-start-column="54" selection-end-line="13" selection-end-column="54" />
+              <folding />
             </state>
           </provider>
         </entry>
@@ -41,90 +40,100 @@
       <file leaf-file-name="__main__.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/sim/__main__.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="234">
-              <caret line="164" column="0" lean-forward="false" selection-start-line="164" selection-start-column="0" selection-end-line="164" selection-end-column="0" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="candles.py" pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/common/candles.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="90">
-              <caret line="7" column="48" lean-forward="false" selection-start-line="7" selection-start-column="48" selection-end-line="7" selection-end-column="48" />
+            <state relative-caret-position="201">
+              <caret line="237" column="26" lean-forward="false" selection-start-line="237" selection-start-column="26" selection-end-line="237" selection-end-column="26" />
               <folding>
-                <element signature="e#0#19#0" expanded="true" />
+                <element signature="e#88#103#0" expanded="true" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="get_bitmex_data2.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/get_bitmex_data2.py">
+      <file leaf-file-name="generic.py" pinned="false" current-in-tab="false">
+        <entry file="file://$USER_HOME$/anaconda3/envs/bitme-dev/lib/python3.6/site-packages/pandas/core/generic.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-96">
-              <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+            <state relative-caret-position="210">
+              <caret line="1266" column="46" lean-forward="false" selection-start-line="1266" selection-start-column="42" selection-end-line="1266" selection-end-column="46" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="datetimes.py" pinned="false" current-in-tab="false">
-        <entry file="file://$USER_HOME$/anaconda3/envs/bitme-dev/lib/python3.6/site-packages/pandas/core/tools/datetimes.py">
+      <file leaf-file-name="TacticBitEwmWithStop.py" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/tactic/TacticBitEwmWithStop.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-203">
-              <caret line="38" column="4" lean-forward="false" selection-start-line="38" selection-start-column="4" selection-end-line="38" selection-end-column="4" />
+            <state relative-caret-position="2220">
+              <caret line="148" column="38" lean-forward="false" selection-start-line="148" selection-start-column="38" selection-end-line="148" selection-end-column="38" />
+              <folding>
+                <element signature="e#0#11#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="TacticBitEwm.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/tactic/TacticBitEwm.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="284">
+              <caret line="135" column="0" lean-forward="false" selection-start-line="135" selection-start-column="0" selection-end-line="135" selection-end-column="0" />
+              <folding>
+                <element signature="e#0#11#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="candles.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/common/candles.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="780">
+              <caret line="52" column="17" lean-forward="false" selection-start-line="52" selection-start-column="17" selection-end-line="52" selection-end-column="17" />
+              <folding>
+                <element signature="e#0#24#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="builtins.py" pinned="false" current-in-tab="false">
+        <entry file="file://$USER_HOME$/Library/Caches/PyCharmCE2017.3/python_stubs/909059840/builtins.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="219">
+              <caret line="925" column="6" lean-forward="false" selection-start-line="925" selection-start-column="6" selection-end-line="925" selection-end-column="6" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="simple_ohlc.html" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/simple_ohlc.html">
+      <file leaf-file-name="exchange_interface.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/common/exchange_interface.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="90">
+              <caret line="6" column="0" lean-forward="false" selection-start-line="6" selection-start-column="0" selection-end-line="6" selection-end-column="0" />
+              <folding>
+                <element signature="e#0#39#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="orders.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/common/orders.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="456">
+              <caret line="94" column="24" lean-forward="false" selection-start-line="94" selection-start-column="24" selection-end-line="94" selection-end-column="24" />
+              <folding>
+                <element signature="e#0#13#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="tslib.py" pinned="false" current-in-tab="false">
+        <entry file="file://$USER_HOME$/Library/Caches/PyCharmCE2017.3/python_stubs/909059840/pandas/_libs/tslib.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="226">
-              <caret line="6" column="127996" lean-forward="false" selection-start-line="6" selection-start-column="127996" selection-end-line="6" selection-end-column="127996" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="typing.py" pinned="false" current-in-tab="false">
-        <entry file="file://$USER_HOME$/anaconda3/envs/bitme-dev/lib/python3.6/typing.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-101">
-              <caret line="685" column="6" lean-forward="false" selection-start-line="685" selection-start-column="6" selection-end-line="685" selection-end-column="6" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="frame.py" pinned="false" current-in-tab="false">
-        <entry file="file://$USER_HOME$/anaconda3/envs/bitme-dev/lib/python3.6/site-packages/pandas/core/frame.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1165">
-              <caret line="315" column="8" lean-forward="false" selection-start-line="315" selection-start-column="8" selection-end-line="315" selection-end-column="8" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="sim_stats.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/sim/sim_stats.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="0">
-              <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="simcandles.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/sim/simcandles.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="45">
-              <caret line="3" column="10" lean-forward="false" selection-start-line="3" selection-start-column="10" selection-end-line="3" selection-end-column="10" />
+              <caret line="1360" column="6" lean-forward="false" selection-start-line="1360" selection-start-column="6" selection-end-line="1360" selection-end-column="6" />
               <folding />
             </state>
           </provider>
@@ -141,25 +150,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>strpstr</find>
-      <find>output_type</find>
-      <find>strptime</find>
-      <find>multiple</find>
-      <find>scatter(</find>
-      <find>df.</find>
-      <find>args.begi</find>
-      <find>args.log_dir</find>
-      <find>parameters_used</find>
-      <find>pnl</find>
-      <find>filename</find>
-      <find>order</find>
-      <find>#!</find>
-      <find>file_name</find>
-      <find>&quot;args&quot;:</find>
-      <find>__send_</find>
-      <find>self.ws</find>
-      <find>Couldn't connect to WS! ExitingCouldn't connect to WS! Exiting</find>
-      <find>orderbo</find>
       <find>tradeBin</find>
       <find>Couldn't connect to WS! Exiting</find>
       <find>table</find>
@@ -170,7 +160,26 @@
       <find>sleep</find>
       <find>import Union</find>
       <find>Union</find>
+      <find>self.bitmex</find>
+      <find>self.bit</find>
+      <find>self.bi</find>
+      <find>shouldWSAuth</find>
+      <find>std(</find>
+      <find>candles1m</find>
+      <find>def st</find>
+      <find>get_candles1m</find>
+      <find>type of caller</find>
+      <find>Timestamp</find>
+      <find>self.candles.</find>
+      <find>self.candles.data</find>
+      <find>self.candles</find>
+      <find>self.candles.size()</find>
       <find>self.data</find>
+      <find>candles1m.size()</find>
+      <find>rows</find>
+      <find>self.candles.size</find>
+      <find>candles1m.size</find>
+      <find>.size</find>
     </findStrings>
     <replaceStrings>
       <replace>x</replace>
@@ -191,10 +200,15 @@
       <replace>bitme_213</replace>
       <replace>input_args</replace>
       <replace>\n</replace>
-      <replace>Candles</replace>
       <replace>to_nearest</replace>
       <replace>candles.</replace>
       <replace>df</replace>
+      <replace>pd.Timestamp</replace>
+      <replace>self.candles</replace>
+      <replace>self.candles.size</replace>
+      <replace>len(self.candles)</replace>
+      <replace>len(candles1m)</replace>
+      <replace>Candles</replace>
     </replaceStrings>
   </component>
   <component name="Git.Settings">
@@ -203,8 +217,6 @@
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
-        <option value="$PROJECT_DIR$/orders.py" />
-        <option value="$PROJECT_DIR$/fill.py" />
         <option value="$PROJECT_DIR$/simcandles.py" />
         <option value="$PROJECT_DIR$/exchange_interface.py" />
         <option value="$PROJECT_DIR$/get_bitmex_data.py" />
@@ -220,7 +232,6 @@
         <option value="$PROJECT_DIR$/sim_gen.py" />
         <option value="$PROJECT_DIR$/live.py" />
         <option value="$PROJECT_DIR$/__init__.py" />
-        <option value="$PROJECT_DIR$/tactic/TacticBitEwmWithStop.py" />
         <option value="$PROJECT_DIR$/tactic/tactic_mm.py" />
         <option value="$PROJECT_DIR$/get_gdax_data.py" />
         <option value="$PROJECT_DIR$/get_bitmex_data2.py" />
@@ -232,7 +243,6 @@
         <option value="$PROJECT_DIR$/utils/__init__.py" />
         <option value="$PROJECT_DIR$/tools/__init__.py" />
         <option value="$PROJECT_DIR$/live/live.py" />
-        <option value="$PROJECT_DIR$/common/exchange_interface.py" />
         <option value="$PROJECT_DIR$/common/fill.py" />
         <option value="$PROJECT_DIR$/common/__init__.py" />
         <option value="$PROJECT_DIR$/tactic/__init__.py" />
@@ -241,19 +251,23 @@
         <option value="$PROJECT_DIR$/live/settings.py" />
         <option value="$PROJECT_DIR$/tools/log.py" />
         <option value="$PROJECT_DIR$/setup.py" />
-        <option value="$PROJECT_DIR$/common/orders.py" />
         <option value="$PROJECT_DIR$/tools/utils.py" />
         <option value="$PROJECT_DIR$/Untitled1.ipynb" />
         <option value="$PROJECT_DIR$/sim/sim_show.py" />
         <option value="$PROJECT_DIR$/live/errors.py" />
-        <option value="$PROJECT_DIR$/sim/__main__.py" />
         <option value="$PROJECT_DIR$/sim_show/__main__.py" />
         <option value="$PROJECT_DIR$/sim/sim_gen.py" />
         <option value="$PROJECT_DIR$/live/settings_base.py" />
         <option value="$PROJECT_DIR$/live/bitmex.py" />
         <option value="$PROJECT_DIR$/live/ws/ws_thread.py" />
+        <option value="$USER_HOME$/anaconda3/envs/bitme-dev/lib/python3.6/site-packages/pandas/core/generic.py" />
+        <option value="$PROJECT_DIR$/common/exchange_interface.py" />
         <option value="$PROJECT_DIR$/live/__main__.py" />
         <option value="$PROJECT_DIR$/common/candles.py" />
+        <option value="$PROJECT_DIR$/common/orders.py" />
+        <option value="$PROJECT_DIR$/sim/__main__.py" />
+        <option value="$PROJECT_DIR$/tactic/TacticBitEwm.py" />
+        <option value="$PROJECT_DIR$/tactic/TacticBitEwmWithStop.py" />
       </list>
     </option>
   </component>
@@ -667,58 +681,6 @@
     </expressions>
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$USER_HOME$/anaconda3/envs/bitme-dev/lib/python3.6/site-packages/matplotlib/__init__.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/setup.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="300">
-          <caret line="20" column="18" lean-forward="false" selection-start-line="20" selection-start-column="18" selection-end-line="20" selection-end-column="18" />
-          <folding>
-            <element signature="e#22#50#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/output/orders.csv">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/Library/Caches/PyCharmCE2017.3/python_stubs/909059840/builtins.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="226">
-          <caret line="501" column="4" lean-forward="false" selection-start-line="501" selection-start-column="4" selection-end-line="501" selection-end-column="4" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/common/orders.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-1968">
-          <caret line="7" column="0" lean-forward="true" selection-start-line="7" selection-start-column="0" selection-end-line="7" selection-end-column="0" />
-          <folding>
-            <element signature="e#0#13#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/anaconda3/envs/bitme-dev/lib/python3.6/site-packages/altair/utils/schemapi.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="342">
-          <caret line="109" column="8" lean-forward="false" selection-start-line="109" selection-start-column="8" selection-end-line="109" selection-end-column="8" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$USER_HOME$/anaconda3/envs/bitme-dev/lib/python3.6/site-packages/altair/vegalite/v2/schema/core.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="285">
@@ -809,26 +771,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/live/errors.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/sim/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/common/exchange_interface.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="45">
-          <caret line="8" column="6" lean-forward="false" selection-start-line="8" selection-start-column="6" selection-end-line="8" selection-end-column="6" />
           <folding />
         </state>
       </provider>
@@ -909,26 +855,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/tactic/TacticBitEwmWithStop.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding>
-            <element signature="e#0#11#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tactic/TacticBitEwm.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="210">
-          <caret line="14" column="0" lean-forward="true" selection-start-line="14" selection-start-column="0" selection-end-line="14" selection-end-column="0" />
-          <folding>
-            <element signature="e#0#11#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/live/settings.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="443">
@@ -995,54 +921,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/live/ws/ws_thread.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="225">
-          <caret line="131" column="0" lean-forward="false" selection-start-line="131" selection-start-column="0" selection-end-line="131" selection-end-column="0" />
-          <folding>
-            <element signature="e#0#10#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/live/bitmex.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="112">
-          <caret line="95" column="0" lean-forward="false" selection-start-line="95" selection-start-column="0" selection-end-line="95" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/sim/sim_stats.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/sim/simcandles.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="45">
-          <caret line="3" column="10" lean-forward="false" selection-start-line="3" selection-start-column="10" selection-end-line="3" selection-end-column="10" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/live/__main__.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2055">
-          <caret line="137" column="0" lean-forward="false" selection-start-line="137" selection-start-column="0" selection-end-line="137" selection-end-column="0" />
-          <folding>
-            <element signature="e#0#35#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/sim/__main__.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="234">
-          <caret line="164" column="0" lean-forward="false" selection-start-line="164" selection-start-column="0" selection-end-line="164" selection-end-column="0" />
           <folding />
         </state>
       </provider>
@@ -1087,12 +969,144 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/common/candles.py">
+    <entry file="file://$PROJECT_DIR$/live/ws/ws_thread.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="225">
+          <caret line="39" column="8" lean-forward="false" selection-start-line="39" selection-start-column="8" selection-end-line="39" selection-end-column="8" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/live/errors.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="6" lean-forward="false" selection-start-line="0" selection-start-column="6" selection-end-line="0" selection-end-column="6" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/live/bitmex.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="541">
+          <caret line="366" column="0" lean-forward="true" selection-start-line="110" selection-start-column="4" selection-end-line="366" selection-end-column="0" />
+          <folding>
+            <element signature="e#28#66#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/anaconda3/envs/bitme-dev/lib/python3.6/base64.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="226">
+          <caret line="50" column="4" lean-forward="false" selection-start-line="50" selection-start-column="4" selection-end-line="50" selection-end-column="4" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/live/auth/APIKeyAuthWithExpires.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="105">
+          <caret line="9" column="26" lean-forward="true" selection-start-line="9" selection-start-column="26" selection-end-line="9" selection-end-column="26" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/Library/Caches/PyCharmCE2017.3/python_stubs/909059840/pandas/_libs/tslib.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="226">
+          <caret line="1360" column="6" lean-forward="false" selection-start-line="1360" selection-start-column="6" selection-end-line="1360" selection-end-column="6" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/Library/Caches/PyCharmCE2017.3/python_stubs/909059840/builtins.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="219">
+          <caret line="925" column="6" lean-forward="false" selection-start-line="925" selection-start-column="6" selection-end-line="925" selection-end-column="6" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/common/exchange_interface.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="90">
-          <caret line="7" column="48" lean-forward="false" selection-start-line="7" selection-start-column="48" selection-end-line="7" selection-end-column="48" />
+          <caret line="6" column="0" lean-forward="false" selection-start-line="6" selection-start-column="0" selection-end-line="6" selection-end-column="0" />
           <folding>
-            <element signature="e#0#19#0" expanded="true" />
+            <element signature="e#0#39#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/sim/simcandles.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="75">
+          <caret line="5" column="0" lean-forward="true" selection-start-line="5" selection-start-column="0" selection-end-line="5" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/live/__main__.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="195">
+          <caret line="13" column="54" lean-forward="false" selection-start-line="13" selection-start-column="54" selection-end-line="13" selection-end-column="54" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/common/candles.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="780">
+          <caret line="52" column="17" lean-forward="false" selection-start-line="52" selection-start-column="17" selection-end-line="52" selection-end-column="17" />
+          <folding>
+            <element signature="e#0#24#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/common/orders.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="456">
+          <caret line="94" column="24" lean-forward="false" selection-start-line="94" selection-start-column="24" selection-end-line="94" selection-end-column="24" />
+          <folding>
+            <element signature="e#0#13#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/anaconda3/envs/bitme-dev/lib/python3.6/site-packages/pandas/core/generic.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="210">
+          <caret line="1266" column="46" lean-forward="false" selection-start-line="1266" selection-start-column="42" selection-end-line="1266" selection-end-column="46" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/sim/__main__.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="201">
+          <caret line="237" column="26" lean-forward="false" selection-start-line="237" selection-start-column="26" selection-end-line="237" selection-end-column="26" />
+          <folding>
+            <element signature="e#88#103#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tactic/TacticBitEwm.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="284">
+          <caret line="135" column="0" lean-forward="false" selection-start-line="135" selection-start-column="0" selection-end-line="135" selection-end-column="0" />
+          <folding>
+            <element signature="e#0#11#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tactic/TacticBitEwmWithStop.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="2220">
+          <caret line="148" column="38" lean-forward="false" selection-start-line="148" selection-start-column="38" selection-end-line="148" selection-end-column="38" />
+          <folding>
+            <element signature="e#0#11#0" expanded="true" />
           </folding>
         </state>
       </provider>

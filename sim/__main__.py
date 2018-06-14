@@ -13,8 +13,8 @@ import pandas as pd
 from enum import Enum
 from numpy.core.umath import sign
 
-from common import ExchangeCommon, Fill, FillType, OrderType, Orders, OrderCancelReason, \
-                   OrderStatus, OrderCommon, Position, Candles
+from common import ExchangeInterface, Fill, FillType, OrderType, Orders, OrderCancelReason, \
+    OrderStatus, OrderCommon, Position, to_ohlcv
 from .sim_stats import SimSummary
 from tactic import TacticInterface, TacticBitEwmWithStop
 import tools
@@ -84,7 +84,7 @@ class Liquidator(TacticInterface):
 
 #  only BTC is supported for now
 # @logged
-class SimExchangeBitMex(ExchangeCommon):
+class SimExchangeBitMex(ExchangeInterface):
     FEE = {OrderType.limit: -0.00025, OrderType.market: 0.00075}
 
     class Symbol(Enum):
@@ -98,7 +98,7 @@ class SimExchangeBitMex(ExchangeCommon):
     RISK_LIMITS = {Symbol.XBTUSD: 0.0015, Symbol.XBTH18: 0.0015}
 
     def __init__(self, initial_balance, file_name, log_dir, tactics):
-        ExchangeCommon.__init__(self)
+        ExchangeInterface.__init__(self)
         self.xbt_initial_balance = initial_balance
         self.xbt_balance = initial_balance
 
@@ -114,7 +114,7 @@ class SimExchangeBitMex(ExchangeCommon):
 
         self.file_name = os.path.abspath(file_name)
         self.log_dir = log_dir
-        self.candles = Candles(file_name)  # all candles
+        self.candles = to_ohlcv(filename=file_name)  # type: pd.DataFrame
         self.time_idx = 0
 
         self.tactics = tactics
@@ -148,23 +148,22 @@ class SimExchangeBitMex(ExchangeCommon):
         return True
 
     def current_price(self):
-        return self.candles.data.iloc[self.time_idx].close
+        return self.candles.iloc[self.time_idx].close
 
     def next_price(self):
-        return self.candles.data.iloc[self.time_idx + 1].open
+        return self.candles.iloc[self.time_idx + 1].open
 
     def current_time(self):
-        return self.candles.data.iloc[self.time_idx].name
+        return self.candles.iloc[self.time_idx].name
 
     def current_candle(self):
-        return self.candles.data.iloc[self.time_idx]
+        return self.candles.iloc[self.time_idx]
 
-    def get_candles1m(self):
-        # type: (None) -> Candles
-        return self.candles.subset(0, self.time_idx + 1)
+    def get_candles1m(self) -> pd.DataFrame:
+        return self.candles.head(self.time_idx + 1)
 
     def is_last_candle(self):
-        return self.time_idx == self.candles.size() - 1
+        return self.time_idx == len(self.candles) - 1
 
     def get_position(self, symbol):
         # type: (self.Symbol) -> Position
@@ -182,14 +181,14 @@ class SimExchangeBitMex(ExchangeCommon):
         if print_progress:
             sys.stdout.write(
                 "progress: %d out of %d (%.4f%%)   \r" %
-                (self.time_idx, self.candles.size(), 100 * float(self.time_idx) / self.candles.size()))
+                (self.time_idx, len(self.candles), 100 * float(self.time_idx) / len(self.candles)))
             sys.stdout.flush()
 
         if self.is_last_candle():
             for symbol in self.SYMBOLS:
                 self._execute_liquidation(symbol, order_cancel_reason=OrderCancelReason.end_of_sim)
             self.time_idx += 1
-            sys.stdout.write("progress: %d out of %d (%.4f%%)\n" % (self.time_idx, self.candles.size(), 100.))
+            sys.stdout.write("progress: %d out of %d (%.4f%%)\n" % (self.time_idx, len(self.candles), 100.))
             return
         else:
             if self.can_call_handles:
@@ -208,14 +207,14 @@ class SimExchangeBitMex(ExchangeCommon):
                         self._execute_liquidation(symbol)
 
     def is_open(self):
-        if self.time_idx < len(self.candles.data):
+        if self.time_idx < len(self.candles):
             return True
         else:
             self.summary = self.get_summary()
             return False
 
     def cancel_orders(self,
-                      orders,
+                      orders: Orders,
                       drop_canceled=True,
                       status=OrderStatus.canceled,
                       reason=OrderCancelReason.requested_by_user):
@@ -259,7 +258,7 @@ class SimExchangeBitMex(ExchangeCommon):
         for o in orders:
             assert o.status == OrderStatus.pending
 
-        if self.time_idx == self.candles.size() - 1:
+        if self.time_idx == len(self.candles) - 1:
             #  this is the last candle, cancel all limit orders
             for o in orders:  # type: OrderCommon
                 if o.type != OrderType.market:
@@ -310,7 +309,11 @@ class SimExchangeBitMex(ExchangeCommon):
         return (3 * open_p + 2. * (low + high) + close_p) / 8.
 
     def _execute_all_orders(self):
-        assert self.time_idx < len(self.candles.data)
+        if not self.time_idx < len(self.candles):
+            print("self.time_idx = {}".format(self.time_idx))
+            print("len(self.candles) = {}".format(len(self.candles)))
+            assert self.time_idx < len(self.candles)
+            
         for o in self.active_orders:
             assert o.status == OrderStatus.opened
 
@@ -325,7 +328,7 @@ class SimExchangeBitMex(ExchangeCommon):
 
     def _execute_order(self, order):
         # type: (OrderCommon) -> Fill
-        assert self.time_idx < self.candles.size()
+        assert self.time_idx < len(self.candles)
 
         if order.status != OrderStatus.opened:
             raise ValueError("expected order to be opened, but got " + str(order.status) + ". Order = \n"
@@ -478,7 +481,7 @@ class SimExchangeBitMex(ExchangeCommon):
             num_orders=self._count_per_symbol(self.order_hist),
             num_cancels=dict(self.n_cancels),
             num_liq=dict(self.n_liquidations),
-            close_price=self.candles.data.iloc[-1].close,
+            close_price=self.candles.iloc[-1].close,
             pnl=dict(pnl),
             pnl_total=total_pnl,
             profit_total=total_profit,

@@ -59,7 +59,7 @@ class Orders:
     def clean_filled(self, specific_order=None):
         # type: (OrderCommon) -> None
         if not specific_order:
-            self.data = dict([(oid, order) for oid, order in self.data.iteritems() if order.status != OrderStatus.filled])
+            self.data = dict([(oid, order) for oid, order in self.data.items() if order.status != OrderStatus.filled])
         else:
             del self.data[specific_order.id]
 
@@ -76,11 +76,10 @@ class OrderCommon:
 
     def __init__(self, **kargs):
         # self.id = str('bitme_' + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n'))  # type: str
-        self.id = str('bitme_' + str(OrderCommon._count))  # type: str
+        self.id = str('zaloe_' + str(OrderCommon._count))  # type: str
         OrderCommon._count += 1
         self.symbol = kargs['symbol']  # type: Enum
         self.signed_qty = math.floor(_get(kargs, 'signed_qty', float('nan')))  # type: float
-        # self.signed_simple_qty = get_or_none(kargs, 'signed_simple_qty') # type: float
         self.price = round(_get(kargs, 'price', float('nan')), 1)  # type: float
         self.stop_price = _get(kargs, 'stop_price', float('nan'))  # type: float
         self.linked_order_id = _get(kargs, 'linked_order_id', None)  # type: str

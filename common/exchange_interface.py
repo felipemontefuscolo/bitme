@@ -1,45 +1,45 @@
+from abc import ABCMeta, abstractmethod
 from enum import Enum
-from pandas import Timestamp
+from pandas import Timestamp, DataFrame
 
 from common.orders import Orders
 from common.position import Position
-from common.candles import Candles
 
 
-class ExchangeCommon:
+class ExchangeInterface(metaclass=ABCMeta):
     def __init__(self):
         pass
 
-    def get_candles1m(self):
-        # type: (None) -> Candles
+    @abstractmethod
+    def get_candles1m(self) -> DataFrame:
         raise AttributeError("interface class")
 
-    def post_orders(self, orders):
-        # type: (Orders) -> bool
+    @abstractmethod
+    def post_orders(self, orders) -> bool:
         """
         :param orders:
         :return: True if any order was rejected
         """
         raise AttributeError("interface class")
 
-    def current_time(self):
-        # type: () -> Timestamp
+    @abstractmethod
+    def current_time(self) -> Timestamp:
         raise AttributeError("interface class")
 
-    def current_price(self):
-        # type: () -> float
+    @abstractmethod
+    def current_price(self) -> float:
         raise AttributeError("interface class")
 
-    def get_position(self, symbol):
-        # type: (Enum) -> Position
+    @abstractmethod
+    def get_position(self, symbol: Enum) -> Position:
         raise AttributeError("interface class")
 
-    def get_closed_positions(self, symbol):
-        # type: (Enum) -> list(Position)
+    @abstractmethod
+    def get_closed_positions(self, symbol: Enum) -> Position:
         raise AttributeError("interface class")
 
-    def set_leverage(self, symbol, value):
-        # type: (Enum, float) -> bool
+    @abstractmethod
+    def set_leverage(self, symbol: Enum, value: float) -> bool:
         """
         :param symbol
         :param value Leverage value. Send a number between 0.01 and 100 to enable isolated margin with a fixed leverage.
@@ -48,7 +48,7 @@ class ExchangeCommon:
         """
         raise AttributeError("interface class")
 
-    def cancel_orders(self, orders, drop_canceled=True):
-        # type: (Orders, bool) -> None
+    @abstractmethod
+    def cancel_orders(self, orders: Orders, drop_canceled=True):
         raise AttributeError("interface class")
 
