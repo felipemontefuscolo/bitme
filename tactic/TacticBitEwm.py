@@ -125,7 +125,7 @@ class TacticBitEwm(TacticInterface):
 
         # type: (ExchangeCommon, float, float) -> None
         candles1m = exchange.get_candles1m()  # type: pd.DataFrame
-        price = exchange.current_price()
+        price = exchange.get_tick_info()['last']
         #assert price == candles1m.tail(1)['close']
 
         self.position = exchange.get_position(self.product_id)  # type: Position

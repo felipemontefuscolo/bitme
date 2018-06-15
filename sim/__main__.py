@@ -17,9 +17,11 @@ from common import ExchangeInterface, Fill, FillType, OrderType, Orders, OrderCa
     OrderStatus, OrderCommon, Position, to_ohlcv
 from .sim_stats import SimSummary
 from tactic import TacticInterface, TacticBitEwmWithStop
-import tools
+from tools.utils import to_nearest
 
 # import logging
+
+TICK_SIZE_XBTUSD = 0.5
 
 
 def get_args(input_args=None):
@@ -147,8 +149,16 @@ class SimExchangeBitMex(ExchangeInterface):
         self.leverage[symbol] = value
         return True
 
-    def current_price(self):
-        return self.candles.iloc[self.time_idx].close
+    def get_tick_info(self, symbol=None) -> dict:
+        # TODO: implement symbol
+        if symbol is not None:
+            raise NotImplementedError()
+        ticker = {'buy': self.candles.iloc[self.time_idx].low,
+                  'sell': self.candles.iloc[self.time_idx].high,
+                  'last': self.candles.iloc[self.time_idx].close,
+                  'mid': 0.5 * (self.candles.iloc[self.time_idx].low + self.candles.iloc[self.time_idx].high)
+                  }
+        return {k: to_nearest(float(v or 0), TICK_SIZE_XBTUSD) for k, v in ticker.items()}
 
     def next_price(self):
         return self.candles.iloc[self.time_idx + 1].open
@@ -266,7 +276,7 @@ class SimExchangeBitMex(ExchangeInterface):
             orders = orders.market_orders()
 
         # discard bad orders
-        current_price = self.current_price()
+        current_price = self.get_tick_info()['last']
         next_price = self.next_price() if not self.is_last_candle() else current_price
         for o in orders:  # type: OrderCommon
             if o.type is OrderType.limit:
@@ -313,7 +323,7 @@ class SimExchangeBitMex(ExchangeInterface):
             print("self.time_idx = {}".format(self.time_idx))
             print("len(self.candles) = {}".format(len(self.candles)))
             assert self.time_idx < len(self.candles)
-            
+
         for o in self.active_orders:
             assert o.status == OrderStatus.opened
 

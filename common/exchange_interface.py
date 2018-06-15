@@ -27,7 +27,11 @@ class ExchangeInterface(metaclass=ABCMeta):
         raise AttributeError("interface class")
 
     @abstractmethod
-    def current_price(self) -> float:
+    def get_tick_info(self, symbol=None) -> dict:
+        """
+        :param symbol:
+        :return: dict, example: {"buy": 6630.0, "last": 6633.0, "mid": 6630.0, "sell": 6630.5}
+        """
         raise AttributeError("interface class")
 
     @abstractmethod
@@ -51,4 +55,3 @@ class ExchangeInterface(metaclass=ABCMeta):
     @abstractmethod
     def cancel_orders(self, orders: Orders, drop_canceled=True):
         raise AttributeError("interface class")
-

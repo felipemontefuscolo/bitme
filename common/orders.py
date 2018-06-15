@@ -7,13 +7,19 @@ from enum import Enum
 
 
 # Order container util
+from typing import Union, Iterable, Dict
+
+
 class Orders:
-    def __init__(self, id_to_order_map=None):
-        # type: (dict) -> None
-        if id_to_order_map is None:
+    def __init__(self, orders=None):
+        # type: (Iterable) -> None
+        if orders is None:
             self.data = dict()  # id -> OrderCommon
+        elif isinstance(orders, Dict):
+            self.data = orders
         else:
-            self.data = id_to_order_map
+            self.data = dict([(o.id, o) for o in orders])
+
         pass
 
     def __getitem__(self, key):

@@ -8,6 +8,7 @@ import sys
 from decimal import Decimal
 
 import pandas as pd
+from typing import Union
 
 
 @contextlib.contextmanager
@@ -103,11 +104,11 @@ def read_data(file: str, begin: pd.Timestamp=None, end: pd.Timestamp=None) -> pd
     return data
 
 
-def to_nearest(num, tick_size):
+def to_nearest(num, tick_size: Union[float, str]):
     """Given a number, round it to the nearest tick. Very useful for sussing float error
        out of numbers: e.g. toNearest(401.46, 0.01) -> 401.46, whereas processing is
        normally with floats would give you 401.46000000000004.
        Use this after adding/subtracting/multiplying numbers."""
     tick_dec = Decimal(str(tick_size))
-    return float((Decimal(round(num / tick_size, 0)) * tick_dec))
+    return float((Decimal(round(num / float(tick_size), 0)) * tick_dec))
 

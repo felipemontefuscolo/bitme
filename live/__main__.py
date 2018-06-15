@@ -1,4 +1,5 @@
 import base64
+import datetime
 import json
 import logging
 import time
@@ -7,12 +8,9 @@ from enum import Enum
 
 import pandas as pd
 import requests
-import swagger_client  # bitmex lib
-import datetime
-from pandas import Timestamp
 
 from common import ExchangeInterface, Position, Orders
-from live import bitmex, errors
+from live import errors
 from live.auth import APIKeyAuthWithExpires
 from live.settings import settings
 from live.ws.ws_thread import BitMEXWebsocket
@@ -21,6 +19,19 @@ from tools import log
 MAX_NUM_CANDLES_BITMEX = 500  # bitmex REST API limit
 
 logger = log.setup_custom_logger('root')
+
+
+def authentication_required(fn):
+    """Annotation for methods that require auth."""
+
+    def wrapped(self, *args, **kwargs):
+        if not self.apiKey:
+            msg = "You must be authenticated to use this method"
+            raise errors.AuthenticationError(msg)
+        else:
+            return fn(self, *args, **kwargs)
+
+    return wrapped
 
 
 class LiveBitMex(ExchangeInterface):
@@ -58,12 +69,14 @@ class LiveBitMex(ExchangeInterface):
 
         pass
 
+        # Authentication required methods
+
     ######################
-    # INTERFACE
+    # FROM INTERFACE
     ######################
 
     def get_candles1m(self) -> pd.DataFrame:
-        raise AttributeError("interface class")
+        return self.ws.trades1min_bin()
 
     def post_orders(self, orders) -> bool:
         """
@@ -72,11 +85,17 @@ class LiveBitMex(ExchangeInterface):
         """
         raise AttributeError("interface class")
 
-    def current_time(self) -> Timestamp:
-        raise AttributeError("interface class")
+    def current_time(self) -> pd.Timestamp:
+        return pd.Timestamp.now()
 
-    def current_price(self) -> float:
-        raise AttributeError("interface class")
+    def get_tick_info(self, symbol=None) -> dict:
+        """
+        :param symbol:
+        :return: dict, example: {"buy": 6630.0, "last": 6633.0, "mid": 6630.0, "sell": 6630.5}
+        """
+        if symbol is None:
+            symbol = self.symbol
+        return self.ws.get_ticker(symbol)
 
     def get_position(self, symbol: Enum) -> Position:
         raise AttributeError("interface class")
@@ -100,37 +119,25 @@ class LiveBitMex(ExchangeInterface):
     # END INTERFACE
     ######################
 
+    def ticker_data(self, symbol=None):
+        """Get ticker data."""
+        if symbol is None:
+            symbol = self.symbol
+        return self.ws.get_ticker(symbol)
 
-    # Authentication required methods
-    @staticmethod
-    def authentication_required(fn):
-        """Annotation for methods that require auth."""
+    def instrument(self, symbol):
+        """Get an instrument's details."""
+        return self.ws.get_instrument(symbol)
 
-        def wrapped(self, *args, **kwargs):
-            if not self.apiKey:
-                msg = "You must be authenticated to use this method"
-                raise errors.AuthenticationError(msg)
-            else:
-                return fn(self, *args, **kwargs)
+    def instruments(self, filter=None):
+        query = {}
+        if filter is not None:
+            query['filter'] = json.dumps(filter)
+        return self._curl_bitmex(path='instrument', query=query, verb='GET')
 
-        return wrapped
-
-    def post_orders(self, orders):
-        # type: (Orders) -> bool
-        """
-        :param orders:
-        :return: True if any order was rejected
-        """
-        raise AttributeError("interface class")
-
-    def current_time(self):
-        # type: () -> Timestamp
-        return Timestamp.now()
-
-    def current_price(self):
-        # type: () -> float
-        q = self.quote_api.quote_get(count=1)[0]  # type: swagger_client.Quote
-        return q.ask_price
+    def market_depth(self, symbol):
+        """Get market depth / orderbook."""
+        return self.ws.market_depth(symbol)
 
     @authentication_required
     def get_position(self, symbol='XBTUSD'):
@@ -150,9 +157,6 @@ class LiveBitMex(ExchangeInterface):
 
                 """
         return self.ws.recent_trades()
-
-    def trades1min_bin(self):
-        return self.ws.trades1min_bin()
 
     @authentication_required
     def get_closed_positions(self, symbol='XBTUSD'):
@@ -364,7 +368,7 @@ class LiveBitMex(ExchangeInterface):
                 # Figure out how long we need to wait.
                 ratelimit_reset = response.headers['X-Ratelimit-Reset']
                 to_sleep = int(ratelimit_reset) - int(time.time())
-                reset_str = datetime.datetime.fromtimestamp(int(ratelimit_reset)).strftime('%X')
+                reset_str = datetime.datetime.frompd.Timestamp(int(ratelimit_reset)).strftime('%X')
 
                 # We're ratelimited, and we may be waiting for a long time. Cancel orders.
                 self.logger.warning("Canceling all known orders in the meantime.")
@@ -442,7 +446,7 @@ if __name__ == "__main__":
         print("SLEEP")
         time.sleep(1)
 
-        new_g = live.trades1min_bin()
+        new_g = live.ticker_data()
         if g != new_g:
             g = new_g
             json.dumps(g, indent=4, sort_keys=True)
