@@ -1,9 +1,9 @@
 from abc import ABCMeta, abstractmethod
-from enum import Enum
-from pandas import Timestamp, DataFrame
 
+import pandas as pd
 from common.orders import Orders
 from common.position import Position
+from common.symbol import Symbol
 
 
 class ExchangeInterface(metaclass=ABCMeta):
@@ -11,7 +11,7 @@ class ExchangeInterface(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_candles1m(self) -> DataFrame:
+    def get_candles1m(self) -> pd.DataFrame:
         raise AttributeError("interface class")
 
     @abstractmethod
@@ -23,11 +23,11 @@ class ExchangeInterface(metaclass=ABCMeta):
         raise AttributeError("interface class")
 
     @abstractmethod
-    def current_time(self) -> Timestamp:
+    def current_time(self) -> pd.Timestamp:
         raise AttributeError("interface class")
 
     @abstractmethod
-    def get_tick_info(self, symbol=None) -> dict:
+    def get_tick_info(self, symbol: Symbol = None) -> dict:
         """
         :param symbol:
         :return: dict, example: {"buy": 6630.0, "last": 6633.0, "mid": 6630.0, "sell": 6630.5}
@@ -35,15 +35,15 @@ class ExchangeInterface(metaclass=ABCMeta):
         raise AttributeError("interface class")
 
     @abstractmethod
-    def get_position(self, symbol: Enum) -> Position:
+    def get_position(self, symbol: Symbol) -> Position:
         raise AttributeError("interface class")
 
     @abstractmethod
-    def get_closed_positions(self, symbol: Enum) -> Position:
+    def get_closed_positions(self, symbol: Symbol) -> Position:
         raise AttributeError("interface class")
 
     @abstractmethod
-    def set_leverage(self, symbol: Enum, value: float) -> bool:
+    def set_leverage(self, symbol: Symbol, value: float) -> bool:
         """
         :param symbol
         :param value Leverage value. Send a number between 0.01 and 100 to enable isolated margin with a fixed leverage.

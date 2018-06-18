@@ -141,7 +141,7 @@ class TacticBitEwm(TacticInterface):
                                  " position. Probably a tactic logic error.".format(self.position.position()))
 
         if self.opened_orders.size() > 0:
-            if exchange.current_time() - self.last_activity_time > Timedelta(minutes=self.no_activity_tol):
+            if exchange.current_time() - self.last_activity_time > pd.Timedelta(minutes=self.no_activity_tol):
                 if self.close_position_if_no_loss(exchange, price):
                     assert self.opened_orders.size() == 0
             return

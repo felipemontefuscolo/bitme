@@ -9,7 +9,7 @@ from enum import Enum
 import pandas as pd
 import requests
 
-from common import ExchangeInterface, Position, Orders
+from common import ExchangeInterface, Position, Orders, Symbol
 from live import errors
 from live.auth import APIKeyAuthWithExpires
 from live.settings import settings
@@ -78,13 +78,6 @@ class LiveBitMex(ExchangeInterface):
     def get_candles1m(self) -> pd.DataFrame:
         return self.ws.trades1min_bin()
 
-    def post_orders(self, orders) -> bool:
-        """
-        :param orders:
-        :return: True if any order was rejected
-        """
-        raise AttributeError("interface class")
-
     def current_time(self) -> pd.Timestamp:
         return pd.Timestamp.now()
 
@@ -97,8 +90,10 @@ class LiveBitMex(ExchangeInterface):
             symbol = self.symbol
         return self.ws.get_ticker(symbol)
 
-    def get_position(self, symbol: Enum) -> Position:
-        raise AttributeError("interface class")
+    @authentication_required
+    def get_position(self, symbol: Symbol):
+        """Get your open position."""
+        return self.ws.position(str(symbol))
 
     def get_closed_positions(self, symbol: Enum) -> Position:
         raise AttributeError("interface class")
@@ -113,6 +108,13 @@ class LiveBitMex(ExchangeInterface):
         raise AttributeError("interface class")
 
     def cancel_orders(self, orders: Orders, drop_canceled=True):
+        raise AttributeError("interface class")
+
+    def post_orders(self, orders) -> bool:
+        """
+        :param orders:
+        :return: True if any order was rejected
+        """
         raise AttributeError("interface class")
 
     ######################
@@ -139,10 +141,7 @@ class LiveBitMex(ExchangeInterface):
         """Get market depth / orderbook."""
         return self.ws.market_depth(symbol)
 
-    @authentication_required
-    def get_position(self, symbol='XBTUSD'):
-        """Get your open position."""
-        return self.ws.position(symbol)
+
 
     def recent_trades(self):
         """Get recent trades.

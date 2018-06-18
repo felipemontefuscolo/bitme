@@ -1,8 +1,9 @@
 import math
 
-from pandas import Timedelta, DataFrame, Series
+import pandas as pd
 from sympy import sign
 
+from common.symbol import Symbol
 from common.fill import FillType
 from common.orders import Orders, OrderCancelReason, OrderCommon, OrderType
 from tactic.tactic_interface import TacticInterface
@@ -13,11 +14,11 @@ from tactic.tactic_interface import TacticInterface
 class TacticBitEwmWithStop(TacticInterface):
     def __init__(self, product_id):
         TacticInterface.__init__(self)
-        self.product_id = product_id  # type: Enum
+        self.product_id = product_id  # type: Symbol
 
         self.opened_orders = Orders()
         self.position = None  # type: Position
-        self.last_activity_time = None  # type: Timestamp
+        self.last_activity_time = None  # type: pd.Timestamp
         self.multiplier = 100.
         self.span = 20
         self.greediness = 0.1  # 0. -> post order at EMA, 1. -> post order at EMA + std
@@ -128,7 +129,7 @@ class TacticBitEwmWithStop(TacticInterface):
     def is_losing_too_much(self, exchange):
         last_losses = [i.realized_pnl <= 0 for i in exchange.get_closed_positions(self.product_id)[-self.loss_limit:]]
         if len(last_losses) == sum(last_losses) and \
-                exchange.current_time() - self.last_activity_time < Timedelta(minutes=self.span):
+                exchange.current_time() - self.last_activity_time < pd.Timedelta(minutes=self.span):
             return True
         return False
 
@@ -136,7 +137,7 @@ class TacticBitEwmWithStop(TacticInterface):
         # self.__log.info("handling candles")
 
         # type: (ExchangeCommon, float, float) -> None
-        candles1m = exchange.get_candles1m()  # type: DataFrame
+        candles1m = exchange.get_candles1m()  # type: pd.DataFrame
         price = exchange.get_tick_info()['last']
         # assert price == candles1m.iloc[-1]['close']
 
@@ -153,7 +154,7 @@ class TacticBitEwmWithStop(TacticInterface):
                                  " position. Probably a tactic logic error.".format(self.position.position()))
 
         if self.opened_orders.size() > 0:
-            if exchange.current_time() - self.last_activity_time > Timedelta(minutes=self.no_activity_tol):
+            if exchange.current_time() - self.last_activity_time > pd.Timedelta(minutes=self.no_activity_tol):
                 if self.close_position_if_no_loss(exchange, price):
                     assert self.opened_orders.size() == 0
             return
@@ -164,7 +165,7 @@ class TacticBitEwmWithStop(TacticInterface):
             #print("STOPPPPPPPPPPPP LOSING IT!!!")
             #return
 
-        df = candles1m['close']  # type: Series
+        df = candles1m['close']  # type: pd.Series
         ema = df.ewm(span=self.span).mean()[-1]
         std = df.tail(self.span).std()
 

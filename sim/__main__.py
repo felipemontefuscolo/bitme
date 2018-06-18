@@ -14,7 +14,7 @@ from enum import Enum
 from numpy.core.umath import sign
 
 from common import ExchangeInterface, Fill, FillType, OrderType, Orders, OrderCancelReason, \
-    OrderStatus, OrderCommon, Position, to_ohlcv
+    OrderStatus, OrderCommon, Position, to_ohlcv, Symbol
 from .sim_stats import SimSummary
 from tactic import TacticInterface, TacticBitEwmWithStop
 from tools.utils import to_nearest
@@ -89,15 +89,10 @@ class Liquidator(TacticInterface):
 class SimExchangeBitMex(ExchangeInterface):
     FEE = {OrderType.limit: -0.00025, OrderType.market: 0.00075}
 
-    class Symbol(Enum):
-        XBTUSD = 'XBTUSD'
-        XBTH18 = 'XBTH18'
-        __iter__ = Enum.__iter__
-
     SYMBOLS = list(Symbol)
 
     # reference: https://www.bitmex.com/app/riskLimits#instrument-risk-limits
-    RISK_LIMITS = {Symbol.XBTUSD: 0.0015, Symbol.XBTH18: 0.0015}
+    RISK_LIMITS = {Symbol.XBTUSD: 0.0015}
 
     def __init__(self, initial_balance, file_name, log_dir, tactics):
         ExchangeInterface.__init__(self)
@@ -149,16 +144,18 @@ class SimExchangeBitMex(ExchangeInterface):
         self.leverage[symbol] = value
         return True
 
-    def get_tick_info(self, symbol=None) -> dict:
+    def get_tick_info(self, symbol: Symbol=None) -> dict:
         # TODO: implement symbol
         if symbol is not None:
             raise NotImplementedError()
+        else:
+            symbol = Symbol.XBTUSD
         ticker = {'buy': self.candles.iloc[self.time_idx].low,
                   'sell': self.candles.iloc[self.time_idx].high,
                   'last': self.candles.iloc[self.time_idx].close,
                   'mid': 0.5 * (self.candles.iloc[self.time_idx].low + self.candles.iloc[self.time_idx].high)
                   }
-        return {k: to_nearest(float(v or 0), TICK_SIZE_XBTUSD) for k, v in ticker.items()}
+        return {k: to_nearest(float(v or 0), symbol.tick_size) for k, v in ticker.items()}
 
     def next_price(self):
         return self.candles.iloc[self.time_idx + 1].open
@@ -550,7 +547,7 @@ def main(input_args=None):
     args = get_args(input_args)
 
     # defin here the tactic you want to activate
-    tactics = [TacticBitEwmWithStop(SimExchangeBitMex.Symbol.XBTUSD)]
+    tactics = [TacticBitEwmWithStop(Symbol.XBTUSD)]
 
     with SimExchangeBitMex(0.2, args.file, args.log_dir, tactics) as exchange:
 

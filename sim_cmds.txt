@@ -1,4 +1,0 @@
-python sim.py -f data/bitmex_1day.csv -x span=5 -x greediness=1.0 -x qty_to_trade=0.2 -x loss_limit=3 -l output/0 --no-summary --no-output
-python sim.py -f data/bitmex_1day.csv -x span=5 -x greediness=1.0 -x qty_to_trade=3 -x loss_limit=3 -l output/1 --no-summary --no-output
-python sim.py -f data/bitmex_1day.csv -x span=100 -x greediness=1.0 -x qty_to_trade=0.2 -x loss_limit=3 -l output/2 --no-summary --no-output
-python sim.py -f data/bitmex_1day.csv -x span=100 -x greediness=1.0 -x qty_to_trade=3 -x loss_limit=3 -l output/3 --no-summary --no-output
