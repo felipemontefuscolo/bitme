@@ -17,7 +17,6 @@ def smart_open(filename=None):
         fh = open(filename, 'w')
     else:
         fh = sys.stdout
-
     try:
         yield fh
     finally:
