@@ -1,0 +1,46 @@
+time,symbol,id,side,qty,filled,price,type,status,status_msg
+2018-01-29T01:40:00,XBTUSD,zaloe_0,buy,33822,33822.0,11274.0,limit,filled,
+2018-01-29T01:41:00,XBTUSD,zaloe_1,sell,-33822,0.0,11684.9,limit,canceled,requested by user
+2018-01-29T04:42:00,XBTUSD,zaloe_2,sell,-33822,-33822.0,nan,market,filled,
+2018-01-29T04:43:00,XBTUSD,zaloe_3,sell,-34236,-34236.0,11412.0,limit,filled,
+2018-01-29T04:44:00,XBTUSD,zaloe_4,buy,34236,34236.0,11294.5,limit,filled,
+2018-01-29T06:12:00,XBTUSD,zaloe_5,buy,33772,33772.0,11257.5,limit,filled,
+2018-01-29T06:13:00,XBTUSD,zaloe_6,sell,-33772,0.0,11391.4,limit,canceled,liquidation
+2018-01-29T06:17:00,XBTUSD,zaloe_7,sell,-33772,-33772.0,nan,market,filled,liquidation
+2018-01-29T06:17:00,XBTUSD,zaloe_8,buy,33451,33451.0,11150.5,limit,filled,
+2018-01-29T06:18:00,XBTUSD,zaloe_9,sell,-33451,0.0,11396.6,limit,canceled,liquidation
+2018-01-29T08:04:00,XBTUSD,zaloe_10,sell,-33451,-33451.0,nan,market,filled,liquidation
+2018-01-29T08:04:00,XBTUSD,zaloe_11,buy,33151,33151.0,11050.5,limit,filled,
+2018-01-29T08:05:00,XBTUSD,zaloe_12,sell,-33151,-33151.0,11206.0,limit,filled,
+2018-01-29T08:33:00,XBTUSD,zaloe_13,sell,-33672,-33672.0,11224.0,limit,filled,
+2018-01-29T08:34:00,XBTUSD,zaloe_14,buy,33672,33672.0,11104.4,limit,filled,
+2018-01-29T11:27:00,XBTUSD,zaloe_15,buy,33246,33246.0,11082.0,limit,filled,
+2018-01-29T11:28:00,XBTUSD,zaloe_16,sell,-33246,0.0,11213.8,limit,canceled,liquidation
+2018-01-29T11:39:00,XBTUSD,zaloe_17,sell,-33246,-33246.0,nan,market,filled,liquidation
+2018-01-29T11:39:00,XBTUSD,zaloe_18,buy,32910,32910.0,10970.0,limit,filled,
+2018-01-29T11:40:00,XBTUSD,zaloe_19,sell,-32910,0.0,11211.5,limit,canceled,liquidation
+2018-01-29T11:53:00,XBTUSD,zaloe_20,sell,-32910,-32910.0,nan,market,filled,liquidation
+2018-01-29T11:53:00,XBTUSD,zaloe_21,buy,32674,32674.0,10891.5,limit,filled,
+2018-01-29T11:54:00,XBTUSD,zaloe_22,sell,-32674,-32674.0,11203.2,limit,filled,
+2018-01-29T14:34:00,XBTUSD,zaloe_23,sell,-33669,-33669.0,11223.0,limit,filled,
+2018-01-29T14:35:00,XBTUSD,zaloe_24,buy,33669,33669.0,11060.1,limit,filled,
+2018-01-29T15:41:00,XBTUSD,zaloe_25,buy,33171,33171.0,11057.0,limit,filled,
+2018-01-29T15:42:00,XBTUSD,zaloe_26,sell,-33171,-33171.0,11166.2,limit,filled,
+2018-01-29T15:47:00,XBTUSD,zaloe_27,sell,-33525,-33525.0,11175.0,limit,filled,
+2018-01-29T15:48:00,XBTUSD,zaloe_28,buy,33525,33525.0,11098.3,limit,filled,
+2018-01-29T18:20:00,XBTUSD,zaloe_29,buy,33240,33240.0,11080.0,limit,filled,
+2018-01-29T18:21:00,XBTUSD,zaloe_30,sell,-33240,-33240.0,11204.7,limit,filled,
+2018-01-29T18:43:00,XBTUSD,zaloe_31,sell,-33637,-33637.0,11212.5,limit,filled,
+2018-01-29T18:44:00,XBTUSD,zaloe_32,buy,33637,33637.0,11143.5,limit,filled,
+2018-01-29T19:37:00,XBTUSD,zaloe_33,buy,33429,33429.0,11143.0,limit,filled,
+2018-01-29T19:38:00,XBTUSD,zaloe_34,sell,-33429,-33429.0,11199.7,limit,filled,
+2018-01-29T21:42:00,XBTUSD,zaloe_35,sell,-33600,-33600.0,11200.0,limit,filled,
+2018-01-29T21:43:00,XBTUSD,zaloe_36,buy,33600,33600.0,11134.4,limit,filled,
+2018-01-29T22:36:00,XBTUSD,zaloe_37,buy,33360,33360.0,11120.0,limit,filled,
+2018-01-29T22:37:00,XBTUSD,zaloe_38,sell,-33360,0.0,11188.3,limit,canceled,liquidation
+2018-01-29T22:45:00,XBTUSD,zaloe_39,sell,-33360,-33360.0,nan,market,filled,liquidation
+2018-01-29T22:45:00,XBTUSD,zaloe_40,buy,32958,32958.0,10986.0,limit,filled,
+2018-01-29T22:46:00,XBTUSD,zaloe_41,sell,-32958,-32958.0,11188.9,limit,filled,
+2018-01-29T23:40:00,XBTUSD,zaloe_42,sell,-33621,-33621.0,11207.0,limit,filled,
+2018-01-29T23:41:00,XBTUSD,zaloe_43,buy,33621,0.0,11035.7,limit,canceled,end of sim
+2018-01-30T00:00:00,XBTUSD,zaloe_44,buy,33621,33621.0,nan,market,filled,end of sim

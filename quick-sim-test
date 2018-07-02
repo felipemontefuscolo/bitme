@@ -1,0 +1,1 @@
+python -m sim -f data/bitmex_1day.csv -x span=100 -x greediness=1.0 -x qty_to_trade=3 -x loss_limit=3 -l test/quick_sim_test

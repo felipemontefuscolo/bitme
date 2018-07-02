@@ -2,8 +2,8 @@ from abc import ABCMeta, abstractmethod
 
 import pandas as pd
 from common.orders import Orders
-from common.position import Position
-from common.symbol import Symbol
+from tactic_api.position_interface import PositionInterface
+from tactic_api.symbol import Symbol
 
 
 class ExchangeInterface(metaclass=ABCMeta):
@@ -35,11 +35,11 @@ class ExchangeInterface(metaclass=ABCMeta):
         raise AttributeError("interface class")
 
     @abstractmethod
-    def get_position(self, symbol: Symbol) -> Position:
+    def get_position(self, symbol: Symbol) -> PositionInterface:
         raise AttributeError("interface class")
 
     @abstractmethod
-    def get_closed_positions(self, symbol: Symbol) -> Position:
+    def get_closed_positions(self, symbol: Symbol=None) -> PositionInterface:
         raise AttributeError("interface class")
 
     @abstractmethod

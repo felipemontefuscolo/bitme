@@ -12,16 +12,20 @@ import pandas as pd
 # from autologging import logged
 from enum import Enum
 from numpy.core.umath import sign
+from typing import Dict, List
 
-from common import ExchangeInterface, Fill, FillType, OrderType, Orders, OrderCancelReason, \
-    OrderStatus, OrderCommon, Position, to_ohlcv, Symbol
+from tactic_api.exchange_interface import ExchangeInterface
+from tactic_api.symbol import Symbol
+
+from common.orders import Orders
+from common import Fill, FillType, OrderType, OrderCancelReason, to_ohlcv, OrderStatus, OrderCommon
 from .sim_stats import SimSummary
+from .position_sim import PositionSim
 from tactic import TacticInterface, TacticBitEwmWithStop
 from tools.utils import to_nearest
 
-# import logging
 
-TICK_SIZE_XBTUSD = 0.5
+# import logging
 
 
 def get_args(input_args=None):
@@ -63,7 +67,7 @@ def get_args(input_args=None):
 
 class Liquidator(TacticInterface):
     def __init__(self):
-        pass
+        super().__init__()
 
     def init(self, exchange, preferences):
         pass
@@ -99,13 +103,13 @@ class SimExchangeBitMex(ExchangeInterface):
         self.xbt_initial_balance = initial_balance
         self.xbt_balance = initial_balance
 
-        self.positions = defaultdict(Position)  # type: defaultdict(Position)
+        self.positions = dict()  # type: Dict[Symbol, PositionSim]
         self.leverage = dict([(i, 100.) for i in self.SYMBOLS])  # 1 means 1%
 
         self.active_orders = Orders()
 
         # liq price for each position
-        self.closed_positions_hist = defaultdict(list)  # type: defaultdict(Position)
+        self.closed_positions_hist = defaultdict(list)  # type: Dict[Symbol, List[PositionSim]]
         self.fills_hist = []
         self.order_hist = []
 
@@ -144,7 +148,7 @@ class SimExchangeBitMex(ExchangeInterface):
         self.leverage[symbol] = value
         return True
 
-    def get_tick_info(self, symbol: Symbol=None) -> dict:
+    def get_tick_info(self, symbol: Symbol = None) -> dict:
         # TODO: implement symbol
         if symbol is not None:
             raise NotImplementedError()
@@ -172,12 +176,16 @@ class SimExchangeBitMex(ExchangeInterface):
     def is_last_candle(self):
         return self.time_idx == len(self.candles) - 1
 
-    def get_position(self, symbol):
-        # type: (self.Symbol) -> Position
-        return self.positions[symbol]
+    """ Interface : NOTE: it assumes that when there is no position, return emtpy position"""
+    def get_position(self, symbol: Symbol) -> PositionSim:
+        if symbol in self.positions:
+            return self.positions[symbol]
+        pos = PositionSim(symbol)
+        self.positions[symbol] = pos
+        return pos
 
-    def get_closed_positions(self, symbol):
-        # type: (Enum) -> list(Position)
+    def get_closed_positions(self, symbol: Symbol = None):
+        # type: (Enum) -> list(PositionSim)
         return self.closed_positions_hist[symbol]
 
     def get_xbt_balance(self):
@@ -206,10 +214,10 @@ class SimExchangeBitMex(ExchangeInterface):
             self._execute_all_orders()
             current_price = self._estimate_price()
             for symbol in self.SYMBOLS:
-                position = self.positions[symbol]  # type: Position
-                if position.is_open():
+                position = self.positions.get(symbol, None)  # type: PositionSim
+                if position and position.has_started:
                     side = position.side
-                    liq_price = self.positions[symbol].liq_price
+                    liq_price = self.positions[symbol].liquidation_price
                     if (side > 0 and current_price < liq_price) or (side < 0 and current_price > liq_price):
                         self._execute_liquidation(symbol)
 
@@ -238,7 +246,8 @@ class SimExchangeBitMex(ExchangeInterface):
                 if o.tactic and o.tactic != Liquidator:
                     o.tactic.handle_cancel(self, o)
 
-        if orders.size() > 0 and not self.active_orders.drop_closed_orders() > 0:  # in case orders does not refers to self.opened_orders
+        # in case orders does not refers to self.opened_orders
+        if orders.size() > 0 and not self.active_orders.drop_closed_orders() > 0:
             print("time at: " + str(self.current_time()))
             raise AttributeError("no orders were closed")
         if drop_canceled:
@@ -253,6 +262,8 @@ class SimExchangeBitMex(ExchangeInterface):
         order.time_posted = time_posted
         order.status = OrderStatus.canceled
         order.status_msg = reason
+
+    """ note: may restart self.position"""
 
     def post_orders(self, orders):
         # type: (Orders) -> bool
@@ -315,6 +326,8 @@ class SimExchangeBitMex(ExchangeInterface):
         open_p = current_candle.open
         return (3 * open_p + 2. * (low + high) + close_p) / 8.
 
+    """ note: may restart self.position """
+
     def _execute_all_orders(self):
         if not self.time_idx < len(self.candles):
             print("self.time_idx = {}".format(self.time_idx))
@@ -333,6 +346,28 @@ class SimExchangeBitMex(ExchangeInterface):
         self.active_orders.drop_closed_orders()
         # print "_________________END_______________________"
 
+    """ if the case, automatically closes position (add to position history)"""
+
+    def _update_position(self, symbol: Symbol, *args, **kwargs) -> PositionSim:
+        if symbol in self.positions:
+            position = self.positions[symbol].update(*args, **kwargs)
+        else:
+            position = PositionSim(symbol)
+            self.positions[symbol] = position.update(*args, **kwargs)
+            assert self.positions[symbol] == position
+
+        if position.has_closed:
+            assert position.has_started
+            self.closed_positions_hist[symbol] += [position]
+            self.xbt_balance += position.realized_pnl
+            del self.positions[symbol]
+
+        return position
+
+    """
+    Note: may restart self.position
+    """
+
     def _execute_order(self, order):
         # type: (OrderCommon) -> Fill
         assert self.time_idx < len(self.candles)
@@ -347,8 +382,8 @@ class SimExchangeBitMex(ExchangeInterface):
         open = current_candle.open
         close = current_candle.close
 
-        position = self.positions[order.symbol]  # type: Position
-        position_value = position.position()
+        position = self.positions[order.symbol]  # type: PositionSim
+        current_qty = position.current_qty
         qty_fill = qty_to_close = outstanding_qty = None
         crossed = False
 
@@ -379,10 +414,10 @@ class SimExchangeBitMex(ExchangeInterface):
             raise ValueError("order type " + str(order.type) + " not supported")
 
         if not crossed:
-            return None
+            return None  # type: Fill
 
-        if position.does_change_side(qty_fill):
-            qty_to_close = sign(qty_fill) * min(abs(position_value), abs(qty_fill))
+        if position.has_started and position.would_change_side(qty_fill):
+            qty_to_close = float(sign(qty_fill)) * min(abs(current_qty), abs(qty_fill))
             outstanding_qty = qty_fill - qty_to_close
 
         if order.fill(qty_fill) or order.type == OrderType.market:
@@ -395,24 +430,28 @@ class SimExchangeBitMex(ExchangeInterface):
         fee = self.FEE[order.type]
 
         if outstanding_qty:
-            position.update(qty=qty_to_close,
-                            price=price_fill,
-                            multiplier=self.leverage[order.symbol],
-                            fee=fee)
-            assert position.is_closeable()
-            self._close_position(order.symbol)
-            position.update(qty=outstanding_qty,
-                            price=price_fill,
-                            multiplier=self.leverage[order.symbol],
-                            fee=fee)
-            assert not position.is_closeable()
+            position = self._update_position(order.symbol,
+                                             qty=qty_to_close,
+                                             price=price_fill,
+                                             leverage=self.leverage[order.symbol],
+                                             current_timestamp=current_time,
+                                             fee=fee)
+            assert position.has_closed
+
+            position = self._update_position(order.symbol,
+                                             qty=outstanding_qty,
+                                             price=price_fill,
+                                             leverage=self.leverage[order.symbol],
+                                             current_timestamp=current_time,
+                                             fee=fee)
+            assert position.has_started
         else:
-            position.update(qty=qty_fill,
-                            price=price_fill,
-                            multiplier=self.leverage[order.symbol],
-                            fee=fee)
-            if position.is_closeable():
-                self._close_position(order.symbol)
+            self._update_position(order.symbol,
+                                  qty=qty_fill,
+                                  price=price_fill,
+                                  leverage=self.leverage[order.symbol],
+                                  current_timestamp=current_time,
+                                  fee=fee)
 
         fill = Fill(order=order,
                     qty_filled=qty_fill,
@@ -430,31 +469,26 @@ class SimExchangeBitMex(ExchangeInterface):
         self.cancel_orders(self.active_orders.of_symbol(symbol), reason=order_cancel_reason)
         self.can_call_handles = True
         assert self.active_orders.of_symbol(symbol).size() == 0
-        position = self.positions[symbol]
-        if not position.is_open():
+        position = self.positions.get(symbol, None)
+        if not position or not position.has_started:
             return
-        order = OrderCommon(symbol=symbol, signed_qty=-position.position(), type=OrderType.market, tactic=Liquidator())
+        assert position.has_started
+        order = OrderCommon(symbol=symbol, signed_qty=-position.current_qty, type=OrderType.market, tactic=Liquidator())
         order.status_msg = order_cancel_reason
         self.can_call_handles = False
         self.post_orders(Orders({order.id: order}))
         self.can_call_handles = True
         assert order.status == OrderStatus.filled
-        if position.is_open():
-            raise AttributeError("position was not close during liquidation. position = %f" % position.position())
+        if position.has_started and not position.has_closed:
+            raise AttributeError("position was not close during liquidation. position = %f" % position.current_qty)
         if not self.is_last_candle():
             self.n_liquidations[symbol.name] += 1
         if order_cancel_reason == OrderCancelReason.liquidation:
-            closed = self.closed_positions_hist[symbol][-1]  # type: Position
+            closed = self.closed_positions_hist[symbol][-1]  # type: PositionSim
             if closed.realized_pnl >= 0:
-                raise AttributeError("Liquidation caused profit! position = \n" + str(position))
+                raise AttributeError("Liquidation caused profit! position = {},\n current price = {}"
+                                     .format(str(position), self._estimate_price()))
         assert self.active_orders.of_symbol(symbol).size() == 0
-
-    def _close_position(self, symbol, force_close=False):
-        position = self.positions[symbol]  # type: Position
-        assert position.is_closeable() or force_close
-        position.close_ts = self.current_time()
-        self.closed_positions_hist[symbol] += [copy.deepcopy(position)]
-        self.xbt_balance += position.close_position()
 
     @staticmethod
     def _count_per_symbol(lista):
@@ -516,9 +550,9 @@ class SimExchangeBitMex(ExchangeInterface):
         pnl_file.write('time,symbol,pnl,cum_pnl\n')
         for s in self.SYMBOLS:
             sum = 0
-            for p in self.closed_positions_hist[s]:  # type: Position
+            for p in self.closed_positions_hist[s]:  # type: PositionSim
                 sum += p.realized_pnl
-                pnl_file.write(','.join([str(p.close_ts.strftime('%Y-%m-%dT%H:%M:%S')),
+                pnl_file.write(','.join([str(p.current_timestamp.strftime('%Y-%m-%dT%H:%M:%S')),
                                          s.name,
                                          str(p.realized_pnl),
                                          str(sum)])

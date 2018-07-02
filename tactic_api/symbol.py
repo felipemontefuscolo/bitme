@@ -12,4 +12,3 @@ class Symbol(Enum):
     @property
     def tick_size(self):
         return self.value['tick_size']
-

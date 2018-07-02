@@ -9,7 +9,7 @@ from enum import Enum
 import pandas as pd
 import requests
 
-from common import ExchangeInterface, Position, Orders, Symbol
+from common import ExchangeInterface, PositionInterface, Orders, Symbol
 from live import errors
 from live.auth import APIKeyAuthWithExpires
 from live.settings import settings
@@ -42,7 +42,7 @@ class LiveBitMex(ExchangeInterface):
 
         self.logger = logging.getLogger('root')
         self.base_url = settings.BASE_URL
-        self.symbol = 'XBTUSD'  # TODO: support other symbols
+        self.symbol = Symbol.XBTUSD  # TODO: support other symbols
         self.postOnly = settings.POST_ONLY
         if settings.API_KEY is None:
             raise Exception("Please set an API key and Secret to get started. See " +
@@ -63,7 +63,7 @@ class LiveBitMex(ExchangeInterface):
 
         # Create websocket for streaming data
         self.ws = BitMEXWebsocket()
-        self.ws.connect(endpoint=self.base_url, symbol=self.symbol, shouldAuth=True)
+        self.ws.connect(endpoint=self.base_url, symbol=str(self.symbol), shouldAuth=True)
 
         self.timeout = settings.TIMEOUT
 
@@ -91,11 +91,13 @@ class LiveBitMex(ExchangeInterface):
         return self.ws.get_ticker(symbol)
 
     @authentication_required
-    def get_position(self, symbol: Symbol):
+    def get_position(self, symbol: Symbol=None):
         """Get your open position."""
+        if symbol is None:
+            symbol = self.symbol
         return self.ws.position(str(symbol))
 
-    def get_closed_positions(self, symbol: Enum) -> Position:
+    def get_closed_positions(self, symbol: Symbol=None) -> PositionInterface:
         raise AttributeError("interface class")
 
     def set_leverage(self, symbol: Enum, value: float) -> bool:
@@ -159,7 +161,7 @@ class LiveBitMex(ExchangeInterface):
 
     @authentication_required
     def get_closed_positions(self, symbol='XBTUSD'):
-        # type: (Enum) -> list(Position)
+        # type: (Enum) -> list(PositionInterface)
         raise AttributeError("interface class")
 
     @authentication_required
@@ -445,7 +447,7 @@ if __name__ == "__main__":
         print("SLEEP")
         time.sleep(1)
 
-        new_g = live.ticker_data()
+        new_g = live.get_position()
         if g != new_g:
             g = new_g
             json.dumps(g, indent=4, sort_keys=True)

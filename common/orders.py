@@ -5,9 +5,10 @@ import math
 import pandas as pd
 from enum import Enum
 
-
 # Order container util
 from typing import Union, Iterable, Dict
+
+from tactic_api.symbol import Symbol
 
 
 class Orders:
@@ -84,7 +85,7 @@ class OrderCommon:
         # self.id = str('bitme_' + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n'))  # type: str
         self.id = str('zaloe_' + str(OrderCommon._count))  # type: str
         OrderCommon._count += 1
-        self.symbol = kargs['symbol']  # type: Enum
+        self.symbol = kargs['symbol']  # type: Symbol
         self.signed_qty = math.floor(_get(kargs, 'signed_qty', float('nan')))  # type: float
         self.price = round(_get(kargs, 'price', float('nan')), 1)  # type: float
         self.stop_price = _get(kargs, 'stop_price', float('nan'))  # type: float

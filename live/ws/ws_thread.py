@@ -212,8 +212,6 @@ class BitMEXWebsocket():
 
     def __on_message(self, ws, message):
         '''Handler for parsing WS messages.'''
-        if 'tradeBin1m' in message:
-            print(message)
         message = json.loads(message)
         self.logger.debug(json.dumps(message))
 
