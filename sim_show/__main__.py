@@ -98,7 +98,7 @@ def main():
     data = [trace, trace2, trace3, trace4]
 
     layout = go.Layout(
-        title='Double Y Axis Example',
+        title='Trading log',
         yaxis=dict(
             title='Price'
         ),

@@ -62,7 +62,7 @@ class PositionSim(PositionInterface):
         else:
             # TODO: take into account rebates. In this case, the line below could be outside the condition if/else
             d_price = fake_price - self.avg_entry_price
-            self.realized_pnl += d_price / self.avg_entry_price * abs(qty) * self.side
+            self.realized_pnl += d_price / (self.avg_entry_price * fake_price) * self.leverage * abs(qty) * self.side
 
         self.current_qty = new_qty
 
