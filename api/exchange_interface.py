@@ -2,8 +2,8 @@ from abc import ABCMeta, abstractmethod
 
 import pandas as pd
 from common.orders import Orders
-from tactic_api.position_interface import PositionInterface
-from tactic_api.symbol import Symbol
+from api.position_interface import PositionInterface
+from api.symbol import Symbol
 
 
 class ExchangeInterface(metaclass=ABCMeta):

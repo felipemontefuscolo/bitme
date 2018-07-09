@@ -4,9 +4,9 @@ import pandas as pd
 from sympy import sign
 
 from sim.position_sim import PositionSim
-from tactic_api.exchange_interface import ExchangeInterface
-from tactic_api.position_interface import PositionInterface
-from tactic_api.symbol import Symbol
+from api.exchange_interface import ExchangeInterface
+from api.position_interface import PositionInterface
+from api.symbol import Symbol
 from common.fill import FillType, Fill
 from common.orders import Orders, OrderCancelReason, OrderCommon, OrderType
 from tactic.tactic_tools import does_reduce_position

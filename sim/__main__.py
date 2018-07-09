@@ -14,8 +14,8 @@ from enum import Enum
 from numpy.core.umath import sign
 from typing import Dict, List
 
-from tactic_api.exchange_interface import ExchangeInterface
-from tactic_api.symbol import Symbol
+from api.exchange_interface import ExchangeInterface
+from api.symbol import Symbol
 
 from common.orders import Orders
 from common import Fill, FillType, OrderType, OrderCancelReason, to_ohlcv, OrderStatus, OrderCommon

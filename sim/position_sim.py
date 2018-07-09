@@ -1,8 +1,8 @@
 from numpy import sign
 from sympy import sign
 
-from tactic_api.position_interface import PositionInterface
-from tactic_api.symbol import Symbol
+from api.position_interface import PositionInterface
+from api.symbol import Symbol
 from common.constants import ZERO_TOL
 
 

@@ -1,4 +1,4 @@
-from tactic_api.position_interface import PositionInterface
+from api.position_interface import PositionInterface
 
 
 def does_reduce_position(qty, position: PositionInterface):

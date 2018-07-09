@@ -8,7 +8,7 @@ from enum import Enum
 # Order container util
 from typing import Union, Iterable, Dict
 
-from tactic_api.symbol import Symbol
+from api.symbol import Symbol
 
 
 class Orders:

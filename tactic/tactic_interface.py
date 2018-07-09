@@ -2,8 +2,8 @@ from abc import ABCMeta, abstractmethod
 
 from common.fill import Fill
 from common.orders import OrderCommon
-from tactic_api.symbol import Symbol
-from tactic_api.exchange_interface import ExchangeInterface
+from api.symbol import Symbol
+from api.exchange_interface import ExchangeInterface
 
 
 class TacticInterface(metaclass=ABCMeta):

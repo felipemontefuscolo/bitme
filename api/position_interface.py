@@ -1,4 +1,4 @@
-from tactic_api.symbol import Symbol
+from api.symbol import Symbol
 import pandas as pd
 import json
 
