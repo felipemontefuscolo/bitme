@@ -20,7 +20,6 @@ class PositionInterface:
     leverage = None  # type: int
     current_qty = None  # type: float
     side = None  # type: int
-    """ In XBT """
     realized_pnl = None  # type: float
     has_started = False  # type: bool
     has_closed = False  # type: bool

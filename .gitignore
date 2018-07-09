@@ -105,9 +105,12 @@ ENV/
 *.swp
 
 # intellij
-.idea/
-.idea/workspace.xml
+.idea/*
+idea/workspace.xml
 
 outdir/
 output/
+
+.DS_Store
+outdir.zip
 

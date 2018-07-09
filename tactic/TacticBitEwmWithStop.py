@@ -4,17 +4,19 @@ import pandas as pd
 from sympy import sign
 
 from sim.position_sim import PositionSim
+from tactic_api.exchange_interface import ExchangeInterface
 from tactic_api.position_interface import PositionInterface
 from tactic_api.symbol import Symbol
-from common.fill import FillType
+from common.fill import FillType, Fill
 from common.orders import Orders, OrderCancelReason, OrderCommon, OrderType
-from tactic import does_reduce_position
+from tactic.tactic_tools import does_reduce_position
 from tactic.tactic_interface import TacticInterface
 
 
 # Same as TacticBitEwm, but this variation temporarily stop trading if it's losing too much
 # @logged
 class TacticBitEwmWithStop(TacticInterface):
+
     def __init__(self, product_id):
         TacticInterface.__init__(self)
         self.product_id = product_id  # type: Symbol
@@ -33,8 +35,7 @@ class TacticBitEwmWithStop(TacticInterface):
         self.last_ema_std = (float('nan'), float('nan'))
         self.last_fill = None
 
-    def init(self, exchange, preferences):
-        # type: (ExchangeCommon, dict) -> None
+    def init(self, exchange: ExchangeInterface, preferences: dict):
         exchange.set_leverage(self.product_id, self.multiplier)
         self.last_activity_time = exchange.current_time()
 
@@ -47,15 +48,16 @@ class TacticBitEwmWithStop(TacticInterface):
         if 'loss_limit' in preferences:
             self.loss_limit = int(preferences['loss_limit'])
 
-    def get_symbol(self):
-        # type: () -> Enum
+    def handle_submission_error(self, failed_order: OrderCommon) -> None:
+        raise AttributeError("Not implemented yet")
+
+    def get_symbol(self) -> Symbol:
         return self.product_id
 
     def has_position(self):
         return not self.position.has_started
 
-    def send_order(self, exchange, order, n_try=1):
-        # type: (ExchangeCommon, OrderCommon) -> bool
+    def send_order(self, exchange: ExchangeInterface, order: OrderCommon, n_try=1) -> bool:
         # return True if failed
         for i in range(n_try):
             orders_to_send = Orders()
@@ -67,9 +69,8 @@ class TacticBitEwmWithStop(TacticInterface):
                 return False
         return True
 
-    def handle_cancel(self, exchange, order):
-        # type: (ExchangeCommon, OrderCommon) -> None
-        self.position = exchange.get_position(self.product_id)  # type: Position
+    def handle_cancel(self, exchange: ExchangeInterface, order: OrderCommon):
+        self.position = exchange.get_position(self.product_id)  # type: PositionInterface
         if not self.position.is_open or \
                 order.status_msg == OrderCancelReason.liquidation or \
                 order.status_msg == OrderCancelReason.end_of_sim or \
@@ -85,8 +86,7 @@ class TacticBitEwmWithStop(TacticInterface):
         self.opened_orders.drop_closed_orders()
         raise ValueError()  # test
 
-    def handle_fill(self, exchange, fill):
-        # type: (ExchangeCommon, Fill) -> None
+    def handle_fill(self, exchange: ExchangeInterface, fill: Fill):
         qty_filled = fill.qty
         order = fill.order
         try:
@@ -167,8 +167,8 @@ class TacticBitEwmWithStop(TacticInterface):
         reverse_logic = self.is_losing_too_much(exchange)
         if reverse_logic:
             return
-            #print("STOPPPPPPPPPPPP LOSING IT!!!")
-            #return
+            # print("STOPPPPPPPPPPPP LOSING IT!!!")
+            # return
 
         df = candles1m['close']  # type: pd.Series
         ema = df.ewm(span=self.span).mean()[-1]
@@ -181,7 +181,7 @@ class TacticBitEwmWithStop(TacticInterface):
         else:
             should_trade = 0
 
-        should_trade = should_trade * (1-2*reverse_logic)
+        should_trade = should_trade * (1 - 2 * reverse_logic)
         if not should_trade:
             # print("NOT GOOD EMA ... " + str((str(abs(price - ema)), str(std))) + "                    ")
             return

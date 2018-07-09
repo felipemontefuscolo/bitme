@@ -66,8 +66,12 @@ def get_args(input_args=None):
 
 
 class Liquidator(TacticInterface):
+
     def __init__(self):
         super().__init__()
+
+    def get_symbol(self) -> Symbol:
+        pass
 
     def init(self, exchange, preferences):
         pass
@@ -177,6 +181,7 @@ class SimExchangeBitMex(ExchangeInterface):
         return self.time_idx == len(self.candles) - 1
 
     """ Interface : NOTE: it assumes that when there is no position, return emtpy position"""
+
     def get_position(self, symbol: Symbol) -> PositionSim:
         if symbol in self.positions:
             return self.positions[symbol]

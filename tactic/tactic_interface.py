@@ -1,29 +1,37 @@
-class TacticInterface:
+from abc import ABCMeta, abstractmethod
+
+from common.fill import Fill
+from common.orders import OrderCommon
+from tactic_api.symbol import Symbol
+from tactic_api.exchange_interface import ExchangeInterface
+
+
+class TacticInterface(metaclass=ABCMeta):
     def __init__(self):
         pass
 
-    def init(self, exchange, preferences):
-        # type: (ExchangeCommon, dict) -> None
+    @abstractmethod
+    def init(self, exchange: ExchangeInterface, preferences: dict) -> None:
         raise AttributeError("interface class")
 
-    def get_symbol(self):
-        # type: () -> Enum
+    @abstractmethod
+    def get_symbol(self) -> Symbol:
         raise AttributeError("interface class")
 
-    def handle_candles(self, exchange):
-        # type: (ExchangeCommon) -> None
+    @abstractmethod
+    def handle_candles(self, exchange: ExchangeInterface) -> None:
         raise AttributeError("interface class")
 
-    def handle_submission_error(self, failed_order):
-        # type: (OrderCommon) -> None
+    @abstractmethod
+    def handle_submission_error(self, failed_order: OrderCommon) -> None:
         raise AttributeError("interface class")
 
-    def handle_fill(self, exchange, fill):
-        # type: (ExchangeCommon, Fill) -> None
+    @abstractmethod
+    def handle_fill(self, exchange: ExchangeInterface, fill: Fill) -> None:
         raise AttributeError("interface class")
 
-    def handle_cancel(self, exchange, order):
-        # type: (ExchangeCommon, OrderCommon) -> None
+    @abstractmethod
+    def handle_cancel(self, exchange: ExchangeInterface, order: OrderCommon) -> None:
         raise AttributeError("interface class")
 
     def id(self):
