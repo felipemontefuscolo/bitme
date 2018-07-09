@@ -90,7 +90,7 @@ def floor_5(x):
         return math.ceil(2. * x) * 0.5
 
 
-def read_data(file: str, begin: pd.Timestamp=None, end: pd.Timestamp=None) -> pd.DataFrame:
+def read_data(file: str, begin: pd.Timestamp = None, end: pd.Timestamp = None) -> pd.DataFrame:
     timeparser = lambda s: pd.datetime.strptime(str(s), '%Y-%m-%dT%H:%M:%S')
     data = pd.DataFrame(pd.read_csv(file, parse_dates=True, index_col='time', date_parser=timeparser))
 
@@ -111,3 +111,6 @@ def to_nearest(num, tick_size: Union[float, str]):
     tick_dec = Decimal(str(tick_size))
     return float((Decimal(round(num / float(tick_size), 0)) * tick_dec))
 
+
+def to_str(number, precision=2):
+    return "%.{}f".format(precision) % round(float(number), precision)

@@ -5,7 +5,7 @@ import time
 import swagger_client
 from swagger_client.rest import ApiException
 
-from tools.utils import smart_open
+from utils.utils import smart_open
 
 import argparse
 import pandas as pd

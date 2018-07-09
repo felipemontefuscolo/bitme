@@ -27,22 +27,6 @@ class PositionInterface:
     open_timestamp = None  # type: pd.Timestamp
 
     def __str__(self):
-        # m = {
-        #     'symbol': str(self.symbol),
-        #     'avg_entry_price': str(self.avg_entry_price),
-        #     'break_even_price': str(self.break_even_price),
-        #     'liquidation_price': self.liquidation_price,
-        #     'leverage': self.leverage,
-        #     'current_qty': self.current_qty,
-        #     'side': self.side,
-        #     'realized_pnl': self.realized_pnl,
-        #     'is_open': self.is_open,
-        #     'current_timestamp': self.current_timestamp,
-        #     'open_timestamp': self.open_timestamp,
-        # }
-        m = {}
-        for i in dir(PositionInterface):
-            if '__' not in i:
-                m[i] = str(self.__getattribute__(i))
+        m = {i: str(self.__getattribute__(i)) for i in dir(PositionInterface) if '__' not in i}
 
         return json.dumps(m, indent=4, sort_keys=True)

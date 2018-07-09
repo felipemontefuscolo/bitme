@@ -17,12 +17,12 @@ from typing import Dict, List
 from api.exchange_interface import ExchangeInterface
 from api.symbol import Symbol
 
-from common.orders import Orders
+from common.order import OrdersContainer
 from common import Fill, FillType, OrderType, OrderCancelReason, to_ohlcv, OrderStatus, OrderCommon
 from .sim_stats import SimSummary
 from .position_sim import PositionSim
 from tactic import TacticInterface, TacticBitEwmWithStop
-from tools.utils import to_nearest
+from utils.utils import to_nearest
 
 
 # import logging
@@ -110,7 +110,7 @@ class SimExchangeBitMex(ExchangeInterface):
         self.positions = dict()  # type: Dict[Symbol, PositionSim]
         self.leverage = dict([(i, 100.) for i in self.SYMBOLS])  # 1 means 1%
 
-        self.active_orders = Orders()
+        self.active_orders = OrdersContainer()
 
         # liq price for each position
         self.closed_positions_hist = defaultdict(list)  # type: Dict[Symbol, List[PositionSim]]
@@ -234,7 +234,7 @@ class SimExchangeBitMex(ExchangeInterface):
             return False
 
     def cancel_orders(self,
-                      orders: Orders,
+                      orders: OrdersContainer,
                       drop_canceled=True,
                       status=OrderStatus.canceled,
                       reason=OrderCancelReason.requested_by_user):
@@ -271,7 +271,7 @@ class SimExchangeBitMex(ExchangeInterface):
     """ note: may restart self.position"""
 
     def post_orders(self, orders):
-        # type: (Orders) -> bool
+        # type: (OrdersContainer) -> bool
         # may change order status
         # return true if any submission failed
         contain_errors = False
@@ -481,7 +481,7 @@ class SimExchangeBitMex(ExchangeInterface):
         order = OrderCommon(symbol=symbol, signed_qty=-position.current_qty, type=OrderType.market, tactic=Liquidator())
         order.status_msg = order_cancel_reason
         self.can_call_handles = False
-        self.post_orders(Orders({order.id: order}))
+        self.post_orders(OrdersContainer({order.id: order}))
         self.can_call_handles = True
         assert order.status == OrderStatus.filled
         if position.has_started and not position.has_closed:

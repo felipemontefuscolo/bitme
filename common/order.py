@@ -11,7 +11,7 @@ from typing import Union, Iterable, Dict
 from api.symbol import Symbol
 
 
-class Orders:
+class OrdersContainer:
     def __init__(self, orders=None):
         # type: (Iterable) -> None
         if orders is None:
@@ -31,8 +31,8 @@ class Orders:
         return iter(self.data.values())
 
     def of_symbol(self, symbol):
-        # type: (Enum) -> Orders
-        return Orders(dict([(o_id, o) for o_id, o in self.data.items() if o.symbol == symbol]))
+        # type: (Enum) -> OrdersContainer
+        return OrdersContainer(dict([(o_id, o) for o_id, o in self.data.items() if o.symbol == symbol]))
 
     def size(self):
         return len(self.data)
@@ -44,7 +44,7 @@ class Orders:
         return self.data.keys()
 
     def merge(self, orders):
-        # type: (Orders) -> None
+        # type: (OrdersContainer) -> None
         for k in orders.data:
             self.data[k] = orders.data[k]
 
@@ -56,8 +56,8 @@ class Orders:
         return l - len(self.data)
 
     def market_orders(self):
-        return Orders(dict([(o.id, o) for o in self.data.values()
-                            if o.type == OrderType.market]))
+        return OrdersContainer(dict([(o.id, o) for o in self.data.values()
+                                     if o.type == OrderType.market]))
 
     # replace old order with same id
     def add(self, order):
@@ -86,13 +86,13 @@ class OrderCommon:
         self.id = str('zaloe_' + str(OrderCommon._count))  # type: str
         OrderCommon._count += 1
         self.symbol = kargs['symbol']  # type: Symbol
-        self.signed_qty = math.floor(_get(kargs, 'signed_qty', float('nan')))  # type: float
-        self.price = round(_get(kargs, 'price', float('nan')), 1)  # type: float
-        self.stop_price = _get(kargs, 'stop_price', float('nan'))  # type: float
-        self.linked_order_id = _get(kargs, 'linked_order_id', None)  # type: str
+        self.signed_qty = math.floor(kargs.get('signed_qty', float('nan')))  # type: float
+        self.price = round(kargs.get('price', float('nan')), 1)  # type: float
+        self.stop_price = kargs.get('stop_price', float('nan'))  # type: float
+        self.linked_order_id = kargs.get('linked_order_id', None)  # type: str
         self.type = kargs['type']  # type: OrderType
-        self.time_in_force = _get(kargs, 'time_in_foce', None)  # type: TimeInForce
-        self.contingency_type = _get(kargs, 'contingency_type', None)  # type: ContingencyType
+        self.time_in_force = kargs.get('time_in_foce', None)  # type: TimeInForce
+        self.contingency_type = kargs.get('contingency_type', None)  # type: ContingencyType
         self.tactic = kargs['tactic']
 
         # data change by the exchange
@@ -209,12 +209,4 @@ class ContingencyType(Enum):
     one_updates_the_other_proportional = 'one_updates_the_other_proportional'
 
 
-def _get(dicti, key, default):
-    try:
-        return dicti[key]
-    except KeyError:
-        return default
 
-
-def to_str(number, precision=2):
-    return "%.{}f".format(precision) % round(float(number), precision)

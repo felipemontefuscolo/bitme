@@ -1,4 +1,4 @@
-from tools import read_data
+from utils import read_data
 
 import argparse
 import os

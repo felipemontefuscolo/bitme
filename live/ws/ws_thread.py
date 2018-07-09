@@ -9,8 +9,8 @@ import decimal
 import logging
 from live.settings import settings
 from live.auth.APIKeyAuth import generate_nonce, generate_signature
-from tools.log import setup_custom_logger
-from tools.utils import to_nearest
+from utils.log import setup_custom_logger
+from utils.utils import to_nearest
 from future.utils import iteritems
 from future.standard_library import hooks
 

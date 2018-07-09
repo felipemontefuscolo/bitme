@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 
 import pandas as pd
-from common.orders import Orders
+from common.order import OrdersContainer
 from api.position_interface import PositionInterface
 from api.symbol import Symbol
 
@@ -53,5 +53,5 @@ class ExchangeInterface(metaclass=ABCMeta):
         raise AttributeError("interface class")
 
     @abstractmethod
-    def cancel_orders(self, orders: Orders, drop_canceled=True):
+    def cancel_orders(self, orders: OrdersContainer, drop_canceled=True):
         raise AttributeError("interface class")

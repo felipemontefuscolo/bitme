@@ -8,7 +8,7 @@ from api.exchange_interface import ExchangeInterface
 from api.position_interface import PositionInterface
 from api.symbol import Symbol
 from common.fill import FillType, Fill
-from common.orders import Orders, OrderCancelReason, OrderCommon, OrderType
+from common.order import OrdersContainer, OrderCancelReason, OrderCommon, OrderType
 from tactic.tactic_tools import does_reduce_position
 from tactic.tactic_interface import TacticInterface
 
@@ -21,7 +21,7 @@ class TacticBitEwmWithStop(TacticInterface):
         TacticInterface.__init__(self)
         self.product_id = product_id  # type: Symbol
 
-        self.opened_orders = Orders()
+        self.opened_orders = OrdersContainer()
         self.position = None  # type: PositionInterface
         self.last_activity_time = None  # type: pd.Timestamp
         self.multiplier = 100.
@@ -60,7 +60,7 @@ class TacticBitEwmWithStop(TacticInterface):
     def send_order(self, exchange: ExchangeInterface, order: OrderCommon, n_try=1) -> bool:
         # return True if failed
         for i in range(n_try):
-            orders_to_send = Orders()
+            orders_to_send = OrdersContainer()
             orders_to_send.add(order)
             if not exchange.post_orders(orders_to_send):
                 if order.is_open():
@@ -195,7 +195,7 @@ class TacticBitEwmWithStop(TacticInterface):
                                     tactic=self)
 
         if self.send_order(exchange, order_to_send) and not self.position.is_open:
-            exchange.cancel_orders(Orders({order_to_send.id: order_to_send}))
+            exchange.cancel_orders(OrdersContainer({order_to_send.id: order_to_send}))
         else:
             # self.__log.info(" -- sending order " + str(order_to_send))
             1

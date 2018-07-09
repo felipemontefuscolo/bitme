@@ -9,12 +9,12 @@ from enum import Enum
 import pandas as pd
 import requests
 
-from common import ExchangeInterface, PositionInterface, Orders, Symbol
+from common import ExchangeInterface, PositionInterface, OrdersContainer, Symbol
 from live import errors
 from live.auth import APIKeyAuthWithExpires
 from live.settings import settings
 from live.ws.ws_thread import BitMEXWebsocket
-from tools import log
+from utils import log
 
 MAX_NUM_CANDLES_BITMEX = 500  # bitmex REST API limit
 
@@ -109,7 +109,7 @@ class LiveBitMex(ExchangeInterface):
         """
         raise AttributeError("interface class")
 
-    def cancel_orders(self, orders: Orders, drop_canceled=True):
+    def cancel_orders(self, orders: OrdersContainer, drop_canceled=True):
         raise AttributeError("interface class")
 
     def post_orders(self, orders) -> bool:
@@ -177,7 +177,7 @@ class LiveBitMex(ExchangeInterface):
 
     @authentication_required
     def cancel_orders(self, orders, drop_canceled=True):
-        # type: (Orders, bool) -> None
+        # type: (OrdersContainer, bool) -> None
         raise AttributeError("interface class")
 
     @authentication_required

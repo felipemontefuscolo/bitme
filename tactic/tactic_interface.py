@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 
 from common.fill import Fill
-from common.orders import OrderCommon
+from common.order import OrderCommon
 from api.symbol import Symbol
 from api.exchange_interface import ExchangeInterface
 
