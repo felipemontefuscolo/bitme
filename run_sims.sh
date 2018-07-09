@@ -16,7 +16,7 @@ greediness=(1.)
 
 # see more on: https://www.gnu.org/software/parallel/parallel_tutorial.html
 
-parallel --header : --files --results ${outdir}/messages --bar `[[  "$dry_run" = false ]] || echo echo` python -m sim -x span={1} -x loss_limit={2} -x qty_to_trade={3} -x greediness={4} \
+parallel --header : --files --results ${outdir}/messages --bar `[[  "$dry_run" = false ]] || echo ` python -m sim -x span={1} -x loss_limit={2} -x qty_to_trade={3} -x greediness={4} \
 -l ${outdir}/data_files/{#}  \
 -f "${input}"  \
 ::: span "${span[@]}" \
