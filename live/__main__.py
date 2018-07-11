@@ -8,6 +8,7 @@ from enum import Enum
 
 import pandas as pd
 import requests
+from typing import Iterable
 
 from common import ExchangeInterface, PositionInterface, OrdersContainer, Symbol
 from live import errors
@@ -109,7 +110,11 @@ class LiveBitMex(ExchangeInterface):
         """
         raise AttributeError("interface class")
 
-    def cancel_orders(self, orders: OrdersContainer, drop_canceled=True):
+    def cancel_orders(self, orders: Iterable) -> list:
+        """
+        :param orders:
+        :return: list of cancelled orders
+        """
         raise AttributeError("interface class")
 
     def post_orders(self, orders) -> bool:

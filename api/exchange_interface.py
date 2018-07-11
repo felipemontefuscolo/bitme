@@ -1,6 +1,8 @@
 from abc import ABCMeta, abstractmethod
 
 import pandas as pd
+from typing import Iterable
+
 from common.order import OrdersContainer
 from api.position_interface import PositionInterface
 from api.symbol import Symbol
@@ -15,10 +17,18 @@ class ExchangeInterface(metaclass=ABCMeta):
         raise AttributeError("interface class")
 
     @abstractmethod
-    def post_orders(self, orders) -> bool:
+    def post_orders(self, orders: Iterable) -> list:
         """
         :param orders:
-        :return: True if any order was rejected
+        :return: list of orders that were successfully posted
+        """
+        raise AttributeError("interface class")
+
+    @abstractmethod
+    def cancel_orders(self, orders: Iterable) -> list:
+        """
+        :param orders: orders to cancel
+        :return: list of cancelled orders
         """
         raise AttributeError("interface class")
 
@@ -50,8 +60,4 @@ class ExchangeInterface(metaclass=ABCMeta):
                Send 0 to enable cross margin.
         :return: True if succeeded
         """
-        raise AttributeError("interface class")
-
-    @abstractmethod
-    def cancel_orders(self, orders: OrdersContainer, drop_canceled=True):
         raise AttributeError("interface class")

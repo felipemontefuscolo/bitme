@@ -3,12 +3,13 @@ import math
 import pandas as pd
 from sympy import sign
 
+from api.order import Order
 from sim.position_sim import PositionSim
 from api.exchange_interface import ExchangeInterface
 from api.position_interface import PositionInterface
 from api.symbol import Symbol
 from common.fill import FillType, Fill
-from common.order import OrdersContainer, OrderCancelReason, OrderCommon, OrderType
+from common.order import OrdersContainer, OrderCancelReason, OrderCommon, OrderType, OrderStatus
 from tactic.tactic_tools import does_reduce_position
 from tactic.tactic_interface import TacticInterface
 
@@ -60,11 +61,11 @@ class TacticBitEwmWithStop(TacticInterface):
     def send_order(self, exchange: ExchangeInterface, order: OrderCommon, n_try=1) -> bool:
         # return True if failed
         for i in range(n_try):
-            orders_to_send = OrdersContainer()
-            orders_to_send.add(order)
-            if not exchange.post_orders(orders_to_send):
-                if order.is_open():
-                    self.opened_orders.merge(orders_to_send)
+            orders_sent = exchange.post_orders([order])
+            if len(orders_sent) != 0:
+                order_sent = next(iter(orders_sent))  # type: Order
+                if order_sent.status == OrderStatus.opened:
+                    self.opened_orders.merge(orders_sent)
                 self.last_activity_time = order.time_posted
                 return False
         return True
@@ -105,7 +106,8 @@ class TacticBitEwmWithStop(TacticInterface):
 
         if not self.position.has_started:
             assert order.is_fully_filled()
-            exchange.cancel_orders(self.opened_orders)
+            cancelled = exchange.cancel_orders(self.opened_orders)
+            self.opened_orders.drop_orders(cancelled)
             self.handle_candles(exchange)
             return
 
@@ -195,7 +197,7 @@ class TacticBitEwmWithStop(TacticInterface):
                                     tactic=self)
 
         if self.send_order(exchange, order_to_send) and not self.position.is_open:
-            exchange.cancel_orders(OrdersContainer({order_to_send.id: order_to_send}))
+            exchange.cancel_orders([order_to_send])
         else:
             # self.__log.info(" -- sending order " + str(order_to_send))
             1
@@ -205,7 +207,8 @@ class TacticBitEwmWithStop(TacticInterface):
         if not self.position.has_started:
             return False
         if sign(current_price - self.position.break_even_price) == self.position.side:
-            exchange.cancel_orders(self.opened_orders, drop_canceled=True)
+            cancelled = exchange.cancel_orders(self.opened_orders)
+            self.opened_orders.drop_orders(cancelled)
             if self.position.has_started:
                 order_to_send = OrderCommon(symbol=self.product_id,
                                             signed_qty=-self.position.current_qty,

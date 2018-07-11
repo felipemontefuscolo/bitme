@@ -44,9 +44,12 @@ class OrdersContainer:
         return self.data.keys()
 
     def merge(self, orders):
-        # type: (OrdersContainer) -> None
-        for k in orders.data:
-            self.data[k] = orders.data[k]
+        if isinstance(orders, OrdersContainer):
+            for k in orders.data:
+                self.data[k] = orders.data[k]
+        else:
+            for k in orders:
+                self.data[k.id] = k
 
     def drop_closed_orders(self):
         # return num of dropped orders
@@ -55,7 +58,11 @@ class OrdersContainer:
                           if o.status == OrderStatus.opened or o.status == OrderStatus.pending])
         return l - len(self.data)
 
-    def market_orders(self):
+    def drop_orders(self, orders_list):
+        ids_set = set([o.id for o in orders_list])
+        self.data = dict([(o.id, o) for o in self.data.values() if o.id not in ids_set])
+
+    def get_market_orders(self):
         return OrdersContainer(dict([(o.id, o) for o in self.data.values()
                                      if o.type == OrderType.market]))
 
