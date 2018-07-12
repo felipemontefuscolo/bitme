@@ -430,7 +430,7 @@ class SimExchangeBitMex(ExchangeInterface):
             order.fill_price = price_fill
 
         if (open <= order.price <= close) or (close <= order.price <= open):
-            assert order.is_fully_filled()
+            assert order.status == OrderStatus.filled
 
         fee = self.FEE[order.type]
 
@@ -462,7 +462,7 @@ class SimExchangeBitMex(ExchangeInterface):
                     qty_filled=qty_fill,
                     price_fill=price_fill,
                     fill_time=current_time,
-                    fill_type=FillType.complete if order.is_fully_filled() else FillType.partial)
+                    fill_type=FillType.complete if (order.status == OrderStatus.filled) else FillType.partial)
         self.fills_hist += [fill]
         self.active_orders = drop_closed_orders_dict(self.active_orders)
         if self.can_call_handles:

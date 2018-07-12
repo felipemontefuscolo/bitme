@@ -1,12 +1,9 @@
-import base64
-import uuid
-
 import math
-import pandas as pd
 from enum import Enum
-
 # Order container util
-from typing import Union, Iterable, Dict, Set
+from typing import Iterable, Dict
+
+import pandas as pd
 
 from api.symbol import Symbol
 
@@ -70,18 +67,16 @@ class ContingencyType(Enum):
 
 
 class OrderCommon:
-    _count = 0
-
     def __init__(self,
                  symbol: Symbol,
+                 type: OrderType,
+                 tactic,
                  signed_qty: float = float('nan'),
                  price: float = float('nan'),
                  stop_price: float = float('nan'),
                  linked_order_id: str = None,
-                 type: OrderType = None,
                  time_in_force: TimeInForce = None,
-                 contingency_type: ContingencyType = None,
-                 tactic=None):
+                 contingency_type: ContingencyType = None):
         # self.id = str('bitme_' + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n'))  # type: str
         self.id = str('zaloe_' + str(OrderCommon._count))  # type: str
         OrderCommon._count += 1
@@ -102,10 +97,13 @@ class OrderCommon:
         self.time_posted = None  # type: pd.Timestamp
         self.status = OrderStatus.pending  # type: OrderStatus
         self.status_msg = None  # type: OrderCancelReason
+        self.bitmex_id = None  # type: str
 
         # sanity check
         q = abs(self.signed_qty) * 2 + 1.e-10
         assert abs(q - math.floor(q)) < 1.e-8
+
+    _count = 0
 
     def qty_sign(self):
         self._sign(self.signed_qty)
@@ -115,15 +113,6 @@ class OrderCommon:
 
     def is_buy(self):
         return self.signed_qty > 0
-
-    def is_open(self):
-        return self.status == OrderStatus.opened
-
-    def is_pending(self):
-        return self.status == OrderStatus.pending
-
-    def is_fully_filled(self):
-        return abs(self.filled - self.signed_qty) < 1.e-10
 
     @staticmethod
     def _sign(x):

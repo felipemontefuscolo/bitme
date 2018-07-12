@@ -99,14 +99,14 @@ class TacticBitEwmWithStop(TacticInterface):
         self.last_activity_time = fill.fill_time
         # self.__log.info("handling fill")
 
-        if fill.fill_type == FillType.complete or order.is_fully_filled():
+        if fill.fill_type == FillType.complete or order.status == OrderStatus.filled:
             self.opened_orders = drop_closed_orders_dict(self.opened_orders)
-            if not (fill.fill_type == FillType.complete and order.is_fully_filled()):
+            if not (fill.fill_type == FillType.complete and order.status == OrderStatus.filled):
                 raise AttributeError("fill status is {} and order.is_fully_filled is {}"
-                                     .format(fill.fill_type == FillType.complete, order.is_fully_filled()))
+                                     .format(fill.fill_type == FillType.complete, order.status == OrderStatus.filled))
 
         if not self.position.has_started:
-            assert order.is_fully_filled()
+            assert order.status == OrderStatus.filled
             self.opened_orders = drop_orders(self.opened_orders, exchange.cancel_orders(self.opened_orders))
             self.handle_candles(exchange)
             return
