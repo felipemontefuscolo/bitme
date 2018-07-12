@@ -18,8 +18,9 @@ from api.exchange_interface import ExchangeInterface
 from api.order import Order
 from api.symbol import Symbol
 
-from common.order import OrdersContainer
-from common import Fill, FillType, OrderType, OrderCancelReason, to_ohlcv, OrderStatus, OrderCommon
+from common.order import drop_closed_orders_dict, is_order_closed
+from common import Fill, FillType, OrderType, OrderCancelReason, to_ohlcv, OrderStatus, OrderCommon, drop_orders, \
+    filter_symbol
 from .sim_stats import SimSummary
 from .position_sim import PositionSim
 from tactic import TacticInterface, TacticBitEwmWithStop
@@ -111,7 +112,7 @@ class SimExchangeBitMex(ExchangeInterface):
         self.positions = dict()  # type: Dict[Symbol, PositionSim]
         self.leverage = dict([(i, 100.) for i in self.SYMBOLS])  # 1 means 1%
 
-        self.active_orders = OrdersContainer()
+        self.active_orders = dict()  # type: Dict[str, OrderCommon]
 
         # liq price for each position
         self.closed_positions_hist = defaultdict(list)  # type: Dict[Symbol, List[PositionSim]]
@@ -234,15 +235,15 @@ class SimExchangeBitMex(ExchangeInterface):
             self.summary = self.get_summary()
             return False
 
-    def cancel_orders(self, orders: Iterable) -> list:
+    def cancel_orders(self, orders: Dict) -> Dict:
         return self._cancel_orders_helper(orders, reason=OrderCancelReason.requested_by_user)
 
     def _cancel_orders_helper(self,
-                              orders: Iterable,
-                              reason: OrderCancelReason) -> list:
-        orders_list = [o for o in orders if o.id in self.active_orders.data]
+                              orders: Dict,
+                              reason: OrderCancelReason) -> Dict:
+        orders_list = [o for o in orders.values() if o.id in self.active_orders]
         if len(orders_list) == 0:
-            return list()
+            return dict()
         for o in orders_list:  # type: OrderCommon
             if o.status != OrderStatus.canceled:
                 o.status = OrderStatus.canceled
@@ -253,11 +254,11 @@ class SimExchangeBitMex(ExchangeInterface):
                 if o.tactic and o.tactic != Liquidator:
                     o.tactic.handle_cancel(self, o)
 
-        dropped = [o for o in orders_list if o.status == OrderStatus.canceled]
-        if len(dropped) < 1:
+        cancelled = {o.id: o for o in orders_list if o.status == OrderStatus.canceled}
+        if len(cancelled) < 1:
             print("time at: " + str(self.current_time()))
             raise AttributeError("no orders were closed")
-        return dropped
+        return cancelled
 
     @staticmethod
     def _reject_order(order, time_posted, reason):
@@ -276,8 +277,7 @@ class SimExchangeBitMex(ExchangeInterface):
 
     def post_orders(self, orders: Iterable) -> list:
         current_time = self.current_time()
-        orders = OrdersContainer({o.id: o for o in orders})
-        self.order_hist += orders.values()
+        self.order_hist += orders
 
         for o in orders:
             assert o.status == OrderStatus.pending
@@ -287,7 +287,7 @@ class SimExchangeBitMex(ExchangeInterface):
             for o in orders:  # type: OrderCommon
                 if o.type != OrderType.market:
                     self._reject_order(o, current_time, OrderCancelReason.end_of_sim)
-            orders = orders.get_market_orders()
+            orders = [o for o in orders if o.type == OrderType.market]
 
         # discard bad orders
         current_price = self.get_tick_info()['last']
@@ -309,18 +309,18 @@ class SimExchangeBitMex(ExchangeInterface):
             o.time_posted = current_time
             if o.status == OrderStatus.pending:
                 o.status = OrderStatus.opened
-                self.active_orders.add(o)
+                self.active_orders[o.id] = o
             else:
                 assert o.status == OrderStatus.canceled
 
         # print " SIMMMMM " + Orders.to_csv(orders.data.values())
         # print " -------------- "
 
-        orders_list = [o for o in self.active_orders]
+        orders_list = [o for o in self.active_orders.values()]
         for o in orders_list:
             if o.status == OrderStatus.opened and o.type == OrderType.market:
                 self._execute_order(o)
-        self.active_orders.drop_closed_orders()
+        self.active_orders = drop_closed_orders_dict(self.active_orders)
         return orders_list
 
     def _estimate_price(self, current_candle=None):
@@ -340,16 +340,16 @@ class SimExchangeBitMex(ExchangeInterface):
             print("len(self.candles) = {}".format(len(self.candles)))
             assert self.time_idx < len(self.candles)
 
-        for o in self.active_orders:
+        for o in self.active_orders.values():
             assert o.status == OrderStatus.opened
 
         # print "_______________BEGIN_______________________"
         # orders status may change in the loop
-        orders_list = [o for o in self.active_orders]
+        orders_list = [o for o in self.active_orders.values()]
         for o in orders_list:
             if o.status == OrderStatus.opened:
                 self._execute_order(o)  # type: Fill
-        self.active_orders.drop_closed_orders()
+        self.active_orders = drop_closed_orders_dict(self.active_orders)
         # print "_________________END_______________________"
 
     """ if the case, automatically closes position (add to position history)"""
@@ -465,18 +465,24 @@ class SimExchangeBitMex(ExchangeInterface):
                     fill_time=current_time,
                     fill_type=FillType.complete if order.is_fully_filled() else FillType.partial)
         self.fills_hist += [fill]
-        self.active_orders.drop_closed_orders()
+        self.active_orders = drop_closed_orders_dict(self.active_orders)
         if self.can_call_handles:
             order.tactic.handle_fill(self, fill)
         return fill
 
     def _execute_liquidation(self, symbol, order_cancel_reason=OrderCancelReason.liquidation):
         self.can_call_handles = False
-        cancelled = self._cancel_orders_helper(list(filter(lambda o: o.symbol == symbol, self.active_orders)),
-                                               reason=order_cancel_reason)
-        self.active_orders.drop_orders(cancelled)
+        orders = filter_symbol(self.active_orders, symbol)
+        cancelled = self._cancel_orders_helper(orders, reason=order_cancel_reason)
+        self.active_orders = drop_orders(self.active_orders, cancelled)
         self.can_call_handles = True
-        assert len(list(filter(lambda o: o.symbol == symbol, self.active_orders))) == 0
+        try:
+            assert len(filter_symbol(self.active_orders, symbol)) == 0
+        except:
+            for i in filter_symbol(self.active_orders, symbol):
+                print("-" + str(i[1].status))
+            print("-" + str(len(cancelled)))
+            raise AttributeError()
         position = self.positions.get(symbol, None)
         if not position or not position.has_started:
             return
@@ -496,7 +502,7 @@ class SimExchangeBitMex(ExchangeInterface):
             if closed.realized_pnl >= 0:
                 raise AttributeError("Liquidation caused profit! position = {},\n current price = {}"
                                      .format(str(position), self._estimate_price()))
-        assert len(list(filter(lambda o: o.symbol == symbol, self.active_orders))) == 0
+        assert len(filter_symbol(self.active_orders, symbol)) == 0
 
     @staticmethod
     def _count_per_symbol(lista):

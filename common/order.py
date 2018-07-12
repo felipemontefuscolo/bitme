@@ -6,9 +6,31 @@ import pandas as pd
 from enum import Enum
 
 # Order container util
-from typing import Union, Iterable, Dict
+from typing import Union, Iterable, Dict, Set
 
 from api.symbol import Symbol
+
+
+def is_order_closed(order):
+    return order.status == OrderStatus.filled or order.status == OrderStatus.canceled
+
+
+def drop_closed_orders_dict(orders: Dict) -> Dict:
+    return dict(filter(lambda x: not is_order_closed(x[1]), orders.items()))
+
+
+def drop_orders(orders_orig: Dict, order_ids_to_drop: Iterable) -> Dict:
+    """
+    :param orders_orig: dict id -> order
+    :param order_ids_to_drop: list,set,map,.. anything where set(.) gives you the order id's
+    :return:
+    """
+    keys = orders_orig.keys() - set(order_ids_to_drop)
+    return {k: orders_orig[k] for k in keys}
+
+
+def filter_symbol(orders: Dict, symbol: Symbol):
+    return dict(filter(lambda x: x[1].symbol == symbol, orders.items()))
 
 
 class OrdersContainer:
@@ -30,27 +52,6 @@ class OrdersContainer:
     def __iter__(self):
         return iter(self.data.values())
 
-    def of_symbol(self, symbol):
-        # type: (Enum) -> OrdersContainer
-        return OrdersContainer(dict([(o_id, o) for o_id, o in self.data.items() if o.symbol == symbol]))
-
-    def size(self):
-        return len(self.data)
-
-    def values(self):
-        return self.data.values()
-
-    def keys(self):
-        return self.data.keys()
-
-    def merge(self, orders):
-        if isinstance(orders, OrdersContainer):
-            for k in orders.data:
-                self.data[k] = orders.data[k]
-        else:
-            for k in orders:
-                self.data[k.id] = k
-
     def drop_closed_orders(self):
         # return num of dropped orders
         l = len(self.data)
@@ -62,27 +63,9 @@ class OrdersContainer:
         ids_set = set([o.id for o in orders_list])
         self.data = dict([(o.id, o) for o in self.data.values() if o.id not in ids_set])
 
-    def get_market_orders(self):
-        return OrdersContainer(dict([(o.id, o) for o in self.data.values()
-                                     if o.type == OrderType.market]))
-
     # replace old order with same id
     def add(self, order):
         self.data[order.id] = order
-
-    def clean_filled(self, specific_order=None):
-        # type: (OrderCommon) -> None
-        if not specific_order:
-            self.data = dict([(oid, order) for oid, order in self.data.items() if order.status != OrderStatus.filled])
-        else:
-            del self.data[specific_order.id]
-
-    @staticmethod
-    def to_csv(orders_list):
-        s = OrderCommon.get_header() + '\n'
-        for o in orders_list:  # type: OrderCommon
-            s += o.to_line() + '\n'
-        return s
 
 
 class OrderCommon:
@@ -183,7 +166,7 @@ class OrderCommon:
 class OrderStatus(Enum):
     pending = 'PENDING'
     opened = 'OPENED'
-    filled = 'FILLED'
+    filled = 'FILLED'  # fully filled
     canceled = 'CANCELED'
 
 
@@ -214,6 +197,3 @@ class ContingencyType(Enum):
     one_triggers_the_other = 'one_triggers_the_other'
     one_updates_the_other_absolute = 'one_updates_the_other_absolute'
     one_updates_the_other_proportional = 'one_updates_the_other_proportional'
-
-
-

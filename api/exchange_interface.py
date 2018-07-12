@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 
 import pandas as pd
-from typing import Iterable
+from typing import Iterable, Dict
 
 from common.order import OrdersContainer
 from api.position_interface import PositionInterface
@@ -25,9 +25,9 @@ class ExchangeInterface(metaclass=ABCMeta):
         raise AttributeError("interface class")
 
     @abstractmethod
-    def cancel_orders(self, orders: Iterable) -> list:
+    def cancel_orders(self, orders: Dict) -> Dict:
         """
-        :param orders: orders to cancel
+        :param orders: Dict of id -> order
         :return: list of cancelled orders
         """
         raise AttributeError("interface class")

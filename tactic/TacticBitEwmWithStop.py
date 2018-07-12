@@ -2,6 +2,7 @@ import math
 
 import pandas as pd
 from sympy import sign
+from typing import List, Dict
 
 from api.order import Order
 from sim.position_sim import PositionSim
@@ -9,7 +10,8 @@ from api.exchange_interface import ExchangeInterface
 from api.position_interface import PositionInterface
 from api.symbol import Symbol
 from common.fill import FillType, Fill
-from common.order import OrdersContainer, OrderCancelReason, OrderCommon, OrderType, OrderStatus
+from common.order import OrderCancelReason, OrderCommon, OrderType, OrderStatus, \
+    drop_orders, drop_closed_orders_dict
 from tactic.tactic_tools import does_reduce_position
 from tactic.tactic_interface import TacticInterface
 
@@ -22,7 +24,7 @@ class TacticBitEwmWithStop(TacticInterface):
         TacticInterface.__init__(self)
         self.product_id = product_id  # type: Symbol
 
-        self.opened_orders = OrdersContainer()
+        self.opened_orders = dict()  # type: Dict[str, OrderCommon]
         self.position = None  # type: PositionInterface
         self.last_activity_time = None  # type: pd.Timestamp
         self.multiplier = 100.
@@ -63,9 +65,9 @@ class TacticBitEwmWithStop(TacticInterface):
         for i in range(n_try):
             orders_sent = exchange.post_orders([order])
             if len(orders_sent) != 0:
-                order_sent = next(iter(orders_sent))  # type: Order
+                order_sent = next(iter(orders_sent))  # type: OrderCommon
                 if order_sent.status == OrderStatus.opened:
-                    self.opened_orders.merge(orders_sent)
+                    self.opened_orders[order_sent.id] = order_sent
                 self.last_activity_time = order.time_posted
                 return False
         return True
@@ -84,14 +86,14 @@ class TacticBitEwmWithStop(TacticInterface):
                                                      tactic=self)):
             # self.__log.info("canceling order")
             1
-        self.opened_orders.drop_closed_orders()
+        self.opened_orders = drop_closed_orders_dict(self.opened_orders)
         raise ValueError()  # test
 
     def handle_fill(self, exchange: ExchangeInterface, fill: Fill):
         qty_filled = fill.qty
         order = fill.order
         try:
-            assert order == self.opened_orders[order.id]
+            assert order.id in self.opened_orders
         except KeyError:
             return
         self.position = exchange.get_position(self.product_id)  # type: PositionSim
@@ -99,15 +101,14 @@ class TacticBitEwmWithStop(TacticInterface):
         # self.__log.info("handling fill")
 
         if fill.fill_type == FillType.complete or order.is_fully_filled():
-            self.opened_orders.clean_filled(order)
+            self.opened_orders = drop_closed_orders_dict(self.opened_orders)
             if not (fill.fill_type == FillType.complete and order.is_fully_filled()):
                 raise AttributeError("fill status is {} and order.is_fully_filled is {}"
                                      .format(fill.fill_type == FillType.complete, order.is_fully_filled()))
 
         if not self.position.has_started:
             assert order.is_fully_filled()
-            cancelled = exchange.cancel_orders(self.opened_orders)
-            self.opened_orders.drop_orders(cancelled)
+            self.opened_orders = drop_orders(self.opened_orders, exchange.cancel_orders(self.opened_orders))
             self.handle_candles(exchange)
             return
 
@@ -154,16 +155,16 @@ class TacticBitEwmWithStop(TacticInterface):
         if len(candles1m) < self.span:
             return
 
-        self.opened_orders.drop_closed_orders()
+        self.opened_orders = drop_closed_orders_dict(self.opened_orders)
 
-        if self.opened_orders.size() == 0 and self.position and self.position.has_started:
+        if len(self.opened_orders) == 0 and self.position and self.position.has_started:
             raise AttributeError("Invalid state. We have a position of {} but there is not opened order to reduce this"
                                  " position. Probably a tactic logic error.".format(self.position.current_qty))
 
-        if self.opened_orders.size() > 0:
+        if len(self.opened_orders) > 0:
             if exchange.current_time() - self.last_activity_time > pd.Timedelta(minutes=self.no_activity_tol):
                 if self.close_position_if_no_loss(exchange, price):
-                    assert self.opened_orders.size() == 0
+                    assert len(self.opened_orders) == 0
             return
 
         reverse_logic = self.is_losing_too_much(exchange)
@@ -207,8 +208,7 @@ class TacticBitEwmWithStop(TacticInterface):
         if not self.position.has_started:
             return False
         if sign(current_price - self.position.break_even_price) == self.position.side:
-            cancelled = exchange.cancel_orders(self.opened_orders)
-            self.opened_orders.drop_orders(cancelled)
+            self.opened_orders = drop_orders(self.opened_orders, exchange.cancel_orders(self.opened_orders))
             if self.position.has_started:
                 order_to_send = OrderCommon(symbol=self.product_id,
                                             signed_qty=-self.position.current_qty,
