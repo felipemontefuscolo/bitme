@@ -10,7 +10,7 @@ import pandas as pd
 import requests
 from typing import Iterable
 
-from common import ExchangeInterface, PositionInterface, OrdersContainer, Symbol
+from common import ExchangeInterface, PositionInterface, Symbol
 from live import errors
 from live.auth import APIKeyAuthWithExpires
 from live.settings import settings

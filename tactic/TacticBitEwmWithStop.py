@@ -4,7 +4,6 @@ import pandas as pd
 from sympy import sign
 from typing import List, Dict
 
-from api.order import Order
 from sim.position_sim import PositionSim
 from api.exchange_interface import ExchangeInterface
 from api.position_interface import PositionInterface
@@ -136,7 +135,7 @@ class TacticBitEwmWithStop(TacticInterface):
         closed_position = exchange.get_closed_positions(self.product_id)
         if not closed_position:
             return False
-        last_losses = [i.realized_pnl <= 0 for i in closed_position[-self.loss_limit:]]
+        last_losses = [bool(i.realized_pnl <= 0) for i in closed_position[-self.loss_limit:]]
         if len(last_losses) == sum(last_losses) and \
                 exchange.current_time() - self.last_activity_time < pd.Timedelta(minutes=self.span):
             return True

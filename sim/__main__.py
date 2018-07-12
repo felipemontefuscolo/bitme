@@ -15,7 +15,6 @@ from numpy.core.umath import sign
 from typing import Dict, List, Iterable, Union
 
 from api.exchange_interface import ExchangeInterface
-from api.order import Order
 from api.symbol import Symbol
 
 from common.order import drop_closed_orders_dict, is_order_closed
@@ -271,7 +270,7 @@ class SimExchangeBitMex(ExchangeInterface):
     """ note: may restart self.position"""
 
     @staticmethod
-    def verify_order(order: Order) -> OrderCommon:
+    def verify_order(order) -> OrderCommon:
         # return OrderCommon(**order.__dict__)
         return order
 

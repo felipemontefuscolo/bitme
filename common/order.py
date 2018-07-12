@@ -33,57 +33,68 @@ def filter_symbol(orders: Dict, symbol: Symbol):
     return dict(filter(lambda x: x[1].symbol == symbol, orders.items()))
 
 
-class OrdersContainer:
-    def __init__(self, orders=None):
-        # type: (Iterable) -> None
-        if orders is None:
-            self.data = dict()  # id -> OrderCommon
-        elif isinstance(orders, Dict):
-            self.data = orders
-        else:
-            self.data = dict([(o.id, o) for o in orders])
+class OrderStatus(Enum):
+    pending = 'PENDING'
+    opened = 'OPENED'
+    filled = 'FILLED'  # fully filled
+    canceled = 'CANCELED'
 
-        pass
 
-    def __getitem__(self, key):
-        # type: (key) -> OrderCommon
-        return self.data[key]
+class OrderCancelReason(Enum):
+    insufficient_funds = "insufficient funds"
+    invalid_price = "invalid price"
+    end_of_sim = "end of sim"
+    requested_by_user = "requested by user"
+    liquidation = "liquidation"
+    unknown = "unknown"
 
-    def __iter__(self):
-        return iter(self.data.values())
 
-    def drop_closed_orders(self):
-        # return num of dropped orders
-        l = len(self.data)
-        self.data = dict([(o.id, o) for o in self.data.values()
-                          if o.status == OrderStatus.opened or o.status == OrderStatus.pending])
-        return l - len(self.data)
+class OrderType(Enum):
+    market = 'MARKET'
+    limit = 'LIMIT'
+    stop = 'STOP'
 
-    def drop_orders(self, orders_list):
-        ids_set = set([o.id for o in orders_list])
-        self.data = dict([(o.id, o) for o in self.data.values() if o.id not in ids_set])
 
-    # replace old order with same id
-    def add(self, order):
-        self.data[order.id] = order
+class TimeInForce(Enum):
+    day = 'day'
+    good_til_cancel = 'good_til_cancel'
+    immediate_or_cancel = 'immediate_or_cancel'
+    fill_or_kill = 'fill_or_kill'
+
+
+class ContingencyType(Enum):
+    one_cancels_the_other = 'one_cancels_the_other'
+    one_triggers_the_other = 'one_triggers_the_other'
+    one_updates_the_other_absolute = 'one_updates_the_other_absolute'
+    one_updates_the_other_proportional = 'one_updates_the_other_proportional'
 
 
 class OrderCommon:
     _count = 0
 
-    def __init__(self, **kargs):
+    def __init__(self,
+                 symbol: Symbol,
+                 signed_qty: float = float('nan'),
+                 price: float = float('nan'),
+                 stop_price: float = float('nan'),
+                 linked_order_id: str = None,
+                 type: OrderType = None,
+                 time_in_force: TimeInForce = None,
+                 contingency_type: ContingencyType = None,
+                 tactic=None):
         # self.id = str('bitme_' + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n'))  # type: str
         self.id = str('zaloe_' + str(OrderCommon._count))  # type: str
         OrderCommon._count += 1
-        self.symbol = kargs['symbol']  # type: Symbol
-        self.signed_qty = math.floor(kargs.get('signed_qty', float('nan')))  # type: float
-        self.price = round(kargs.get('price', float('nan')), 1)  # type: float
-        self.stop_price = kargs.get('stop_price', float('nan'))  # type: float
-        self.linked_order_id = kargs.get('linked_order_id', None)  # type: str
-        self.type = kargs['type']  # type: OrderType
-        self.time_in_force = kargs.get('time_in_foce', None)  # type: TimeInForce
-        self.contingency_type = kargs.get('contingency_type', None)  # type: ContingencyType
-        self.tactic = kargs['tactic']
+
+        self.symbol = symbol
+        self.signed_qty = signed_qty
+        self.price = price
+        self.stop_price = stop_price
+        self.linked_order_id = linked_order_id
+        self.type = type
+        self.time_in_force = time_in_force
+        self.contingency_type = contingency_type
+        self.tactic = tactic
 
         # data change by the exchange
         self.filled = 0.  # type: float
@@ -161,39 +172,3 @@ class OrderCommon:
             return str(x.value)
         except AttributeError:
             return ""
-
-
-class OrderStatus(Enum):
-    pending = 'PENDING'
-    opened = 'OPENED'
-    filled = 'FILLED'  # fully filled
-    canceled = 'CANCELED'
-
-
-class OrderCancelReason(Enum):
-    insufficient_funds = "insufficient funds"
-    invalid_price = "invalid price"
-    end_of_sim = "end of sim"
-    requested_by_user = "requested by user"
-    liquidation = "liquidation"
-    unknown = "unknown"
-
-
-class OrderType(Enum):
-    market = 'MARKET'
-    limit = 'LIMIT'
-    stop = 'STOP'
-
-
-class TimeInForce(Enum):
-    day = 'day'
-    good_til_cancel = 'good_til_cancel'
-    immediate_or_cancel = 'immediate_or_cancel'
-    fill_or_kill = 'fill_or_kill'
-
-
-class ContingencyType(Enum):
-    one_cancels_the_other = 'one_cancels_the_other'
-    one_triggers_the_other = 'one_triggers_the_other'
-    one_updates_the_other_absolute = 'one_updates_the_other_absolute'
-    one_updates_the_other_proportional = 'one_updates_the_other_proportional'

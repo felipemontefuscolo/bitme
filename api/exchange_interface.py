@@ -3,7 +3,6 @@ from abc import ABCMeta, abstractmethod
 import pandas as pd
 from typing import Iterable, Dict
 
-from common.order import OrdersContainer
 from api.position_interface import PositionInterface
 from api.symbol import Symbol
 
