@@ -77,9 +77,8 @@ class OrderCommon:
                  linked_order_id: str = None,
                  time_in_force: TimeInForce = None,
                  contingency_type: ContingencyType = None):
-        # self.id = str('bitme_' + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n'))  # type: str
-        self.id = str('zaloe_' + str(OrderCommon._count))  # type: str
-        OrderCommon._count += 1
+
+        self.id = tactic.generate_id() if tactic is not None else None
 
         self.symbol = symbol
         self.signed_qty = signed_qty
@@ -102,8 +101,6 @@ class OrderCommon:
         # sanity check
         q = abs(self.signed_qty) * 2 + 1.e-10
         assert abs(q - math.floor(q)) < 1.e-8
-
-    _count = 0
 
     def qty_sign(self):
         self._sign(self.signed_qty)

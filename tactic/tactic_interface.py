@@ -1,14 +1,15 @@
 from abc import ABCMeta, abstractmethod
 
 from common.fill import Fill
+from common.id_generator import IdGenerator
 from common.order import OrderCommon
 from api.symbol import Symbol
 from api.exchange_interface import ExchangeInterface
 
 
-class TacticInterface(metaclass=ABCMeta):
-    def __init__(self):
-        pass
+class TacticInterface(IdGenerator, metaclass=ABCMeta):
+    def __init__(self, use_uuid=False):
+        super().__init__(use_uuid)
 
     @abstractmethod
     def init(self, exchange: ExchangeInterface, preferences: dict) -> None:
@@ -34,6 +35,5 @@ class TacticInterface(metaclass=ABCMeta):
     def handle_cancel(self, exchange: ExchangeInterface, order: OrderCommon) -> None:
         raise AttributeError("interface class")
 
-    def id(self):
-        # type: () -> str
+    def id(self) -> str:
         return self.__class__.__name__

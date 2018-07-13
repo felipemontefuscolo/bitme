@@ -69,7 +69,7 @@ def get_args(input_args=None):
 class Liquidator(TacticInterface):
 
     def __init__(self):
-        super().__init__()
+        super().__init__(use_uuid=False)
 
     def get_symbol(self) -> Symbol:
         pass
@@ -136,6 +136,8 @@ class SimExchangeBitMex(ExchangeInterface):
 
         # should be None until end of sim
         self.summary = None  # type: SimSummary
+
+        self.liquidator = Liquidator()
 
     def __enter__(self):
         return self
@@ -486,7 +488,10 @@ class SimExchangeBitMex(ExchangeInterface):
         if not position or not position.has_started:
             return
         assert position.has_started
-        order = OrderCommon(symbol=symbol, signed_qty=-position.current_qty, type=OrderType.market, tactic=Liquidator())
+        order = OrderCommon(symbol=symbol,
+                            signed_qty=-position.current_qty,
+                            type=OrderType.market,
+                            tactic=self.liquidator)
         order.status_msg = order_cancel_reason
         self.can_call_handles = False
         self.post_orders([order])
