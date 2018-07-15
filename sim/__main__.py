@@ -223,7 +223,7 @@ class SimExchangeBitMex(ExchangeInterface):
             current_price = self._estimate_price()
             for symbol in self.SYMBOLS:
                 position = self.positions.get(symbol, None)  # type: PositionSim
-                if position and position.has_started:
+                if position and position.is_open:
                     side = position.side
                     liq_price = self.positions[symbol].liquidation_price
                     if (side > 0 and current_price < liq_price) or (side < 0 and current_price > liq_price):
@@ -363,8 +363,7 @@ class SimExchangeBitMex(ExchangeInterface):
             self.positions[symbol] = position.update(*args, **kwargs)
             assert self.positions[symbol] == position
 
-        if position.has_closed:
-            assert position.has_started
+        if not position.is_open:
             self.closed_positions_hist[symbol] += [position]
             self.xbt_balance += position.realized_pnl
             del self.positions[symbol]
@@ -423,7 +422,7 @@ class SimExchangeBitMex(ExchangeInterface):
         if not crossed:
             return None  # type: Fill
 
-        if position.has_started and position.would_change_side(qty_fill):
+        if position.is_open and position.would_change_side(qty_fill):
             qty_to_close = float(sign(qty_fill)) * min(abs(current_qty), abs(qty_fill))
             outstanding_qty = qty_fill - qty_to_close
 
@@ -443,7 +442,7 @@ class SimExchangeBitMex(ExchangeInterface):
                                              leverage=self.leverage[order.symbol],
                                              current_timestamp=current_time,
                                              fee=fee)
-            assert position.has_closed
+            assert not position.is_open
 
             position = self._update_position(order.symbol,
                                              qty=outstanding_qty,
@@ -451,7 +450,7 @@ class SimExchangeBitMex(ExchangeInterface):
                                              leverage=self.leverage[order.symbol],
                                              current_timestamp=current_time,
                                              fee=fee)
-            assert position.has_started
+            assert position.is_open
         else:
             self._update_position(order.symbol,
                                   qty=qty_fill,
@@ -485,9 +484,9 @@ class SimExchangeBitMex(ExchangeInterface):
             print("-" + str(len(cancelled)))
             raise AttributeError()
         position = self.positions.get(symbol, None)
-        if not position or not position.has_started:
+        if not position or not position.is_open:
             return
-        assert position.has_started
+        assert position.is_open
         order = OrderCommon(symbol=symbol,
                             signed_qty=-position.current_qty,
                             type=OrderType.market,
@@ -497,7 +496,7 @@ class SimExchangeBitMex(ExchangeInterface):
         self.post_orders([order])
         self.can_call_handles = True
         assert order.status == OrderStatus.filled
-        if position.has_started and not position.has_closed:
+        if position.is_open:
             raise AttributeError("position was not close during liquidation. position = %f" % position.current_qty)
         if not self.is_last_candle():
             self.n_liquidations[symbol.name] += 1

@@ -57,7 +57,7 @@ class TacticBitEwmWithStop(TacticInterface):
         return self.product_id
 
     def has_position(self):
-        return not self.position.has_started
+        return not self.position.is_open
 
     def send_order(self, exchange: ExchangeInterface, order: OrderCommon, n_try=1) -> bool:
         # return True if failed
@@ -105,7 +105,7 @@ class TacticBitEwmWithStop(TacticInterface):
                 raise AttributeError("fill status is {} and order.is_fully_filled is {}"
                                      .format(fill.fill_type == FillType.complete, order.status == OrderStatus.filled))
 
-        if not self.position.has_started:
+        if not self.position.is_open:
             assert order.status == OrderStatus.filled
             self.opened_orders = drop_orders(self.opened_orders, exchange.cancel_orders(self.opened_orders))
             self.handle_candles(exchange)
@@ -156,7 +156,7 @@ class TacticBitEwmWithStop(TacticInterface):
 
         self.opened_orders = drop_closed_orders_dict(self.opened_orders)
 
-        if len(self.opened_orders) == 0 and self.position and self.position.has_started:
+        if len(self.opened_orders) == 0 and self.position and self.position.is_open:
             raise AttributeError("Invalid state. We have a position of {} but there is not opened order to reduce this"
                                  " position. Probably a tactic logic error.".format(self.position.current_qty))
 
@@ -204,11 +204,11 @@ class TacticBitEwmWithStop(TacticInterface):
 
     # this method doesn't drop closed orders
     def close_position_if_no_loss(self, exchange, current_price):
-        if not self.position.has_started:
+        if not self.position.is_open:
             return False
         if sign(current_price - self.position.break_even_price) == self.position.side:
             self.opened_orders = drop_orders(self.opened_orders, exchange.cancel_orders(self.opened_orders))
-            if self.position.has_started:
+            if self.position.is_open:
                 order_to_send = OrderCommon(symbol=self.product_id,
                                             signed_qty=-self.position.current_qty,
                                             type=OrderType.market,

@@ -8,7 +8,7 @@ from common.constants import ZERO_TOL
 
 def prevent_call_closed(fn):
     def wrapped(self, *args, **kwargs):
-        if self.has_closed:
+        if not self.is_open and self.open_timestamp is not None:
             raise ValueError("Can't call this method if position was closed")
         else:
             return fn(self, *args, **kwargs)
@@ -33,7 +33,7 @@ class PositionSim(PositionInterface):
         self.leverage = leverage
 
         just_opened = False
-        if not self.has_started:
+        if not self.is_open:
             assert not self.open_timestamp
             assert not self.current_timestamp
             assert not self.current_qty
@@ -43,7 +43,7 @@ class PositionSim(PositionInterface):
             self.current_qty = 0.
             self.avg_entry_price = 0.
             self.realized_pnl = 0.
-            self.has_started = True
+            self.is_open = True
             assert abs(qty) > ZERO_TOL
             self.side = int(sign(qty))
 
@@ -79,7 +79,7 @@ class PositionSim(PositionInterface):
 
         # close position
         if abs(self.current_qty) < ZERO_TOL:
-            self.has_closed = True
+            self.is_open = False
 
         return self
 

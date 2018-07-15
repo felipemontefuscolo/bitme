@@ -21,8 +21,7 @@ class PositionInterface:
     current_qty = None  # type: float
     side = None  # type: int
     realized_pnl = None  # type: float
-    has_started = False  # type: bool
-    has_closed = False  # type: bool
+    is_open = False  # type: bool
     current_timestamp = None  # type: pd.Timestamp
     open_timestamp = None  # type: pd.Timestamp
 
