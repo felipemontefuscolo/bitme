@@ -7,10 +7,14 @@ import uuid
 from enum import Enum
 
 import pandas as pd
+import pytz
 import requests
-from typing import Iterable
+from typing import Iterable, Dict, List
 
-from common import ExchangeInterface, PositionInterface, Symbol
+import sys
+
+from api import ExchangeInterface, PositionInterface
+from common import Symbol, REQUIRED_COLUMNS, create_df_for_candles, fix_bitmex_bug
 from live import errors
 from live.auth import APIKeyAuthWithExpires
 from live.settings import settings
@@ -18,6 +22,7 @@ from live.ws.ws_thread import BitMEXWebsocket
 from utils import log
 
 MAX_NUM_CANDLES_BITMEX = 500  # bitmex REST API limit
+INITIAL_NUM_CANDLES = 10
 
 logger = log.setup_custom_logger('root')
 
@@ -64,13 +69,42 @@ class LiveBitMex(ExchangeInterface):
 
         # Create websocket for streaming data
         self.ws = BitMEXWebsocket()
-        self.ws.connect(endpoint=self.base_url, symbol=str(self.symbol), shouldAuth=True)
+        self.ws.connect(endpoint=self.base_url,
+                        symbol=str(self.symbol),
+                        should_auth=True,
+                        on_tradeBin1m=self.on_tradeBin1m)
 
         self.timeout = settings.TIMEOUT
+
+        self.candles = create_df_for_candles()  # type: pd.DataFrame
+        self.init_candles()
+        self.positions  # type: Dict[Symbol, List[PositionInterface]]
 
         pass
 
         # Authentication required methods
+
+    def init_candles(self):
+        end = pd.Timestamp.now(tz=pytz.UTC).floor(freq='1min')
+        start = end - pd.Timedelta(minutes=INITIAL_NUM_CANDLES)
+        query = {'binSize': '1m',
+                 'partial': False,
+                 'symbol': str(self.symbol),
+                 'reversed': False,
+                 'startTime': str(start),
+                 'endTime': str(end)
+                 }
+        raw = self._curl_bitmex(path='trade/bucketed', query=query, verb='GET')
+        for candle in raw:
+            self.candles.loc[pd.Timestamp(candle['timestamp'])] = [candle[j] for j in REQUIRED_COLUMNS]
+        if self.candles.index[0] > self.candles.index[1]:
+            self.candles = self.candles[-1::-1]
+        self.candles = fix_bitmex_bug(self.candles)
+
+    def on_tradeBin1m(self, raw):
+        self.candles.loc[pd.Timestamp(raw['timestamp'])] = [raw[j] for j in REQUIRED_COLUMNS]
+        #print("HAHA")
+        #print(self.candles)
 
     ######################
     # FROM INTERFACE
@@ -88,17 +122,17 @@ class LiveBitMex(ExchangeInterface):
         :return: dict, example: {"buy": 6630.0, "last": 6633.0, "mid": 6630.0, "sell": 6630.5}
         """
         if symbol is None:
-            symbol = self.symbol
+            symbol = str(self.symbol)
         return self.ws.get_ticker(symbol)
 
     @authentication_required
-    def get_position(self, symbol: Symbol=None):
+    def get_position(self, symbol: Symbol = None):
         """Get your open position."""
         if symbol is None:
             symbol = self.symbol
         return self.ws.position(str(symbol))
 
-    def get_closed_positions(self, symbol: Symbol=None) -> PositionInterface:
+    def get_closed_positions(self, symbol: Symbol = None) -> PositionInterface:
         raise AttributeError("interface class")
 
     def set_leverage(self, symbol: Enum, value: float) -> bool:
@@ -147,8 +181,6 @@ class LiveBitMex(ExchangeInterface):
     def market_depth(self, symbol):
         """Get market depth / orderbook."""
         return self.ws.market_depth(symbol)
-
-
 
     def recent_trades(self):
         """Get recent trades.
@@ -452,14 +484,9 @@ if __name__ == "__main__":
         print("SLEEP")
         time.sleep(1)
 
-        new_g = live.get_position()
-        if g != new_g:
-            g = new_g
-            json.dumps(g, indent=4, sort_keys=True)
-        else:
-            print("NONE")
+        print(json.dumps(live.get_tick_info(), indent=4, sort_keys=True))
 
-        print("WAKE! {}".format(json.dumps(g, indent=4, sort_keys=True)))
+        # print('oi')
 
     # print(type(g))
     # print(g)

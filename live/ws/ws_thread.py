@@ -28,69 +28,81 @@ with hooks():  # Python 2/3 compat
 # poll as often as it wants.
 class BitMEXWebsocket():
     # Don't grow a table larger than this amount. Helps cap memory usage.
-    MAX_TABLE_LEN = 200
+    MAX_TABLE_LEN = 500
 
     def __init__(self):
         self.logger = logging.getLogger('root')
         self.__reset()
+        self.symbol = None
+        self.should_auth = True
+
+        self.on_tradeBin1m = None
 
     def __del__(self):
         self.exit()
 
-    def connect(self, endpoint="", symbol="XBTUSD", shouldAuth=True):
-        '''Connect to the websocket and initialize data stores.'''
+    def connect(self,
+                endpoint="",
+                symbol="XBTUSD",
+                should_auth=True,
+                on_tradeBin1m=None):
+        """
+        Connect to the websocket and initialize data stores.
+        """
 
         self.logger.debug("Connecting WebSocket.")
         self.symbol = symbol
-        self.shouldAuth = shouldAuth
+        self.should_auth = should_auth
 
         # We can subscribe right in the connection querystring, so let's build that.
         # Subscribe to all pertinent endpoints
         subscriptions = [sub + ':' + symbol for sub in ["quote", "trade"]]
         subscriptions += ['tradeBin1m:' + symbol]
         subscriptions += ["instrument"]  # We want all of them
-        if self.shouldAuth:
+        if self.should_auth:
             subscriptions += [sub + ':' + symbol for sub in ["order", "execution"]]
             subscriptions += ["margin", "position"]
 
         # Get WS URL and connect.
-        urlParts = list(urlparse(endpoint))
-        urlParts[0] = urlParts[0].replace('http', 'ws')
-        urlParts[2] = "/realtime?subscribe=" + ",".join(subscriptions)
-        wsURL = urlunparse(urlParts)
-        self.logger.info("Connecting to %s" % wsURL)
-        self.__connect(wsURL)
+        url_parts = list(urlparse(endpoint))
+        url_parts[0] = url_parts[0].replace('http', 'ws')
+        url_parts[2] = "/realtime?subscribe=" + ",".join(subscriptions)
+        ws_url = urlunparse(url_parts)
+        self.logger.info("Connecting to %s" % ws_url)
+        self.__connect(ws_url)
         self.logger.info('Connected to WS. Waiting for data images, this may take a moment...')
 
         # Connected. Wait for partials
         self.__wait_for_symbol(symbol)
-        if self.shouldAuth:
+        if self.should_auth:
             self.__wait_for_account()
         self.logger.info('Got all market data. Starting.')
+
+        self.on_tradeBin1m = on_tradeBin1m
 
     #
     # Data methods
     #
     def get_instrument(self, symbol):
         instruments = self.data['instrument']
-        matchingInstruments = [i for i in instruments if i['symbol'] == symbol]
-        if len(matchingInstruments) == 0:
+        matching_instruments = [i for i in instruments if i['symbol'] == symbol]
+        if len(matching_instruments) == 0:
             raise Exception("Unable to find instrument or index with symbol: " + symbol)
-        instrument = matchingInstruments[0]
+        instrument = matching_instruments[0]
         # Turn the 'tickSize' into 'tickLog' for use in rounding
         # http://stackoverflow.com/a/6190291/832202
         instrument['tickLog'] = decimal.Decimal(str(instrument['tickSize'])).as_tuple().exponent * -1
         return instrument
 
     def get_ticker(self, symbol):
-        '''Return a ticker object. Generated from instrument.'''
+        """Return a ticker object. Generated from instrument."""
 
         instrument = self.get_instrument(symbol)
 
         # If this is an index, we have to get the data from the last trade.
         if instrument['symbol'][0] == '.':
-            ticker = {}
-            ticker['mid'] = ticker['buy'] = ticker['sell'] = ticker['last'] = instrument['markPrice']
+            ticker = {'mid': instrument['markPrice'], 'buy': instrument['markPrice'], 'sell': instrument['markPrice'],
+                      'last': instrument['markPrice']}
         # Normal instrument
         else:
             bid = instrument['bidPrice'] or instrument['lastPrice']
@@ -112,10 +124,10 @@ class BitMEXWebsocket():
         raise NotImplementedError('orderBook is not subscribed; use askPrice and bidPrice on instrument')
         # return self.data['orderBook25'][0]
 
-    def open_orders(self, clOrdIDPrefix):
+    def open_orders(self, cl_ord_id_prefix):
         orders = self.data['order']
         # Filter to only open orders (leavesQty > 0) and those that we actually placed
-        return [o for o in orders if str(o['clOrdID']).startswith(clOrdIDPrefix) and o['leavesQty'] > 0]
+        return [o for o in orders if str(o['clOrdID']).startswith(cl_ord_id_prefix) and o['leavesQty'] > 0]
 
     def position(self, symbol):
         positions = self.data['position']
@@ -148,7 +160,7 @@ class BitMEXWebsocket():
     #
 
     def __connect(self, wsURL):
-        '''Connect to the websocket in a thread.'''
+        """Connect to the websocket in a thread."""
         self.logger.debug("Starting thread")
 
         ssl_defaults = ssl.get_default_verify_paths()
@@ -175,14 +187,14 @@ class BitMEXWebsocket():
 
         if not conn_timeout or self._error:
             self.logger.error(
-                "Couldn't connect to WS! Exiting. (timeout, error) = ({}, {})".format(conn_timeout==0, self._error))
+                "Couldn't connect to WS! Exiting. (timeout, error) = ({}, {})".format(conn_timeout == 0, self._error))
             self.exit()
             sys.exit(1)
 
     def __get_auth(self):
-        '''Return auth headers. Will use API Keys if present in settings.'''
+        """Return auth headers. Will use API Keys if present in settings."""
 
-        if self.shouldAuth is False:
+        if self.should_auth is False:
             return []
 
         self.logger.info("Authenticating with API Key.")
@@ -196,13 +208,13 @@ class BitMEXWebsocket():
         ]
 
     def __wait_for_account(self):
-        '''On subscribe, this data will come down. Wait for it.'''
+        """On subscribe, this data will come down. Wait for it."""
         # Wait for the keys to show up from the ws
         while not {'margin', 'position', 'order'} <= set(self.data):
             sleep(0.1)
 
     def __wait_for_symbol(self, symbol):
-        '''On subscribe, this data will come down. Wait for it.'''
+        """On subscribe, this data will come down. Wait for it."""
         while not {'instrument', 'trade', 'quote'} <= set(self.data):
             sleep(0.1)
 
@@ -211,7 +223,7 @@ class BitMEXWebsocket():
     #    self.ws.send(json.dumps({"op": command, "args": args or []}))
 
     def __on_message(self, ws, message):
-        '''Handler for parsing WS messages.'''
+        """Handler for parsing WS messages."""
         message = json.loads(message)
         self.logger.debug(json.dumps(message))
 
@@ -261,7 +273,7 @@ class BitMEXWebsocket():
                     self.logger.debug('%s: updating %s' % (table, message['data']))
                     # Locate the item in the collection and update it.
                     for updateData in message['data']:
-                        item = findItemByKeys(self.keys[table], self.data[table], updateData)
+                        item = find_item_by_key(self.keys[table], self.data[table], updateData)
                         if not item:
                             continue  # No item found to update. Could happen before push
 
@@ -287,10 +299,15 @@ class BitMEXWebsocket():
                     self.logger.debug('%s: deleting %s' % (table, message['data']))
                     # Locate the item in the collection and remove it.
                     for deleteData in message['data']:
-                        item = findItemByKeys(self.keys[table], self.data[table], deleteData)
+                        item = find_item_by_key(self.keys[table], self.data[table], deleteData)
                         self.data[table].remove(item)
                 else:
                     raise Exception("Unknown action: %s" % action)
+
+                if self.on_tradeBin1m and table == 'tradeBin1m':
+                    self.on_tradeBin1m(self.data[table][-1])
+                    self.data[table] = []
+
         except:
             self.logger.error(traceback.format_exc())
 
@@ -312,11 +329,11 @@ class BitMEXWebsocket():
         self._error = None
 
 
-def findItemByKeys(keys, table, matchData):
+def find_item_by_key(keys, table, match_data):
     for item in table:
         matched = True
         for key in keys:
-            if item[key] != matchData[key]:
+            if item[key] != match_data[key]:
                 matched = False
         if matched:
             return item
@@ -335,5 +352,5 @@ if __name__ == "__main__":
     ws = BitMEXWebsocket()
     ws.logger = logger
     ws.connect("https://testnet.bitmex.com/api/v1")
-    while (ws.ws.sock.connected):
+    while ws.ws.sock.connected:
         sleep(1)

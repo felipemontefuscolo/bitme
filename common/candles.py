@@ -5,6 +5,20 @@ import pandas as pd
 REQUIRED_COLUMNS = ['open', 'high', 'low', 'close', 'volume']
 
 
+def create_df_for_candles():
+    return pd.DataFrame(columns=REQUIRED_COLUMNS, dtype=float, index=pd.DatetimeIndex(data=[], name='timestamp'))
+
+
+def fix_bitmex_bug(df: pd.DataFrame) -> pd.DataFrame:
+    idx = df['low'] > df['open']
+    c = df.copy()
+    c['low'][idx] = df['open']
+    idx = df['high'] < df['open']
+    c['high'][idx] = df['open']
+
+    return c
+
+
 def to_ohlcv(data: Union[pd.DataFrame, list] = None, filename=None) -> pd.DataFrame:
     if filename is not None:
         if data is not None:
@@ -21,15 +35,9 @@ def to_ohlcv(data: Union[pd.DataFrame, list] = None, filename=None) -> pd.DataFr
         df.set_index('time', inplace=True)
     df = df[['open', 'high', 'low', 'close', 'volume']]
     df.index = pd.to_datetime(df.index)
+    df.index.name = 'timestamp'
 
-    # dirty fix of bitmex bug
-    idx = df['low'] > df['open']
-    c = df.copy()
-    c['low'][idx] = df['open']
-    idx = df['high'] < df['open']
-    c['high'][idx] = df['open']
-
-    return c
+    return fix_bitmex_bug(df)
 
 
 def resample_candles(data: pd.DataFrame, granularity: pd.Timedelta, begin_ts: pd.Timestamp, end_ts: pd.Timestamp):
