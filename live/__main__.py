@@ -4,17 +4,17 @@ import json
 import logging
 import time
 import uuid
-from enum import Enum
+from collections import defaultdict
+from typing import Iterable, Dict, List
 
+import numpy as np
 import pandas as pd
 import pytz
 import requests
-from typing import Iterable, Dict, List
-
-import sys
 
 from api import ExchangeInterface, PositionInterface
-from common import Symbol, REQUIRED_COLUMNS, create_df_for_candles, fix_bitmex_bug
+from common import Symbol, REQUIRED_COLUMNS, create_df_for_candles, fix_bitmex_bug, BITCOIN_TO_SATOSHI, OrderCommon, \
+    OrderType, TimeInForce, OrderStatus
 from live import errors
 from live.auth import APIKeyAuthWithExpires
 from live.settings import settings
@@ -69,16 +69,22 @@ class LiveBitMex(ExchangeInterface):
 
         # Create websocket for streaming data
         self.ws = BitMEXWebsocket()
+
+        # dict of subscription -> callback
+        callback_maps = {'tradeBin1m': self.on_tradeBin1m,
+                         'position': self.on_position}
+
         self.ws.connect(endpoint=self.base_url,
                         symbol=str(self.symbol),
                         should_auth=True,
-                        on_tradeBin1m=self.on_tradeBin1m)
+                        callback_maps=callback_maps)
 
         self.timeout = settings.TIMEOUT
 
         self.candles = create_df_for_candles()  # type: pd.DataFrame
         self.init_candles()
-        self.positions  # type: Dict[Symbol, List[PositionInterface]]
+        self.positions = defaultdict(
+            lambda: [PositionInterface(self.symbol)])  # type: Dict[Symbol, List[PositionInterface]]
 
         pass
 
@@ -101,17 +107,53 @@ class LiveBitMex(ExchangeInterface):
             self.candles = self.candles[-1::-1]
         self.candles = fix_bitmex_bug(self.candles)
 
+    ######################
+    # CALLBACKS
+    ######################
+
     def on_tradeBin1m(self, raw):
         self.candles.loc[pd.Timestamp(raw['timestamp'])] = [raw[j] for j in REQUIRED_COLUMNS]
-        #print("HAHA")
-        #print(self.candles)
+        self.print_ws_output(raw)
+
+    def on_position(self, raw):
+        if not raw or not raw[-1]:
+            return
+        raw = raw[-1]
+        if not raw.get('symbol'):
+            return
+        symbol = Symbol.value_of(raw['symbol'])
+        if symbol is None:
+            return
+
+        pos = PositionInterface(self.symbol)
+        pos.avg_entry_price = raw.get('avgEntryPrice')  # type: float
+        pos.break_even_price = raw.get('breakEvenPrice')  # type: float
+        pos.liquidation_price = raw.get('liquidationPrice')  # type: float
+        pos.leverage = raw.get('leverage')  # type: int
+        pos.current_qty = raw.get('currentQty')  # type: float
+        pos.side = None if pos.current_qty is None else (+1 if pos.current_qty >= 0 else -1)  # type: int
+        pos.realized_pnl = float(raw.get('realisedPnl', float('nan'))) / BITCOIN_TO_SATOSHI  # type: float
+        pos.is_open = raw.get('isOpen')  # type: bool
+        # TODO: those timestamps don't seem accurate! maybe use our own timestamp?
+        pos.current_timestamp = pd.Timestamp(raw.get('currentTimestamp'))  # type: pd.Timestamp
+        pos.open_timestamp = pd.Timestamp(raw.get('openingTimestamp'))  # type: pd.Timestamp
+
+        if pos.is_open:
+            self.positions[symbol][-1] = pos
+        else:
+            self.positions[symbol].append(pos)
+
+        print(pos)
+
+    def print_ws_output(self, raw):
+        print(json.dumps(raw, indent=4, sort_keys=True))
 
     ######################
     # FROM INTERFACE
     ######################
 
     def get_candles1m(self) -> pd.DataFrame:
-        return self.ws.trades1min_bin()
+        return self.candles
 
     def current_time(self) -> pd.Timestamp:
         return pd.Timestamp.now()
@@ -126,61 +168,99 @@ class LiveBitMex(ExchangeInterface):
         return self.ws.get_ticker(symbol)
 
     @authentication_required
-    def get_position(self, symbol: Symbol = None):
-        """Get your open position."""
+    def get_position(self, symbol: Symbol = None) -> PositionInterface:
         if symbol is None:
             symbol = self.symbol
-        return self.ws.position(str(symbol))
+        return self.positions[symbol][-1]
 
-    def get_closed_positions(self, symbol: Symbol = None) -> PositionInterface:
-        raise AttributeError("interface class")
+    @authentication_required
+    def get_closed_positions(self, symbol: Symbol = None) -> List[PositionInterface]:
+        if symbol is None:
+            symbol = self.symbol
+        return [pos for pos in self.positions[symbol] if (not pos.is_open) and pos.avg_entry_price]
 
-    def set_leverage(self, symbol: Enum, value: float) -> bool:
-        """
-        :param symbol
-        :param value Leverage value. Send a number between 0.01 and 100 to enable isolated margin with a fixed leverage.
-               Send 0 to enable cross margin.
-        :return: True if succeeded
-        """
-        raise AttributeError("interface class")
+    @authentication_required
+    def set_leverage(self, symbol, leverage, rethrow_errors=False):
+        """Set the leverage on an isolated margin position"""
+        path = "position/leverage"
+        postdict = {
+            'symbol': symbol,
+            'leverage': leverage
+        }
+        return self._curl_bitmex(path=path, postdict=postdict, verb="POST", rethrow_errors=rethrow_errors)
 
-    def cancel_orders(self, orders: Iterable) -> list:
+    @authentication_required
+    def cancel_orders(self, orders: Dict[str, OrderCommon]) -> Dict:
         """
-        :param orders:
-        :return: list of cancelled orders
+        :param orders: Dict of id -> order
+        :return: Dict of cancelled orders
         """
-        raise AttributeError("interface class")
+        result = {}
+        for order in orders.values():
+            o = self._curl_bitmex(path="order", postdict={'orderID': order.bitmex_id}, verb="DELETE")
+            o_id = o['clOrdID']
+            updated_ord = orders[o_id].update_from_bitmex(o)  # type: OrderCommon
+            if updated_ord.status == OrderStatus.Canceled:
+                result[o_id] = updated_ord
+        return result
 
-    def post_orders(self, orders) -> bool:
-        """
-        :param orders:
-        :return: True if any order was rejected
-        """
-        raise AttributeError("interface class")
+    @authentication_required
+    def post_orders(self, orders: Iterable[OrderCommon]) -> list:
+        """Create multiple orders."""
+        converted = [self.convert_order_to_bitmex(self.check_order_sanity(order)) for order in orders]
+        result = self._curl_bitmex(path='order/bulk', postdict={'orders': converted}, verb='POST')
+        orders = {o.id: o for o in orders}
+        result = [orders[r['clOrdID']].update_from_bitmex(r) for r in result]  # type: List[OrderCommon]
+
+        return result
 
     ######################
     # END INTERFACE
     ######################
 
-    def ticker_data(self, symbol=None):
-        """Get ticker data."""
-        if symbol is None:
-            symbol = self.symbol
-        return self.ws.get_ticker(symbol)
+    @staticmethod
+    def check_order_sanity(order: OrderCommon) -> OrderCommon:
+        assert order.id
+        return order
 
-    def instrument(self, symbol):
-        """Get an instrument's details."""
-        return self.ws.get_instrument(symbol)
+    @staticmethod
+    def convert_order_to_bitmex(order: OrderCommon) -> dict:
+        a = {}
+        if order.id:
+            a['clOrdID'] = order.id
+        if order.symbol:
+            a['symbol'] = order.symbol.name
+        if order.signed_qty and not np.isnan(order.signed_qty):
+            a['orderQty'] = order.signed_qty
+        if order.price and not np.isnan(order.price):
+            a['price'] = order.price
+        if order.stop_price and not np.isnan(order.stop_price):
+            a['stopPx'] = order.stop_price
+        if order.linked_order_id:
+            assert order.contingency_type
+            a['clOrdLinkID'] = str(order.linked_order_id)
+        if order.type:
+            a['ordType'] = order.type.name
+            if order.type == OrderType.Limit:
+                assert a.get('price')
+                a['execInst'] = 'ParticipateDoNotInitiate'  # post-only, postonly, post only
+        if order.time_in_force:
+            a['timeInForce'] = order.time_in_force.name
+        else:
+            if order.type == OrderType.Market:
+                a['timeInForce'] = TimeInForce.fill_or_kill.name
+            elif order.type == OrderType.Limit or OrderType.Stop:
+                a['timeInForce'] = TimeInForce.good_til_cancel.name
+        if order.contingency_type:
+            assert order.linked_order_id
+            a['contingencyType'] = order.contingency_type.name
+        return a
 
     def instruments(self, filter=None):
         query = {}
         if filter is not None:
             query['filter'] = json.dumps(filter)
         return self._curl_bitmex(path='instrument', query=query, verb='GET')
-
-    def market_depth(self, symbol):
-        """Get market depth / orderbook."""
-        return self.ws.market_depth(symbol)
 
     def recent_trades(self):
         """Get recent trades.
@@ -197,65 +277,9 @@ class LiveBitMex(ExchangeInterface):
         return self.ws.recent_trades()
 
     @authentication_required
-    def get_closed_positions(self, symbol='XBTUSD'):
-        # type: (Enum) -> list(PositionInterface)
-        raise AttributeError("interface class")
-
-    @authentication_required
-    def set_leverage(self, symbol, value):
-        # type: (Enum, float) -> bool
-        """
-        :param symbol
-        :param value Leverage value. Send a number between 0.01 and 100 to enable isolated margin with a fixed leverage.
-               Send 0 to enable cross margin.
-        :return: True if succeeded
-        """
-        raise AttributeError("interface class")
-
-    @authentication_required
-    def cancel_orders(self, orders, drop_canceled=True):
-        # type: (OrdersContainer, bool) -> None
-        raise AttributeError("interface class")
-
-    @authentication_required
     def funds(self):
         """Get your current balance."""
         return self.ws.funds()
-
-    @authentication_required
-    def position(self, symbol):
-        """Get your open position."""
-        return self.ws.position(symbol)
-
-    @authentication_required
-    def isolate_margin(self, symbol, leverage, rethrow_errors=False):
-        """Set the leverage on an isolated margin position"""
-        path = "position/leverage"
-        postdict = {
-            'symbol': symbol,
-            'leverage': leverage
-        }
-        return self._curl_bitmex(path=path, postdict=postdict, verb="POST", rethrow_errors=rethrow_errors)
-
-    @authentication_required
-    def delta(self):
-        return self.position(self.symbol)['homeNotional']
-
-    @authentication_required
-    def buy(self, quantity, price):
-        """Place a buy order.
-
-        Returns order object. ID: orderID
-        """
-        return self.place_order(quantity, price)
-
-    @authentication_required
-    def sell(self, quantity, price):
-        """Place a sell order.
-
-        Returns order object. ID: orderID
-        """
-        return self.place_order(-quantity, price)
 
     @authentication_required
     def place_order(self, quantity, price):
@@ -481,10 +505,7 @@ if __name__ == "__main__":
     # g = live.get_position()
     g = None
     for i in range(120):
-        print("SLEEP")
         time.sleep(1)
-
-        print(json.dumps(live.get_tick_info(), indent=4, sort_keys=True))
 
         # print('oi')
 

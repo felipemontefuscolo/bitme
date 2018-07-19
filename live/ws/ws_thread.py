@@ -36,7 +36,7 @@ class BitMEXWebsocket():
         self.symbol = None
         self.should_auth = True
 
-        self.on_tradeBin1m = None
+        self.callback_maps = None
 
     def __del__(self):
         self.exit()
@@ -45,10 +45,11 @@ class BitMEXWebsocket():
                 endpoint="",
                 symbol="XBTUSD",
                 should_auth=True,
-                on_tradeBin1m=None):
+                callback_maps=None):
         """
         Connect to the websocket and initialize data stores.
         """
+        self.callback_maps = callback_maps
 
         self.logger.debug("Connecting WebSocket.")
         self.symbol = symbol
@@ -77,8 +78,6 @@ class BitMEXWebsocket():
         if self.should_auth:
             self.__wait_for_account()
         self.logger.info('Got all market data. Starting.')
-
-        self.on_tradeBin1m = on_tradeBin1m
 
     #
     # Data methods
@@ -215,7 +214,7 @@ class BitMEXWebsocket():
 
     def __wait_for_symbol(self, symbol):
         """On subscribe, this data will come down. Wait for it."""
-        while not {'instrument', 'trade', 'quote'} <= set(self.data):
+        while not {'tradeBin1m', 'instrument', 'trade', 'quote'} <= set(self.data):
             sleep(0.1)
 
     # def __send_command(self, command, args):
@@ -304,9 +303,10 @@ class BitMEXWebsocket():
                 else:
                     raise Exception("Unknown action: %s" % action)
 
-                if self.on_tradeBin1m and table == 'tradeBin1m':
-                    self.on_tradeBin1m(self.data[table][-1])
-                    self.data[table] = []
+                if self.callback_maps:
+                    for subs, callback in self.callback_maps.items():
+                        if table == subs:
+                            callback(self.data[table][-1])
 
         except:
             self.logger.error(traceback.format_exc())

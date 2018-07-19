@@ -24,7 +24,6 @@ class TacticBitEwmWithStop(TacticInterface):
         self.product_id = product_id  # type: Symbol
 
         self.opened_orders = dict()  # type: Dict[str, OrderCommon]
-        self.position = None  # type: PositionInterface
         self.last_activity_time = None  # type: pd.Timestamp
         self.multiplier = 100.
         self.span = 20
@@ -56,24 +55,21 @@ class TacticBitEwmWithStop(TacticInterface):
     def get_symbol(self) -> Symbol:
         return self.product_id
 
-    def has_position(self):
-        return not self.position.is_open
-
     def send_order(self, exchange: ExchangeInterface, order: OrderCommon, n_try=1) -> bool:
         # return True if failed
         for i in range(n_try):
             orders_sent = exchange.post_orders([order])
             if len(orders_sent) != 0:
                 order_sent = next(iter(orders_sent))  # type: OrderCommon
-                if order_sent.status == OrderStatus.opened:
+                if order_sent.is_open():
                     self.opened_orders[order_sent.id] = order_sent
                 self.last_activity_time = order.time_posted
                 return False
         return True
 
     def handle_cancel(self, exchange: ExchangeInterface, order: OrderCommon):
-        self.position = exchange.get_position(self.product_id)  # type: PositionInterface
-        if not self.position.is_open or \
+        position = exchange.get_position(self.product_id)  # type: PositionInterface
+        if not position.is_open or \
                 order.status_msg == OrderCancelReason.liquidation or \
                 order.status_msg == OrderCancelReason.end_of_sim or \
                 order.status_msg == OrderCancelReason.requested_by_user:
@@ -95,23 +91,23 @@ class TacticBitEwmWithStop(TacticInterface):
             assert order.id in self.opened_orders
         except KeyError:
             return
-        self.position = exchange.get_position(self.product_id)  # type: PositionSim
+        position = exchange.get_position(self.product_id)  # type: PositionSim
         self.last_activity_time = fill.fill_time
         # self.__log.info("handling fill")
 
-        if fill.fill_type == FillType.complete or order.status == OrderStatus.filled:
+        if fill.fill_type == FillType.complete or order.status == OrderStatus.Filled:
             self.opened_orders = drop_closed_orders_dict(self.opened_orders)
-            if not (fill.fill_type == FillType.complete and order.status == OrderStatus.filled):
+            if not (fill.fill_type == FillType.complete and order.status == OrderStatus.Filled):
                 raise AttributeError("fill status is {} and order.is_fully_filled is {}"
-                                     .format(fill.fill_type == FillType.complete, order.status == OrderStatus.filled))
+                                     .format(fill.fill_type == FillType.complete, order.status == OrderStatus.Filled))
 
-        if not self.position.is_open:
-            assert order.status == OrderStatus.filled
+        if not position.is_open:
+            assert order.status == OrderStatus.Filled
             self.opened_orders = drop_orders(self.opened_orders, exchange.cancel_orders(self.opened_orders))
             self.handle_candles(exchange)
             return
 
-        reduced_position = not does_reduce_position(-qty_filled, self.position)
+        reduced_position = not does_reduce_position(-qty_filled, position)
 
         if not reduced_position:
             # create a profit order to reduce position
@@ -121,13 +117,13 @@ class TacticBitEwmWithStop(TacticInterface):
             order_to_send = OrderCommon(symbol=self.product_id,
                                         signed_qty=-qty_filled,
                                         price=price,
-                                        type=OrderType.limit,
+                                        type=OrderType.Limit,
                                         tactic=self)
             failed = self.send_order(exchange, order_to_send)
             if failed:
                 order_to_send = OrderCommon(symbol=self.product_id,
                                             signed_qty=-qty_filled,
-                                            type=OrderType.market,
+                                            type=OrderType.Market,
                                             tactic=self)
                 self.send_order(exchange, order_to_send, 10)
 
@@ -148,7 +144,7 @@ class TacticBitEwmWithStop(TacticInterface):
         price = exchange.get_tick_info()['last']
         # assert price == candles1m.iloc[-1]['close']
 
-        self.position = exchange.get_position(self.product_id)  # type: PositionInterface
+        position = exchange.get_position(self.product_id)  # type: PositionInterface
 
         # warming up
         if len(candles1m) < self.span:
@@ -156,13 +152,13 @@ class TacticBitEwmWithStop(TacticInterface):
 
         self.opened_orders = drop_closed_orders_dict(self.opened_orders)
 
-        if len(self.opened_orders) == 0 and self.position and self.position.is_open:
+        if len(self.opened_orders) == 0 and position and position.is_open:
             raise AttributeError("Invalid state. We have a position of {} but there is not opened order to reduce this"
-                                 " position. Probably a tactic logic error.".format(self.position.current_qty))
+                                 " position. Probably a tactic logic error.".format(position.current_qty))
 
         if len(self.opened_orders) > 0:
             if exchange.current_time() - self.last_activity_time > pd.Timedelta(minutes=self.no_activity_tol):
-                if self.close_position_if_no_loss(exchange, price):
+                if self.close_position_if_no_loss(exchange, price, position):
                     assert len(self.opened_orders) == 0
             return
 
@@ -193,25 +189,25 @@ class TacticBitEwmWithStop(TacticInterface):
         order_to_send = OrderCommon(symbol=self.product_id,
                                     signed_qty=should_trade * math.floor(price * self.qty_to_trade),
                                     price=price,
-                                    type=OrderType.limit,
+                                    type=OrderType.Limit,
                                     tactic=self)
 
-        if self.send_order(exchange, order_to_send) and not self.position.is_open:
+        if self.send_order(exchange, order_to_send) and not position.is_open:
             exchange.cancel_orders([order_to_send])
         else:
             # self.__log.info(" -- sending order " + str(order_to_send))
             1
 
     # this method doesn't drop closed orders
-    def close_position_if_no_loss(self, exchange, current_price):
-        if not self.position.is_open:
+    def close_position_if_no_loss(self, exchange, current_price, position):
+        if not position.is_open:
             return False
-        if sign(current_price - self.position.break_even_price) == self.position.side:
+        if sign(current_price - position.break_even_price) == position.side:
             self.opened_orders = drop_orders(self.opened_orders, exchange.cancel_orders(self.opened_orders))
-            if self.position.is_open:
+            if position.is_open:
                 order_to_send = OrderCommon(symbol=self.product_id,
-                                            signed_qty=-self.position.current_qty,
-                                            type=OrderType.market,
+                                            signed_qty=-position.current_qty,
+                                            type=OrderType.Market,
                                             tactic=self)
                 if not self.send_order(exchange, order_to_send):
                     self.last_activity_time = order_to_send.time_posted

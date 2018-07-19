@@ -12,3 +12,10 @@ class Symbol(Enum):
     @property
     def tick_size(self):
         return self.value['tick_size']
+
+    @staticmethod
+    def value_of(name):
+        try:
+            return Symbol[name]
+        except KeyError:
+            return None
