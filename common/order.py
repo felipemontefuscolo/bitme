@@ -1,34 +1,12 @@
 import math
 from enum import Enum
 # Order container util
-from typing import Iterable, Dict
+from typing import Iterable, Dict, Union, List
 
 import pandas as pd
 import numpy as np
 
 from api.symbol import Symbol
-
-
-def is_order_closed(order):
-    return order.status == OrderStatus.Filled or order.status == OrderStatus.Canceled
-
-
-def drop_closed_orders_dict(orders: Dict) -> Dict:
-    return dict(filter(lambda x: not is_order_closed(x[1]), orders.items()))
-
-
-def drop_orders(orders_orig: Dict, order_ids_to_drop: Iterable) -> Dict:
-    """
-    :param orders_orig: dict id -> order
-    :param order_ids_to_drop: list,set,map,.. anything where set(.) gives you the order id's
-    :return:
-    """
-    keys = orders_orig.keys() - set(order_ids_to_drop)
-    return {k: orders_orig[k] for k in keys}
-
-
-def filter_symbol(orders: Dict, symbol: Symbol):
-    return dict(filter(lambda x: x[1].symbol == symbol, orders.items()))
 
 
 class OrderStatus(Enum):
@@ -134,7 +112,7 @@ class OrderCommon:
         # type: (float) -> bool
         """ :return: True if fully filled, False otherwise  """
         assert np.sign(size) == np.sign(self.signed_qty)
-        assert self.status == OrderStatus.opened
+        assert self.is_open()
         remaining = self.signed_qty - self.filled
         if abs(size) >= abs(remaining):
             size = remaining
@@ -206,7 +184,7 @@ class OrderCommon:
         return a
 
     def update_from_bitmex(self, order: dict) -> 'OrderCommon':
-        assert self.id == order['clOrdID']
+        assert self.id == order.get('clOrdID')
         assert self.symbol.name == order['symbol']
 
         if self.bitmex_id is None:
@@ -246,3 +224,40 @@ class OrderCommon:
             self.time_posted = pd.Timestamp(order['transactTime'])
 
         return self
+
+
+OrderContainerType = Dict[str, OrderCommon]  # id -> order
+
+
+def drop_closed_orders_dict(orders: Dict) -> OrderContainerType:
+    return dict(filter(lambda x: x[1].is_open(), orders.items()))
+
+
+def drop_orders(orders_orig: Dict, order_ids_to_drop: Iterable) -> Dict:
+    """
+    :param orders_orig: dict id -> order
+    :param order_ids_to_drop: list,set,map,.. anything where set(.) gives you the order id's
+    :return:
+    """
+    keys = orders_orig.keys() - set(order_ids_to_drop)
+    return {k: orders_orig[k] for k in keys}
+
+
+def filter_symbol(orders: Dict, symbol: Symbol):
+    return dict(filter(lambda x: x[1].symbol == symbol, orders.items()))
+
+
+def get_orders_id(orders: Union[OrderContainerType, List[OrderCommon], List[str], str]) -> List[str]:
+    if len(orders) < 1:
+        return
+    if isinstance(orders, OrderContainerType):
+        ids = [o.id for o in orders.values()]
+    elif isinstance(orders[0], OrderCommon):
+        ids = [o.id for o in orders]
+    elif isinstance(orders, str):
+        ids = [orders]
+    elif isinstance(orders, List):
+        ids = orders
+    else:
+        raise ValueError("Don't know how to get id from: " + str(orders))
+    return ids

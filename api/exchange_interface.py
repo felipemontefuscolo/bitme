@@ -1,11 +1,11 @@
 from abc import ABCMeta, abstractmethod
 
 import pandas as pd
-from typing import Iterable, Dict, List
+from typing import Iterable, List, Union
 
 from api.position_interface import PositionInterface
 from api.symbol import Symbol
-from common.order import OrderCommon
+from common.order import OrderCommon, OrderContainerType
 
 
 class ExchangeInterface(metaclass=ABCMeta):
@@ -17,7 +17,11 @@ class ExchangeInterface(metaclass=ABCMeta):
         raise AttributeError("interface class")
 
     @abstractmethod
-    def post_orders(self, orders: Iterable[OrderCommon]) -> list:
+    def get_opened_orders(self, symbol=None) -> OrderContainerType:
+        raise AttributeError("interface class")
+
+    @abstractmethod
+    def post_orders(self, orders: List[OrderCommon]) -> List[OrderCommon]:
         """
         :param orders:
         :return: list of orders that were successfully posted
@@ -25,7 +29,7 @@ class ExchangeInterface(metaclass=ABCMeta):
         raise AttributeError("interface class")
 
     @abstractmethod
-    def cancel_orders(self, orders: Dict) -> Dict:
+    def cancel_orders(self, orders: Union[OrderContainerType, List[OrderCommon], List[str]]) -> OrderContainerType:
         """
         :param orders: Dict of id -> order
         :return: list of cancelled orders
@@ -49,7 +53,7 @@ class ExchangeInterface(metaclass=ABCMeta):
         raise AttributeError("interface class")
 
     @abstractmethod
-    def get_closed_positions(self, symbol: Symbol=None) -> List[PositionInterface]:
+    def get_closed_positions(self, symbol: Symbol = None) -> List[PositionInterface]:
         raise AttributeError("interface class")
 
     @abstractmethod

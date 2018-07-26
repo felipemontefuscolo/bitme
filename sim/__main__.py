@@ -2,28 +2,26 @@
 # timestamps are of type pd.Timestamp
 # side are of type str ('buy' or 'sell')
 import argparse
-import copy
 import os
 import shutil
 import sys
 from collections import defaultdict
-
-import pandas as pd
 # from autologging import logged
 from enum import Enum
+from typing import Dict, List, Iterable
+
+import pandas as pd
 from numpy.core.umath import sign
-from typing import Dict, List, Iterable, Union
 
 from api.exchange_interface import ExchangeInterface
 from api.symbol import Symbol
-
-from common.order import drop_closed_orders_dict, is_order_closed
 from common import Fill, FillType, OrderType, OrderCancelReason, to_ohlcv, OrderStatus, OrderCommon, drop_orders, \
-    filter_symbol
-from .sim_stats import SimSummary
-from .position_sim import PositionSim
+    filter_symbol, OrderContainerType
+from common.order import drop_closed_orders_dict
 from tactic import TacticInterface, TacticBitEwmWithStop
 from utils.utils import to_nearest
+from .position_sim import PositionSim
+from .sim_stats import SimSummary
 
 
 # import logging
@@ -77,16 +75,16 @@ class Liquidator(TacticInterface):
     def init(self, exchange, preferences):
         pass
 
-    def handle_candles(self, exchange):
+    def handle_1m_candles(self, candles: pd.DataFrame):
         pass
 
     def handle_submission_error(self, failed_order):
         pass
 
-    def handle_fill(self, exchange, fill):
+    def handle_fill(self, fill):
         pass
 
-    def handle_cancel(self, exchange, order):
+    def handle_cancel(self, order):
         pass
 
     def id(self):
@@ -109,7 +107,7 @@ class SimExchangeBitMex(ExchangeInterface):
         self.xbt_balance = initial_balance
 
         self.positions = dict()  # type: Dict[Symbol, PositionSim]
-        self.leverage = dict([(i, 100.) for i in self.SYMBOLS])  # 1 means 1%
+        self.leverage = {i: 1. for i in self.SYMBOLS}
 
         self.active_orders = dict()  # type: Dict[str, OrderCommon]
 
@@ -216,7 +214,7 @@ class SimExchangeBitMex(ExchangeInterface):
         else:
             if self.can_call_handles:
                 for tactic in self.tactics:  # type: TacticInterface
-                    tactic.handle_candles(self)
+                    tactic.handle_1m_candles(self.get_candles1m())
             self.time_idx += 1
             assert self.can_call_handles is True
             self._execute_all_orders()
@@ -276,7 +274,7 @@ class SimExchangeBitMex(ExchangeInterface):
         # return OrderCommon(**order.__dict__)
         return order
 
-    def post_orders(self, orders: Iterable) -> list:
+    def post_orders(self, orders: List[OrderCommon]) -> List[OrderCommon]:
         current_time = self.current_time()
         self.order_hist += orders
 
@@ -309,7 +307,7 @@ class SimExchangeBitMex(ExchangeInterface):
         for o in orders:  # type: OrderCommon
             o.time_posted = current_time
             if o.status == OrderStatus.Pending:
-                o.status = OrderStatus.opened
+                o.status = OrderStatus.New
                 self.active_orders[o.id] = o
             else:
                 assert o.status == OrderStatus.Canceled
@@ -319,7 +317,7 @@ class SimExchangeBitMex(ExchangeInterface):
 
         orders_list = [o for o in self.active_orders.values()]
         for o in orders_list:
-            if o.status == OrderStatus.opened and o.type == OrderType.Market:
+            if (o.status == OrderStatus.Pending or o.is_open()) and o.type == OrderType.Market:
                 self._execute_order(o)
         self.active_orders = drop_closed_orders_dict(self.active_orders)
         return orders_list
@@ -342,18 +340,13 @@ class SimExchangeBitMex(ExchangeInterface):
             assert self.time_idx < len(self.candles)
 
         for o in self.active_orders.values():
-            assert o.status == OrderStatus.opened
+            assert o.status == OrderStatus.Pending or o.is_open()
 
-        # print "_______________BEGIN_______________________"
-        # orders status may change in the loop
+        # self.active_orders may change during loop, so creating a copy
         orders_list = [o for o in self.active_orders.values()]
         for o in orders_list:
-            if o.status == OrderStatus.opened:
-                self._execute_order(o)  # type: Fill
+            self._execute_order(o)  # type: Fill
         self.active_orders = drop_closed_orders_dict(self.active_orders)
-        # print "_________________END_______________________"
-
-    """ if the case, automatically closes position (add to position history)"""
 
     def _update_position(self, symbol: Symbol, *args, **kwargs) -> PositionSim:
         if symbol in self.positions:
@@ -374,11 +367,13 @@ class SimExchangeBitMex(ExchangeInterface):
     Note: may restart self.position
     """
 
-    def _execute_order(self, order):
-        # type: (OrderCommon) -> Fill
+    def get_opened_orders(self, symbol=None) -> OrderContainerType:
+        return self.active_orders
+
+    def _execute_order(self, order: OrderCommon) -> Fill:
         assert self.time_idx < len(self.candles)
 
-        if order.status != OrderStatus.opened:
+        if order.status != OrderStatus.Pending and not order.is_open():
             raise ValueError("expected order to be opened, but got " + str(order.status) + ". Order = \n"
                              + order.get_header() + "\n" + str(order))
         current_candle = self.current_candle()
@@ -467,7 +462,7 @@ class SimExchangeBitMex(ExchangeInterface):
         self.fills_hist += [fill]
         self.active_orders = drop_closed_orders_dict(self.active_orders)
         if self.can_call_handles:
-            order.tactic.handle_fill(self, fill)
+            order.tactic.handle_fill(fill)
         return fill
 
     def _execute_liquidation(self, symbol, order_cancel_reason=OrderCancelReason.liquidation):

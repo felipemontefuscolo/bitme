@@ -47,9 +47,17 @@ class BitMEXWebsocket():
                 should_auth=True,
                 callback_maps=None):
         """
-        Connect to the websocket and initialize data stores.
+        :param endpoint:
+        :param symbol:
+        :param should_auth:
+        :param callback_maps: 'bitmex subscription' -> callback .. if subs is present, this class won't store its data
+        :return:
         """
-        self.callback_maps = callback_maps
+
+        if callback_maps is None:
+            self.callback_maps = {}
+        else:
+            self.callback_maps = callback_maps
 
         self.logger.debug("Connecting WebSocket.")
         self.symbol = symbol
@@ -127,14 +135,6 @@ class BitMEXWebsocket():
         orders = self.data['order']
         # Filter to only open orders (leavesQty > 0) and those that we actually placed
         return [o for o in orders if str(o['clOrdID']).startswith(cl_ord_id_prefix) and o['leavesQty'] > 0]
-
-    def position(self, symbol):
-        positions = self.data['position']
-        pos = [p for p in positions if p['symbol'] == symbol]
-        if len(pos) == 0:
-            # No position found; stub it
-            return {'avgCostPrice': 0, 'avgEntryPrice': 0, 'currentQty': 0, 'symbol': symbol}
-        return pos[0]
 
     def recent_trades(self):
         return self.data['trade']
@@ -303,10 +303,10 @@ class BitMEXWebsocket():
                 else:
                     raise Exception("Unknown action: %s" % action)
 
-                if self.callback_maps:
-                    for subs, callback in self.callback_maps.items():
-                        if table == subs:
-                            callback(self.data[table][-1])
+                # NOTE: the data is popped if subs is in the map!
+                for subs, callback in self.callback_maps.items():
+                    if table == subs:
+                        callback(self.data[table].pop())
 
         except:
             self.logger.error(traceback.format_exc())

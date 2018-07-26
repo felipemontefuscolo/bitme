@@ -5,7 +5,7 @@ import logging
 import time
 import uuid
 from collections import defaultdict
-from typing import Iterable, Dict, List
+from typing import Iterable, Dict, List, Union
 
 import numpy as np
 import pandas as pd
@@ -14,9 +14,10 @@ import requests
 
 from api import ExchangeInterface, PositionInterface
 from common import Symbol, REQUIRED_COLUMNS, create_df_for_candles, fix_bitmex_bug, BITCOIN_TO_SATOSHI, OrderCommon, \
-    OrderType, TimeInForce, OrderStatus
+    OrderType, TimeInForce, OrderContainerType, get_orders_id
 from live import errors
 from live.auth import APIKeyAuthWithExpires
+from tactic.bitmex_dummy_tactic import BitmexDummyTactic
 from live.settings import settings
 from live.ws.ws_thread import BitMEXWebsocket
 from utils import log
@@ -41,6 +42,7 @@ def authentication_required(fn):
 
 
 class LiveBitMex(ExchangeInterface):
+
     def __init__(self):
         ExchangeInterface.__init__(self)
         self.span = 10  # minutes;
@@ -72,7 +74,8 @@ class LiveBitMex(ExchangeInterface):
 
         # dict of subscription -> callback
         callback_maps = {'tradeBin1m': self.on_tradeBin1m,
-                         'position': self.on_position}
+                         'position': self.on_position,
+                         'order': self.on_order}
 
         self.ws.connect(endpoint=self.base_url,
                         symbol=str(self.symbol),
@@ -86,9 +89,12 @@ class LiveBitMex(ExchangeInterface):
         self.positions = defaultdict(
             lambda: [PositionInterface(self.symbol)])  # type: Dict[Symbol, List[PositionInterface]]
 
-        pass
+        # all orders, opened and closed
+        self.orders = dict()  # type: OrderContainerType
+        self.open_orders = dict()  # type: OrderContainerType
+        self.bitmex_dummy_tactic = BitmexDummyTactic()
 
-        # Authentication required methods
+        pass
 
     def init_candles(self):
         end = pd.Timestamp.now(tz=pytz.UTC).floor(freq='1min')
@@ -110,6 +116,27 @@ class LiveBitMex(ExchangeInterface):
     ######################
     # CALLBACKS
     ######################
+
+    def on_order(self, raw):
+        symbol = Symbol[raw['symbol']]
+        id = raw.get('clOrdID')
+        if id in self.orders:
+            order = self.orders[id]
+            order.update_from_bitmex(raw)
+        else:
+            order = OrderCommon(symbol=symbol, type=OrderType[raw['ordType']], tactic=self.bitmex_dummy_tactic)
+            order.id = raw.get('clOrdID')
+            order.bitmex_id = raw['orderID']
+            order.update_from_bitmex(raw)
+            self.orders[order.id] = order
+
+        if order.is_open():
+            self.open_orders[order.id] = order
+        else:
+            try:
+                del self.open_orders[order.id]
+            except KeyError:
+                pass
 
     def on_tradeBin1m(self, raw):
         self.candles.loc[pd.Timestamp(raw['timestamp'])] = [raw[j] for j in REQUIRED_COLUMNS]
@@ -137,6 +164,7 @@ class LiveBitMex(ExchangeInterface):
         # TODO: those timestamps don't seem accurate! maybe use our own timestamp?
         pos.current_timestamp = pd.Timestamp(raw.get('currentTimestamp'))  # type: pd.Timestamp
         pos.open_timestamp = pd.Timestamp(raw.get('openingTimestamp'))  # type: pd.Timestamp
+        assert pos.current_timestamp >= pos.open_timestamp
 
         if pos.is_open:
             self.positions[symbol][-1] = pos
@@ -190,33 +218,62 @@ class LiveBitMex(ExchangeInterface):
         return self._curl_bitmex(path=path, postdict=postdict, verb="POST", rethrow_errors=rethrow_errors)
 
     @authentication_required
-    def cancel_orders(self, orders: Dict[str, OrderCommon]) -> Dict:
+    def cancel_orders(self, orders: Union[OrderContainerType, List[OrderCommon], List[str]]) -> OrderContainerType:
         """
-        :param orders: Dict of id -> order
         :return: Dict of cancelled orders
         """
-        result = {}
-        for order in orders.values():
-            o = self._curl_bitmex(path="order", postdict={'orderID': order.bitmex_id}, verb="DELETE")
-            o_id = o['clOrdID']
-            updated_ord = orders[o_id].update_from_bitmex(o)  # type: OrderCommon
-            if updated_ord.status == OrderStatus.Canceled:
-                result[o_id] = updated_ord
+        # TODO: add a warning if the order ids passed by the user don't exist
+        ids = get_orders_id(orders)
+        if not ids:
+            return dict()
+        raws = self._curl_bitmex(path="order", postdict={'clOrdID': ','.join(ids)}, verb="DELETE")
+
+        cancelled = {raw['clOrdID']: self.orders[raw['clOrdID']] for raw in raws}
+
+        self.check_all_closed(cancelled.values())
+
+        return cancelled
+
+    @authentication_required
+    def post_orders(self, orders: List[OrderCommon]) -> List[OrderCommon]:
+        converted = [self.convert_order_to_bitmex(self.check_order_sanity(order)) for order in orders]
+        raws = self._curl_bitmex(path='order/bulk', postdict={'orders': converted}, verb='POST')
+        orders = {o.id: o for o in orders}
+        result = [orders[r['clOrdID']].update_from_bitmex(r) for r in raws]  # type: List[OrderCommon]
+
+        # confirm that our websocket got those orders
+        ids = {r['clOrdID'] for r in raws}
+        t = 0.
+        while not ids <= self.orders.keys():
+            time.sleep(0.1)
+            t += 0.1
+            if t >= self.timeout:
+                raise TimeoutError(
+                    "Orders posted through http (ids={}) were not confirmed in websocket within {} seconds".format(
+                        self.orders.keys() - ids, self.timeout))
         return result
 
     @authentication_required
-    def post_orders(self, orders: Iterable[OrderCommon]) -> list:
-        """Create multiple orders."""
-        converted = [self.convert_order_to_bitmex(self.check_order_sanity(order)) for order in orders]
-        result = self._curl_bitmex(path='order/bulk', postdict={'orders': converted}, verb='POST')
-        orders = {o.id: o for o in orders}
-        result = [orders[r['clOrdID']].update_from_bitmex(r) for r in result]  # type: List[OrderCommon]
-
-        return result
+    def get_opened_orders(self, symbol=None) -> OrderContainerType:
+        return self.open_orders
 
     ######################
     # END INTERFACE
     ######################
+
+    def check_all_closed(self, orders_cancelled: Iterable[OrderCommon]) -> None:
+        # expecting orders_cancelled to be changed externally by the websocket
+        t = 0.
+        n_opened = sum(order.is_open() for order in orders_cancelled)
+        while n_opened > 0:
+            time.sleep(0.1)
+            t += 0.1
+            n_opened = sum(order.is_open() for order in orders_cancelled)
+            if t >= self.timeout / 2:
+                opened = [order.id for order in orders_cancelled if order.is_open()]
+                raise TimeoutError(
+                    "Orders cancelled through http (ids={}) were not confirmed in websocket within {} seconds".format(
+                        ','.join(opened), self.timeout / 2))
 
     @staticmethod
     def check_order_sanity(order: OrderCommon) -> OrderCommon:
@@ -434,7 +491,7 @@ class LiveBitMex(ExchangeInterface):
 
                 # We're ratelimited, and we may be waiting for a long time. Cancel orders.
                 self.logger.warning("Canceling all known orders in the meantime.")
-                self.cancel([o['orderID'] for o in self.open_orders()])
+                self.cancel([o.bitmex_id for o in self.open_orders.values()])
 
                 self.logger.error("Your ratelimit will reset at %s. Sleeping for %d seconds." % (reset_str, to_sleep))
                 time.sleep(to_sleep)
