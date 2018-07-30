@@ -183,6 +183,7 @@ class OrderCommon:
             a['contingencyType'] = self.contingency_type.name
         return a
 
+    # update this object and return itself
     def update_from_bitmex(self, order: dict) -> 'OrderCommon':
         assert self.id == order.get('clOrdID')
         assert self.symbol.name == order['symbol']

@@ -14,9 +14,10 @@ import requests
 
 from api import ExchangeInterface, PositionInterface
 from common import Symbol, REQUIRED_COLUMNS, create_df_for_candles, fix_bitmex_bug, BITCOIN_TO_SATOSHI, OrderCommon, \
-    OrderType, TimeInForce, OrderContainerType, get_orders_id
+    OrderType, TimeInForce, OrderContainerType, get_orders_id, OrderStatus
 from live import errors
 from live.auth import APIKeyAuthWithExpires
+from tactic import TacticInterface
 from tactic.bitmex_dummy_tactic import BitmexDummyTactic
 from live.settings import settings
 from live.ws.ws_thread import BitMEXWebsocket
@@ -94,6 +95,8 @@ class LiveBitMex(ExchangeInterface):
         self.open_orders = dict()  # type: OrderContainerType
         self.bitmex_dummy_tactic = BitmexDummyTactic()
 
+        self.tactics = []
+
         pass
 
     def init_candles(self):
@@ -113,22 +116,20 @@ class LiveBitMex(ExchangeInterface):
             self.candles = self.candles[-1::-1]
         self.candles = fix_bitmex_bug(self.candles)
 
+    def register_tactic(self, tactic: TacticInterface):
+        self.tactics.append(tactic)
+
     ######################
     # CALLBACKS
     ######################
 
     def on_order(self, raw):
-        symbol = Symbol[raw['symbol']]
         id = raw.get('clOrdID')
         if id in self.orders:
             order = self.orders[id]
             order.update_from_bitmex(raw)
         else:
-            order = OrderCommon(symbol=symbol, type=OrderType[raw['ordType']], tactic=self.bitmex_dummy_tactic)
-            order.id = raw.get('clOrdID')
-            order.bitmex_id = raw['orderID']
-            order.update_from_bitmex(raw)
-            self.orders[order.id] = order
+            raise AttributeError("Got an unknown 'clOrdID' ({})".format(id))
 
         if order.is_open():
             self.open_orders[order.id] = order
@@ -140,7 +141,7 @@ class LiveBitMex(ExchangeInterface):
 
     def on_tradeBin1m(self, raw):
         self.candles.loc[pd.Timestamp(raw['timestamp'])] = [raw[j] for j in REQUIRED_COLUMNS]
-        self.print_ws_output(raw)
+        # self.print_ws_output(raw)
 
     def on_position(self, raw):
         if not raw or not raw[-1]:
@@ -236,21 +237,21 @@ class LiveBitMex(ExchangeInterface):
 
     @authentication_required
     def post_orders(self, orders: List[OrderCommon]) -> List[OrderCommon]:
+        # sanity check
+        if not all([o.status == OrderStatus.Pending for o in orders]):
+            raise ValueError("New orders should have status OrderStatus.Pending")
+
+        if not all([o.id not in self.orders for o in orders]):
+            raise ValueError("Orders contain an id that already exists")
+
+        for o in orders:
+            self.orders[o.id] = o
+
         converted = [self.convert_order_to_bitmex(self.check_order_sanity(order)) for order in orders]
         raws = self._curl_bitmex(path='order/bulk', postdict={'orders': converted}, verb='POST')
-        orders = {o.id: o for o in orders}
-        result = [orders[r['clOrdID']].update_from_bitmex(r) for r in raws]  # type: List[OrderCommon]
 
-        # confirm that our websocket got those orders
-        ids = {r['clOrdID'] for r in raws}
-        t = 0.
-        while not ids <= self.orders.keys():
-            time.sleep(0.1)
-            t += 0.1
-            if t >= self.timeout:
-                raise TimeoutError(
-                    "Orders posted through http (ids={}) were not confirmed in websocket within {} seconds".format(
-                        self.orders.keys() - ids, self.timeout))
+        result = [self.orders[r['clOrdID']].update_from_bitmex(r) for r in raws]  # type: List[OrderCommon]
+
         return result
 
     @authentication_required
@@ -556,15 +557,27 @@ class LiveBitMex(ExchangeInterface):
         return response.json()
 
 
-if __name__ == "__main__":
+def test1():
     live = LiveBitMex()
+    r = live.post_orders([OrderCommon(symbol=Symbol.XBTUSD,
+                                      type=OrderType.Limit,
+                                      tactic=BitmexDummyTactic(),
+                                      signed_qty=-100,
+                                      price=20000.5)])
+    print(r)
+
+
+if __name__ == "__main__":
+    test1()
+
+    # live = LiveBitMex()
     # print(live.get_candles1m())
     # g = live.get_position()
-    g = None
-    for i in range(120):
-        time.sleep(1)
+    # g = None
+    # for i in range(120):
+    #     time.sleep(1)
 
-        # print('oi')
+    # print('oi')
 
     # print(type(g))
     # print(g)

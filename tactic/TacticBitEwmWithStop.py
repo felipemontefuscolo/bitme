@@ -72,20 +72,10 @@ class TacticBitEwmWithStop(TacticInterface):
 
     def handle_cancel(self, order: OrderCommon):
         position = self.exchange.get_position(self.product_id)  # type: PositionInterface
-        if not position.is_open or \
-                order.status_msg == OrderCancelReason.liquidation or \
-                order.status_msg == OrderCancelReason.end_of_sim or \
-                order.status_msg == OrderCancelReason.requested_by_user:
+        if not position.is_open:
             return
-        if not self.send_order(self.exchange, OrderCommon(symbol=order.symbol,
-                                                          signed_qty=order.signed_qty,
-                                                          price=order.price,
-                                                          type=order.type,
-                                                          tactic=self)):
-            # self.__log.info("canceling order")
-            1
+
         self.opened_orders = drop_closed_orders_dict(self.opened_orders)
-        raise ValueError()  # test
 
     def handle_fill(self, fill: Fill):
         qty_filled = fill.qty
