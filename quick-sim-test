@@ -17,7 +17,7 @@ else
 	echo " --------------------------- "
 	echo " --------------------------- "
 	echo " showing diff: "
-	echo $result
+	#echo $result
 fi
 
 

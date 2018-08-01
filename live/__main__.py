@@ -17,10 +17,10 @@ from common import Symbol, REQUIRED_COLUMNS, create_df_for_candles, fix_bitmex_b
     OrderType, TimeInForce, OrderContainerType, get_orders_id, OrderStatus
 from live import errors
 from live.auth import APIKeyAuthWithExpires
-from tactic import TacticInterface
-from tactic.bitmex_dummy_tactic import BitmexDummyTactic
 from live.settings import settings
 from live.ws.ws_thread import BitMEXWebsocket
+from tactic import TacticInterface
+from tactic.bitmex_dummy_tactic import BitmexDummyTactic
 from utils import log
 
 MAX_NUM_CANDLES_BITMEX = 500  # bitmex REST API limit
@@ -48,6 +48,19 @@ class LiveBitMex(ExchangeInterface):
         ExchangeInterface.__init__(self)
         self.span = 10  # minutes;
         assert self.span <= MAX_NUM_CANDLES_BITMEX
+
+        self.timeout = settings.TIMEOUT
+
+        self.candles = create_df_for_candles()  # type: pd.DataFrame
+        self.positions = defaultdict(
+            lambda: list())  # type: Dict[Symbol, List[PositionInterface]]
+
+        # all orders, opened and closed
+        self.orders = dict()  # type: OrderContainerType
+        self.open_orders = dict()  # type: OrderContainerType
+        self.bitmex_dummy_tactic = BitmexDummyTactic()
+
+        self.tactics = []
 
         self.logger = logging.getLogger('root')
         self.base_url = settings.BASE_URL
@@ -78,24 +91,12 @@ class LiveBitMex(ExchangeInterface):
                          'position': self.on_position,
                          'order': self.on_order}
 
+        self.init_candles()
+
         self.ws.connect(endpoint=self.base_url,
                         symbol=str(self.symbol),
                         should_auth=True,
                         callback_maps=callback_maps)
-
-        self.timeout = settings.TIMEOUT
-
-        self.candles = create_df_for_candles()  # type: pd.DataFrame
-        self.init_candles()
-        self.positions = defaultdict(
-            lambda: [PositionInterface(self.symbol)])  # type: Dict[Symbol, List[PositionInterface]]
-
-        # all orders, opened and closed
-        self.orders = dict()  # type: OrderContainerType
-        self.open_orders = dict()  # type: OrderContainerType
-        self.bitmex_dummy_tactic = BitmexDummyTactic()
-
-        self.tactics = []
 
         pass
 
@@ -143,10 +144,9 @@ class LiveBitMex(ExchangeInterface):
         self.candles.loc[pd.Timestamp(raw['timestamp'])] = [raw[j] for j in REQUIRED_COLUMNS]
         # self.print_ws_output(raw)
 
-    def on_position(self, raw):
-        if not raw or not raw[-1]:
+    def on_position(self, raw: dict):
+        if not raw:
             return
-        raw = raw[-1]
         if not raw.get('symbol'):
             return
         symbol = Symbol.value_of(raw['symbol'])
@@ -167,12 +167,7 @@ class LiveBitMex(ExchangeInterface):
         pos.open_timestamp = pd.Timestamp(raw.get('openingTimestamp'))  # type: pd.Timestamp
         assert pos.current_timestamp >= pos.open_timestamp
 
-        if pos.is_open:
-            self.positions[symbol][-1] = pos
-        else:
-            self.positions[symbol].append(pos)
-
-        print(pos)
+        self.positions[symbol].append(pos)
 
     def print_ws_output(self, raw):
         print(json.dumps(raw, indent=4, sort_keys=True))
@@ -306,9 +301,9 @@ class LiveBitMex(ExchangeInterface):
             a['timeInForce'] = order.time_in_force.name
         else:
             if order.type == OrderType.Market:
-                a['timeInForce'] = TimeInForce.fill_or_kill.name
+                a['timeInForce'] = TimeInForce.FillOrKill.name
             elif order.type == OrderType.Limit or OrderType.Stop:
-                a['timeInForce'] = TimeInForce.good_til_cancel.name
+                a['timeInForce'] = TimeInForce.GoodTillCancel.name
         if order.contingency_type:
             assert order.linked_order_id
             a['contingencyType'] = order.contingency_type.name
@@ -518,10 +513,17 @@ class LiveBitMex(ExchangeInterface):
                     IDs = json.dumps({'clOrdID': [order['clOrdID'] for order in orders]})
                     orderResults = self._curl_bitmex('/order', query={'filter': IDs}, verb='GET')
 
+                    print("!!!!!!!!!!!!!!!!!  found duplicate ids !!!!!!!!!!!!!!!!!")
+                    print("postdict = {}".format(postdict))
+                    print("orders = {}".format(orders))
+                    print("orderResults = {}".format(orderResults))
+
                     for i, order in enumerate(orderResults):
+                        assert 'orderQty' in order
+
                         if (
-                                order['orderQty'] != abs(postdict['orderQty']) or
-                                order['side'] != ('Buy' if postdict['orderQty'] > 0 else 'Sell') or
+                                abs(order['orderQty']) != abs(postdict['orderQty']) or
+                                order['side'] != ('Buy' if postdict['orderQty'] >= 0 else 'Sell') or
                                 order['price'] != postdict['price'] or
                                 order['symbol'] != postdict['symbol']):
                             raise Exception(
@@ -559,12 +561,22 @@ class LiveBitMex(ExchangeInterface):
 
 def test1():
     live = LiveBitMex()
-    r = live.post_orders([OrderCommon(symbol=Symbol.XBTUSD,
-                                      type=OrderType.Limit,
-                                      tactic=BitmexDummyTactic(),
-                                      signed_qty=-100,
-                                      price=20000.5)])
-    print(r)
+    orders = live.post_orders([OrderCommon(symbol=Symbol.XBTUSD,
+                                           type=OrderType.Limit,
+                                           tactic=BitmexDummyTactic(),
+                                           signed_qty=-100,
+                                           price=20000.5)])
+    if orders:
+        assert orders[0].is_open()
+    time.sleep(.5)
+
+    oo = live.get_opened_orders()
+    assert len(oo) == 1
+
+    for oid, o in oo.items():
+        print(o)
+
+    exit(0)
 
 
 if __name__ == "__main__":

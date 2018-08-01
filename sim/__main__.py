@@ -394,7 +394,7 @@ class SimExchangeBitMex(ExchangeInterface):
             qty_fill = order.signed_qty
         elif order.type is OrderType.Limit:
             price_fill = order.price
-            max_qty_fill = order.signed_qty - order.filled
+            max_qty_fill = order.leaves_qty * order.side()
             # clip fill
             if (open <= order.price <= close) or (close <= order.price <= open):
                 qty_fill = max_qty_fill

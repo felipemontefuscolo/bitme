@@ -44,10 +44,10 @@ class OrderType(Enum):
 
 
 class TimeInForce(Enum):
-    day = 'day'
-    good_til_cancel = 'good_til_cancel'
-    immediate_or_cancel = 'immediate_or_cancel'
-    fill_or_kill = 'fill_or_kill'
+    Day = 'Day'
+    GoodTillCancel = 'GoodTillCancel'
+    ImmediateOrCancel = 'ImmediateOrCancel'
+    FillOrKill = 'FillOrKill'
 
     def __str__(self):
         return self.name
@@ -88,7 +88,7 @@ class OrderCommon:
         self.tactic = tactic
 
         # data change by the exchange
-        self.filled = 0.  # type: float
+        self.leaves_qty = abs(signed_qty)
         self.fill_price = float('nan') if self.type == OrderType.Market else self.price
         self.time_posted = None  # type: pd.Timestamp
         self.status = OrderStatus.Pending  # type: OrderStatus
@@ -99,6 +99,9 @@ class OrderCommon:
         q = abs(self.signed_qty) * 2 + 1.e-10
         assert abs(q - math.floor(q)) < 1.e-8
 
+    def side(self):
+        return -1 if self.signed_qty < 0 else + 1
+
     def is_open(self):
         return self.status == OrderStatus.New or self.status == OrderStatus.PartiallyFilled
 
@@ -108,18 +111,16 @@ class OrderCommon:
     def is_buy(self):
         return self.signed_qty > 0
 
-    def fill(self, size):
+    def fill(self, signed_fill_qty):
         # type: (float) -> bool
         """ :return: True if fully filled, False otherwise  """
-        assert np.sign(size) == np.sign(self.signed_qty)
+        assert np.sign(signed_fill_qty) == np.sign(self.signed_qty)
         assert self.is_open()
-        remaining = self.signed_qty - self.filled
-        if abs(size) >= abs(remaining):
-            size = remaining
+        self.leaves_qty = max(0, self.leaves_qty - abs(signed_fill_qty))
+        if self.leaves_qty == 0:
             self.status = OrderStatus.Filled
-            self.filled += size
             return True
-        self.filled += size
+
         return False
 
     def __str__(self):
@@ -133,7 +134,7 @@ class OrderCommon:
             str(self.id),
             str(side),
             str(self.signed_qty),
-            str(self.filled),
+            str(self.leaves_qty),
             str(self.price),
             str(self.type.name),
             str(self.status.name),
@@ -142,7 +143,7 @@ class OrderCommon:
 
     @staticmethod
     def get_header():
-        return 'time,symbol,id,side,qty,filled,price,type,status,status_msg'
+        return 'time,symbol,id,side,qty,leaves_qty,price,type,status,status_msg'
 
     @staticmethod
     def e_str(x: Enum) -> str:
@@ -175,9 +176,9 @@ class OrderCommon:
             a['timeInForce'] = self.time_in_force.name
         else:
             if self.type == OrderType.Market:
-                a['timeInForce'] = TimeInForce.fill_or_kill.name
+                a['timeInForce'] = TimeInForce.FillOrKill.name
             elif self.type == OrderType.Limit or OrderType.Stop:
-                a['timeInForce'] = TimeInForce.good_til_cancel.name
+                a['timeInForce'] = TimeInForce.GoodTillCancel.name
         if self.contingency_type:
             assert self.linked_order_id
             a['contingencyType'] = self.contingency_type.name
@@ -219,7 +220,7 @@ class OrderCommon:
         if 'text' in order:
             self.status_msg = order['text']
         if 'leavesQty' in order:
-            self.filled = self.signed_qty - side * float(order['leavesQty'])
+            self.leaves_qty = order['leavesQty']
 
         if not self.time_posted:
             self.time_posted = pd.Timestamp(order['transactTime'])

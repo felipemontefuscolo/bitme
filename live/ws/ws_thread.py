@@ -305,7 +305,7 @@ class BitMEXWebsocket():
 
                 # NOTE: the data is popped if subs is in the map!
                 for subs, callback in self.callback_maps.items():
-                    if table == subs:
+                    if table == subs and self.data[table]:
                         callback(self.data[table].pop())
 
         except:
