@@ -130,7 +130,12 @@ class LiveBitMex(ExchangeInterface):
             order = self.orders[id]
             order.update_from_bitmex(raw)
         else:
-            raise AttributeError("Got an unknown 'clOrdID' ({})".format(id))
+            order = OrderCommon(symbol=Symbol[raw.get('symbol')], type=OrderType[raw['ordType']],
+                                tactic=self.bitmex_dummy_tactic)
+            order.id = raw.get('clOrdID')
+            order.bitmex_id = raw['orderID']
+            order.update_from_bitmex(raw)
+            self.orders[order.id] = order
 
         if order.is_open():
             self.open_orders[order.id] = order
@@ -521,10 +526,9 @@ class LiveBitMex(ExchangeInterface):
                     for i, order in enumerate(orderResults):
                         assert 'orderQty' in order
 
-                        if (
-                                abs(order['orderQty']) != abs(postdict['orderQty']) or
-                                order['side'] != ('Buy' if postdict['orderQty'] >= 0 else 'Sell') or
-                                order['price'] != postdict['price'] or
+                        if (abs(order['leavesQty']) != abs(postdict['leavesQty']) or
+                                order['side'] != postdict['side'] or
+                                order.get('price') != postdict.get('price') or
                                 order['symbol'] != postdict['symbol']):
                             raise Exception(
                                 'Attempted to recover from duplicate clOrdID, but order returned from API ' +

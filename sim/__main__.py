@@ -67,7 +67,7 @@ def get_args(input_args=None):
 class Liquidator(TacticInterface):
 
     def __init__(self):
-        super().__init__(use_uuid=False)
+        super().__init__()
 
     def get_symbol(self) -> Symbol:
         pass
@@ -121,7 +121,7 @@ class SimExchangeBitMex(ExchangeInterface):
         self.candles = to_ohlcv(filename=file_name)  # type: pd.DataFrame
         self.time_idx = 0
 
-        self.tactics = tactics
+        self.tactics_map = {t.id(): t for t in tactics}
         ss = [tac.get_symbol() for tac in tactics]
         zz = set(ss)
         if len(zz) != len(ss):
@@ -213,7 +213,7 @@ class SimExchangeBitMex(ExchangeInterface):
             return
         else:
             if self.can_call_handles:
-                for tactic in self.tactics:  # type: TacticInterface
+                for tactic in self.tactics_map.values():  # type: TacticInterface
                     tactic.handle_1m_candles(self.get_candles1m())
             self.time_idx += 1
             assert self.can_call_handles is True
@@ -425,7 +425,7 @@ class SimExchangeBitMex(ExchangeInterface):
             order.status = OrderStatus.Filled
             order.fill_price = price_fill
 
-        if (open <= order.price <= close) or (close <= order.price <= open):
+        if order.price is not None and ((open <= order.price <= close) or (close <= order.price <= open)):
             assert order.status == OrderStatus.Filled
 
         fee = self.FEE[order.type]
@@ -597,7 +597,7 @@ def main(input_args=None):
 
     with SimExchangeBitMex(0.2, args.file, args.log_dir, tactics) as exchange:
 
-        for tac in exchange.tactics:
+        for tac in exchange.tactics_map.values():
             tac.init(exchange, args.pref)
 
         while exchange.is_open():

@@ -9,8 +9,8 @@ import pandas as pd
 
 
 class TacticInterface(IdGenerator, metaclass=ABCMeta):
-    def __init__(self, use_uuid=False):
-        super().__init__(use_uuid)
+    def __init__(self):
+        super().__init__()
 
     @abstractmethod
     def init(self, exchange: ExchangeInterface, preferences: dict) -> None:
@@ -32,5 +32,6 @@ class TacticInterface(IdGenerator, metaclass=ABCMeta):
     def handle_cancel(self, order: OrderCommon) -> None:
         raise AttributeError("interface class")
 
+    @abstractmethod
     def id(self) -> str:
-        return self.__class__.__name__
+        raise AttributeError("interface class")

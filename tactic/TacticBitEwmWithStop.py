@@ -38,6 +38,9 @@ class TacticBitEwmWithStop(TacticInterface):
 
         self.exchange = None
 
+    def id(self) -> str:
+        return 'TBEWS'
+
     def init(self, exchange: ExchangeInterface, preferences: dict):
         self.exchange = exchange
         self.exchange.set_leverage(self.product_id, self.multiplier)

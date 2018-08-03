@@ -75,7 +75,7 @@ class OrderCommon:
                  time_in_force: TimeInForce = None,
                  contingency_type: ContingencyType = None):
 
-        self.id = tactic.generate_id() if tactic is not None else None
+        self.id = tactic.gen_order_id() if tactic is not None else None
 
         self.symbol = symbol  # type: Symbol
         self.signed_qty = signed_qty  # type: float
@@ -96,10 +96,11 @@ class OrderCommon:
         self.bitmex_id = None  # type: str
 
         # sanity check
-        q = abs(self.signed_qty) * 2 + 1.e-10
-        assert abs(q - math.floor(q)) < 1.e-8
+        if not np.isnan(signed_qty):
+            q = abs(self.signed_qty) * 2 + 1.e-10
+            assert abs(q - math.floor(q)) < 1.e-8
 
-    def side(self):
+    def side(self) -> int:
         return -1 if self.signed_qty < 0 else + 1
 
     def is_open(self):
@@ -159,7 +160,8 @@ class OrderCommon:
         if self.symbol:
             a['symbol'] = self.symbol.name
         if self.signed_qty and not np.isnan(self.signed_qty):
-            a['orderQty'] = self.signed_qty
+            a['orderQty'] = abs(self.signed_qty)
+            a['side'] = 'Buy' if self.side() > 0 else 'Sell'
         if self.price and not np.isnan(self.price):
             a['price'] = self.price
         if self.stop_price and not np.isnan(self.stop_price):
