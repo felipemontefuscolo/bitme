@@ -60,7 +60,7 @@ class LiveBitMex(ExchangeInterface):
         self.open_orders = dict()  # type: OrderContainerType
         self.bitmex_dummy_tactic = BitmexDummyTactic()
 
-        self.tactics = []
+        self.tactics_map = {}
 
         self.logger = logging.getLogger('root')
         self.base_url = settings.BASE_URL
@@ -93,6 +93,8 @@ class LiveBitMex(ExchangeInterface):
 
         self.init_candles()
 
+        self._curl_bitmex(path='order/all', postdict={}, verb='DELETE')
+
         self.ws.connect(endpoint=self.base_url,
                         symbol=str(self.symbol),
                         should_auth=True,
@@ -118,24 +120,27 @@ class LiveBitMex(ExchangeInterface):
         self.candles = fix_bitmex_bug(self.candles)
 
     def register_tactic(self, tactic: TacticInterface):
-        self.tactics.append(tactic)
+        self.tactics_map[tactic.id()] = tactic
 
     ######################
     # CALLBACKS
     ######################
 
     def on_order(self, raw):
-        id = raw.get('clOrdID')
-        if id in self.orders:
+        try:
+            id = raw['clOrdID']
+        except KeyError:
+            raise AttributeError('all our orders should have a client id ("clOrdID")')
+
+        try:
             order = self.orders[id]
-            order.update_from_bitmex(raw)
-        else:
-            order = OrderCommon(symbol=Symbol[raw.get('symbol')], type=OrderType[raw['ordType']],
-                                tactic=self.bitmex_dummy_tactic)
-            order.id = raw.get('clOrdID')
-            order.bitmex_id = raw['orderID']
-            order.update_from_bitmex(raw)
-            self.orders[order.id] = order
+        except KeyError:
+            # probably an order from a previous run, let's remove it from the way
+            if raw['leavesQty'] != 0:
+                raise AttributeError('Unregistered order clOrdID={} was supposed to be closed!'.format(id))
+            return self.rename_old_order(raw)
+
+        order.update_from_bitmex(raw)
 
         if order.is_open():
             self.open_orders[order.id] = order
@@ -145,8 +150,21 @@ class LiveBitMex(ExchangeInterface):
             except KeyError:
                 pass
 
+    def rename_old_order(self, raw):
+        old_id = raw['clOrdID']
+        any_id = 'remove_' + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n')
+        raw['clOrdID'] = any_id
+        raw['origClOrdID'] = old_id
+        result = self._curl_bitmex(path='order', postdict=raw, verb='PUT')
+        self.logger.info('changed stale order clOrdID={} to {}'.format(old_id, result['clOrdID']))
+        return
+
     def on_tradeBin1m(self, raw):
         self.candles.loc[pd.Timestamp(raw['timestamp'])] = [raw[j] for j in REQUIRED_COLUMNS]
+
+        # dead-man's switch
+        self._curl_bitmex(path='order/cancelAllAfter', postdict={'timeout': 90000}, verb='POST')
+
         # self.print_ws_output(raw)
 
     def on_position(self, raw: dict):
@@ -241,6 +259,10 @@ class LiveBitMex(ExchangeInterface):
         if not all([o.status == OrderStatus.Pending for o in orders]):
             raise ValueError("New orders should have status OrderStatus.Pending")
 
+        for i in range(len(orders)):
+            orders[i].id = '{}_{}'.format(orders[i].id,
+                                          base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n'))
+
         if not all([o.id not in self.orders for o in orders]):
             raise ValueError("Orders contain an id that already exists")
 
@@ -283,7 +305,7 @@ class LiveBitMex(ExchangeInterface):
 
     @staticmethod
     def convert_order_to_bitmex(order: OrderCommon) -> dict:
-        a = {}
+        a = {'leavesQty': order.leaves_qty}
         if order.id:
             a['clOrdID'] = order.id
         if order.symbol:
@@ -511,31 +533,15 @@ class LiveBitMex(ExchangeInterface):
                 error = response.json()['error']
                 message = error['message'].lower() if error else ''
 
-                # Duplicate clOrdID: that's fine, probably a deploy, go get the order(s) and return it
                 if 'duplicate clordid' in message:
+                    self.logger.info("found duplicate id")
                     orders = postdict['orders'] if 'orders' in postdict else postdict
 
                     IDs = json.dumps({'clOrdID': [order['clOrdID'] for order in orders]})
                     orderResults = self._curl_bitmex('/order', query={'filter': IDs}, verb='GET')
 
-                    print("!!!!!!!!!!!!!!!!!  found duplicate ids !!!!!!!!!!!!!!!!!")
-                    print("postdict = {}".format(postdict))
-                    print("orders = {}".format(orders))
-                    print("orderResults = {}".format(orderResults))
-
-                    for i, order in enumerate(orderResults):
-                        assert 'orderQty' in order
-
-                        if (abs(order['leavesQty']) != abs(postdict['leavesQty']) or
-                                order['side'] != postdict['side'] or
-                                order.get('price') != postdict.get('price') or
-                                order['symbol'] != postdict['symbol']):
-                            raise Exception(
-                                'Attempted to recover from duplicate clOrdID, but order returned from API ' +
-                                'did not match POST.\nPOST data: %s\nReturned order: %s' % (
-                                    json.dumps(orders[i]), json.dumps(order)))
-                    # All good
-                    return orderResults
+                    raise AttributeError("Found duplicate orders id. Sent request orders are: {}\n"
+                                         "Existing orders are: {}".format(orders, orderResults))
 
                 elif 'insufficient available balance' in message:
                     self.logger.error('Account out of funds. The message: %s' % error['message'])
@@ -571,7 +577,8 @@ def test1():
                                            signed_qty=-100,
                                            price=20000.5)])
     if orders:
-        assert orders[0].is_open()
+        if not orders[0].is_open():
+            raise AttributeError('Order supposed to be open: {}'.format(orders[0]))
     time.sleep(.5)
 
     oo = live.get_opened_orders()

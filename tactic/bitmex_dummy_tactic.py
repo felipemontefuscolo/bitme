@@ -7,6 +7,9 @@ class BitmexDummyTactic(TacticInterface):
     This class is associated to orders issued by Bitmex
     """
 
+    def id(self):
+        return 'DUMMY'
+
     def init(self, exchange: ExchangeInterface, preferences: dict) -> None:
         pass
 

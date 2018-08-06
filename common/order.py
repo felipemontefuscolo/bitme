@@ -75,7 +75,7 @@ class OrderCommon:
                  time_in_force: TimeInForce = None,
                  contingency_type: ContingencyType = None):
 
-        self.id = tactic.gen_order_id() if tactic is not None else None
+        self.id = tactic.id() if tactic is not None else None
 
         self.symbol = symbol  # type: Symbol
         self.signed_qty = signed_qty  # type: float
@@ -194,7 +194,9 @@ class OrderCommon:
         if self.bitmex_id is None:
             self.bitmex_id = order['orderID']
         else:
-            assert self.bitmex_id == order['orderID']
+            if self.bitmex_id != order['orderID']:
+                raise ValueError("Updating from order with different id. Self: {}, other: {}".format(self.bitmex_id,
+                                                                                                     order['orderID']))
 
         if order['side'] == 'Buy':
             side = +1

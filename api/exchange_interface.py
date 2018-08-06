@@ -25,6 +25,7 @@ class ExchangeInterface(metaclass=ABCMeta):
         """
         :param orders:
         :return: list of orders that were successfully posted
+        NOTE: it changes orders id
         """
         raise AttributeError("interface class")
 

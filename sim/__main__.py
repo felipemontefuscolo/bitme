@@ -276,6 +276,11 @@ class SimExchangeBitMex(ExchangeInterface):
 
     def post_orders(self, orders: List[OrderCommon]) -> List[OrderCommon]:
         current_time = self.current_time()
+        for i in range(len(orders)):
+            orders[i].id = '{}_{}'.format(orders[i].id, i + len(self.order_hist))
+
+        assert all([o.id not in self.active_orders for o in orders])
+
         self.order_hist += orders
 
         for o in orders:
