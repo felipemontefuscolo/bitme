@@ -100,6 +100,9 @@ class OrderCommon:
             q = abs(self.signed_qty) * 2 + 1.e-10
             assert abs(q - math.floor(q)) < 1.e-8
 
+    def filled(self):
+        return abs(self.signed_qty) - self.leaves_qty
+
     def side(self) -> int:
         return -1 if self.signed_qty < 0 else + 1
 

@@ -1,3 +1,4 @@
+import argparse
 import base64
 import datetime
 import json
@@ -8,13 +9,17 @@ from collections import defaultdict
 from typing import Iterable, Dict, List, Union
 
 import numpy as np
+import os
 import pandas as pd
 import pytz
 import requests
+import shutil
+
+import sys
 
 from api import ExchangeInterface, PositionInterface
 from common import Symbol, REQUIRED_COLUMNS, create_df_for_candles, fix_bitmex_bug, BITCOIN_TO_SATOSHI, OrderCommon, \
-    OrderType, TimeInForce, OrderContainerType, get_orders_id, OrderStatus
+    OrderType, TimeInForce, OrderContainerType, get_orders_id, OrderStatus, Fill, FillType
 from live import errors
 from live.auth import APIKeyAuthWithExpires
 from live.settings import settings
@@ -44,8 +49,13 @@ def authentication_required(fn):
 
 class LiveBitMex(ExchangeInterface):
 
-    def __init__(self):
+    def __init__(self, log_dir: str):
         ExchangeInterface.__init__(self)
+
+        self.log_dir = log_dir
+
+        self._init_files(log_dir)
+
         self.span = 10  # minutes;
         assert self.span <= MAX_NUM_CANDLES_BITMEX
 
@@ -54,13 +64,15 @@ class LiveBitMex(ExchangeInterface):
         self.candles = create_df_for_candles()  # type: pd.DataFrame
         self.positions = defaultdict(
             lambda: list())  # type: Dict[Symbol, List[PositionInterface]]
+        self.cum_pnl = 0  # updated during pnl logging
 
         # all orders, opened and closed
         self.orders = dict()  # type: OrderContainerType
         self.open_orders = dict()  # type: OrderContainerType
         self.bitmex_dummy_tactic = BitmexDummyTactic()
+        self.fills = dict()  # type: Dict[str, Fill]
 
-        self.tactics_map = {}
+        self.tactics_map = {}  # type: Dict[str, TacticInterface]
 
         self.logger = logging.getLogger('root')
         self.base_url = settings.BASE_URL
@@ -89,7 +101,8 @@ class LiveBitMex(ExchangeInterface):
         # dict of subscription -> callback
         callback_maps = {'tradeBin1m': self.on_tradeBin1m,
                          'position': self.on_position,
-                         'order': self.on_order}
+                         'order': self.on_order,
+                         'execution': self.on_fill}
 
         self.init_candles()
 
@@ -101,6 +114,42 @@ class LiveBitMex(ExchangeInterface):
                         callback_maps=callback_maps)
 
         pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
+        pass
+
+    def _init_files(self, log_dir):
+        self.fills_file = open(os.path.join(log_dir, 'fills.csv'), 'w')
+        self.orders_file = open(os.path.join(log_dir, 'orders.csv'), 'w')
+        self.pnl_file = open(os.path.join(log_dir, 'pnl.csv'), 'w')
+
+        self.fills_file.write(Fill.get_header() + '\n')
+        self.orders_file.write(OrderCommon.get_header() + '\n')
+        self.pnl_file.write('time,symbol,pnl,cum_pnl\n')
+
+    def _log_fill(self, fill: Fill):
+        self.fills_file.write(fill.to_line() + '\n')
+
+    def _log_order(self, order: OrderCommon):
+        self.orders_file.write(order.to_line() + '\n')
+
+    def _log_and_update_pnl(self, closed_position: PositionInterface):
+        pnl = closed_position.realized_pnl
+        self.cum_pnl += closed_position.realized_pnl
+        self.pnl_file.write(','.join([str(closed_position.current_timestamp.strftime('%Y-%m-%dT%H:%M:%S')),
+                                      closed_position.symbol.name,
+                                      str(pnl),
+                                      str(self.cum_pnl)])
+                            + '\n')
+
+    def close(self):
+        self.fills_file.close()
+        self.orders_file.close()
+        self.pnl_file.close()
 
     def init_candles(self):
         end = pd.Timestamp.now(tz=pytz.UTC).floor(freq='1min')
@@ -122,9 +171,29 @@ class LiveBitMex(ExchangeInterface):
     def register_tactic(self, tactic: TacticInterface):
         self.tactics_map[tactic.id()] = tactic
 
+    def get_tactic_from_order_id(self, order_id: str) -> TacticInterface:
+        tactic_id = order_id.split('_')[0]
+        return self.tactics_map[tactic_id]
+
     ######################
     # CALLBACKS
     ######################
+
+    def on_fill(self, raw):
+        fill_id = raw['execID']
+        if not raw['avgPx']:
+            return
+        # self.print_ws_output(raw)
+        if fill_id in self.fills:
+            self.fills[fill_id].update_from_bitmex(raw)  # type: Fill
+        else:
+            self.fills[fill_id] = Fill(order=self.orders[raw['clOrdID']],
+                                       qty_filled=raw['cumQty'],
+                                       price_fill=raw['avgPx'],
+                                       fill_time=pd.Timestamp(raw['transactTime']),
+                                       fill_type=FillType.complete if raw['leavesQty'] == 0 else FillType.partial)
+
+        self._log_fill(self.fills[fill_id])
 
     def on_order(self, raw):
         try:
@@ -138,9 +207,10 @@ class LiveBitMex(ExchangeInterface):
             # probably an order from a previous run, let's remove it from the way
             if raw['leavesQty'] != 0:
                 raise AttributeError('Unregistered order clOrdID={} was supposed to be closed!'.format(id))
+            self.logger.warning('Order id {} is not in memory, it is probably a stale order'.format(id))
             return self.rename_old_order(raw)
 
-        order.update_from_bitmex(raw)
+        order.update_from_bitmex(raw)  # type: OrderCommon
 
         if order.is_open():
             self.open_orders[order.id] = order
@@ -149,6 +219,7 @@ class LiveBitMex(ExchangeInterface):
                 del self.open_orders[order.id]
             except KeyError:
                 pass
+        self._log_order(order)
 
     def rename_old_order(self, raw):
         old_id = raw['clOrdID']
@@ -191,6 +262,9 @@ class LiveBitMex(ExchangeInterface):
         assert pos.current_timestamp >= pos.open_timestamp
 
         self.positions[symbol].append(pos)
+
+        if not pos.is_open and pos.realized_pnl and not np.isnan(pos.realized_pnl):
+            self._log_and_update_pnl(pos)
 
     def print_ws_output(self, raw):
         print(json.dumps(raw, indent=4, sort_keys=True))
@@ -434,6 +508,13 @@ class LiveBitMex(ExchangeInterface):
         }
         return self._curl_bitmex(path=path, postdict=postdict, verb="POST", max_retries=0)
 
+    def print_summary(self, input_args):
+        fills_file = open(os.path.join(self.log_dir, 'fills.csv'), 'w')
+        orders_file = open(os.path.join(self.log_dir, 'orders.csv'), 'w')
+        pnl_file = open(os.path.join(self.log_dir, 'pnl.csv'), 'w')
+        pars_used_file = open(os.path.join(self.log_dir, 'parameters_used'), 'w')
+        summary_file = open(os.path.join(self.log_dir, 'summary'), 'w')
+
     def _curl_bitmex(self, path, query=None, postdict=None, timeout=None, verb=None, rethrow_errors=False,
                      max_retries=None):
         """Send a request to BitMEX Servers."""
@@ -569,29 +650,64 @@ class LiveBitMex(ExchangeInterface):
         return response.json()
 
 
-def test1():
-    live = LiveBitMex()
-    orders = live.post_orders([OrderCommon(symbol=Symbol.XBTUSD,
-                                           type=OrderType.Limit,
-                                           tactic=BitmexDummyTactic(),
-                                           signed_qty=-100,
-                                           price=20000.5)])
-    if orders:
-        if not orders[0].is_open():
-            raise AttributeError('Order supposed to be open: {}'.format(orders[0]))
-    time.sleep(.5)
+def get_args(input_args=None):
+    parser = argparse.ArgumentParser(description='Simulation')
+    parser.add_argument('-l', '--log-dir', type=str, help='log directory', required=True)
+    parser.add_argument('-x', '--pref', action='append', help='args for tactics, given in the format "key=value"')
 
-    oo = live.get_opened_orders()
-    assert len(oo) == 1
+    args = parser.parse_args(args=input_args)
 
-    for oid, o in oo.items():
-        print(o)
+    if args.log_dir is not None:
+        if os.path.isfile(args.log_dir):
+            raise ValueError(args.log_dir + " is a file")
+        args.log_dir = os.path.abspath(args.log_dir)
+        if os.path.isdir(args.log_dir):
+            shutil.rmtree(args.log_dir)
+        os.makedirs(args.log_dir)
+
+    if not args.pref:
+        args.pref = list()
+    for i in range(len(args.pref)):
+        args.pref[i] = args.pref[i].split("=")
+    args.pref = dict(args.pref)
+
+    return args
+
+
+def test1(args):
+    with LiveBitMex(args.log_dir) as live:
+
+        orders = live.post_orders([OrderCommon(symbol=Symbol.XBTUSD,
+                                               type=OrderType.Market,  # type=OrderType.Limit,
+                                               tactic=BitmexDummyTactic(),
+                                               signed_qty=+1000)])
+        # price=20000.5)])
+        if orders:
+            if not orders[0].is_open() and orders[0].type == OrderType.Limit:
+                raise AttributeError('Order supposed to be open: {}'.format(orders[0]))
+        for i in range(3):
+            print('sleeping')
+            time.sleep(1)
+
+        orders = live.post_orders([OrderCommon(symbol=Symbol.XBTUSD,
+                                               type=OrderType.Market,  # type=OrderType.Limit,
+                                               tactic=BitmexDummyTactic(),
+                                               signed_qty=-1000)])
+    # price=20000.5)])
+
+    # oo = live.get_opened_orders()
+    # assert len(oo) == 1
+    #
+    # for oid, o in oo.items():
+    #     print(o)
 
     exit(0)
 
 
-if __name__ == "__main__":
-    test1()
+def main(input_args=None):
+    args = get_args(input_args)
+
+    test1(args)
 
     # live = LiveBitMex()
     # print(live.get_candles1m())
@@ -604,3 +720,7 @@ if __name__ == "__main__":
 
     # print(type(g))
     # print(g)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

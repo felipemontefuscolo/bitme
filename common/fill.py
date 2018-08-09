@@ -12,8 +12,13 @@ class FillType(Enum):
 
 
 class Fill:
-    def __init__(self, order, qty_filled, price_fill, fill_time, fill_type):
-        # type: (OrderCommon, float, float, pd.Timestamp) -> None
+    def __init__(self,
+                 order: OrderCommon,
+                 qty_filled: float,
+                 price_fill: float,
+                 fill_time: pd.Timestamp,
+                 fill_type: FillType):
+
         self.symbol = order.symbol  # type: Enum
         self.side = 'buy' if order.signed_qty > 0 else 'sell'  # type: str
         self.qty = qty_filled  # type: float
@@ -27,6 +32,14 @@ class Fill:
 
     def __str__(self):
         return str(self.to_line())
+
+    def update_from_bitmex(self, raw):
+        assert self.order.bitmex_id == raw['orderID']
+        assert self.order.symbol.name == raw['symbol']
+        self.qty = raw['cumQty']
+        self.price = raw['avgPx']
+        self.fill_time = pd.Timestamp(raw['transactTime'])
+        self.fill_type = FillType.complete if raw['leavesQty'] == 0 else FillType.partial
 
     def to_json(self):
         params = {

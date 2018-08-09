@@ -24,6 +24,11 @@ def smart_open(filename=None):
             fh.close()
 
 
+def smart_close(handler):
+    if handler != sys.stdout:
+        handler.close()
+
+
 class Day:
     def __init__(self, x):
         self._x = x

@@ -247,6 +247,10 @@ class BitMEXWebsocket():
 
                 if table not in self.keys:
                     self.keys[table] = []
+                #
+                # if table == 'order' or table == 'execution':
+                #     print("THIS IS HOW table={} IS PROCESSED (action={}):".format(table, action))
+                #     print(message['data'])
 
                 # There are four possible actions from the WS:
                 # 'partial' - full table image
