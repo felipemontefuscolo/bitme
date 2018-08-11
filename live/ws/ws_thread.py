@@ -36,7 +36,7 @@ class BitMEXWebsocket():
         self.symbol = None
         self.should_auth = True
 
-        self.callback_maps = None
+        self.callback_maps = None  # type: dict
 
     def __del__(self):
         self.exit()
@@ -154,6 +154,11 @@ class BitMEXWebsocket():
         self.exited = True
         self.ws.close()
 
+    def log_summary(self):
+        self.logger.info('Stored data:')
+        for table, data in self.data.items():
+            self.logger.info(' table: {}, len(data)={}'.format(table, len(data)))
+
     #
     # Private methods
     #
@@ -247,10 +252,9 @@ class BitMEXWebsocket():
 
                 if table not in self.keys:
                     self.keys[table] = []
-                #
-                # if table == 'order' or table == 'execution':
-                #     print("THIS IS HOW table={} IS PROCESSED (action={}):".format(table, action))
-                #     print(message['data'])
+
+                if table == 'execution':
+                    print('EXECUTION action = {}'.format(action))
 
                 # There are four possible actions from the WS:
                 # 'partial' - full table image
@@ -263,9 +267,20 @@ class BitMEXWebsocket():
                     # Keys are communicated on partials to let you know how to uniquely identify
                     # an item. We use it for updates.
                     self.keys[table] = message['keys']
+
+                    callback = self.callback_maps.get(table)
+                    if callback:
+                        for data in message['data']:
+                            callback(data)
+
                 elif action == 'insert':
                     self.logger.debug('%s: inserting %s' % (table, message['data']))
                     self.data[table] += message['data']
+
+                    callback = self.callback_maps.get(table)
+                    if callback:
+                        for data in message['data']:
+                            callback(data)
 
                     # Limit the max length of the table to avoid excessive memory usage.
                     # Don't trim orders because we'll lose valuable state if we do.
@@ -294,23 +309,24 @@ class BitMEXWebsocket():
                         # Update this item.
                         item.update(updateData)
 
+                        callback = self.callback_maps.get(table)
+                        if callback:
+                            callback(item)
+
                         # Remove canceled / filled orders
-                        if table == 'order' and item['leavesQty'] <= 0:
+                        if (table == 'order' or table == 'execution') and item['leavesQty'] <= 0:
                             self.data[table].remove(item)
 
                 elif action == 'delete':
-                    self.logger.debug('%s: deleting %s' % (table, message['data']))
-                    # Locate the item in the collection and remove it.
-                    for deleteData in message['data']:
-                        item = find_item_by_key(self.keys[table], self.data[table], deleteData)
-                        self.data[table].remove(item)
+                    raise NotImplementedError("I was not expecting getting 'delete' for table={}".format(table))
+                    # TODO: please don't delete the comments below, it may be useful later
+                    # self.logger.info('%s: deleting %s' % (table, message['data']))
+                    # # Locate the item in the collection and remove it.
+                    # for deleteData in message['data']:
+                    #     item = find_item_by_key(self.keys[table], self.data[table], deleteData)
+                    #     self.data[table].remove(item)
                 else:
                     raise Exception("Unknown action: %s" % action)
-
-                # NOTE: the data is popped if subs is in the map!
-                for subs, callback in self.callback_maps.items():
-                    if table == subs and self.data[table]:
-                        callback(self.data[table].pop())
 
         except:
             self.logger.error(traceback.format_exc())

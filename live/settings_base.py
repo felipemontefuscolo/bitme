@@ -8,12 +8,11 @@ import logging
 
 # API URL.
 BASE_URL = "https://testnet.bitmex.com/api/v1/"
-#BASE_URL = "https://www.bitmex.com/api/v1/"  # Once you're ready, uncomment this.
+# BASE_URL = "https://www.bitmex.com/api/v1/"  # Once you're ready, uncomment this.
 
 # The BitMEX API requires permanent API keys. Go to https://testnet.bitmex.com/api/apiKeys to fill these out.
 API_KEY = environ['BITMEX_KEY'] if 'test' not in BASE_URL else environ['BITMEX_KEY_TEST']
 API_SECRET = environ['BITMEX_SECRET'] if 'test' not in BASE_URL else environ['BITMEX_SECRET_TEST']
-
 
 ########################################################################################################################
 # Target
@@ -21,18 +20,6 @@ API_SECRET = environ['BITMEX_SECRET'] if 'test' not in BASE_URL else environ['BI
 
 # Instrument to market make on BitMEX.
 SYMBOL = "XBTUSD"
-
-
-# To uniquely identify orders placed by this bot, the bot sends a ClOrdID (Client order ID) that is attached
-# to each order so its source can be identified. This keeps the market maker from cancelling orders that are
-# manually placed, or orders placed by another bot.
-#
-# If you are running multiple bots on the same symbol, give them unique ORDERID_PREFIXes - otherwise they will
-# cancel each others' orders.
-# Max length is 13 characters.
-ORDERID_PREFIX = "isa_mt_"
-
-
 
 ########################################################################################################################
 # Order Size & Spread
@@ -68,7 +55,6 @@ MAINTAIN_SPREADS = True
 #
 # 0.01 == 1%
 RELIST_INTERVAL = 0.01
-
 
 ########################################################################################################################
 # Trading Behavior
@@ -109,7 +95,6 @@ DRY_BTC = 50
 
 # Available levels: logging.(DEBUG|INFO|WARN|ERROR)
 LOG_LEVEL = logging.INFO
-
 
 ########################################################################################################################
 # BitMEX Portfolio

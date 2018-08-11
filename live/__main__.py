@@ -25,6 +25,7 @@ from live.auth import APIKeyAuthWithExpires
 from live.settings import settings
 from live.ws.ws_thread import BitMEXWebsocket
 from tactic import TacticInterface
+from tactic.TacticTest1 import TacticTest1
 from tactic.bitmex_dummy_tactic import BitmexDummyTactic
 from utils import log
 
@@ -83,9 +84,7 @@ class LiveBitMex(ExchangeInterface):
                             "https://github.com/BitMEX/sample-market-maker/#getting-started for more information.")
         self.apiKey = settings.API_KEY
         self.apiSecret = settings.API_SECRET
-        if len(settings.ORDERID_PREFIX) > 13:
-            raise ValueError("settings.ORDERID_PREFIX must be at most 13 characters long!")
-        self.orderIDPrefix = settings.ORDERID_PREFIX
+
         self.retries = 0  # initialize counter
 
         # Prepare HTTPS session
@@ -126,10 +125,18 @@ class LiveBitMex(ExchangeInterface):
         self.fills_file = open(os.path.join(log_dir, 'fills.csv'), 'w')
         self.orders_file = open(os.path.join(log_dir, 'orders.csv'), 'w')
         self.pnl_file = open(os.path.join(log_dir, 'pnl.csv'), 'w')
+        self.candles_file = open(os.path.join(log_dir, 'candles.csv'), 'w')
 
         self.fills_file.write(Fill.get_header() + '\n')
         self.orders_file.write(OrderCommon.get_header() + '\n')
         self.pnl_file.write('time,symbol,pnl,cum_pnl\n')
+        self.candles_file.write(','.join(REQUIRED_COLUMNS) + '\n')
+
+    def close(self):
+        self.fills_file.close()
+        self.orders_file.close()
+        self.pnl_file.close()
+        self.candles_file.close()
 
     def _log_fill(self, fill: Fill):
         self.fills_file.write(fill.to_line() + '\n')
@@ -146,10 +153,8 @@ class LiveBitMex(ExchangeInterface):
                                       str(self.cum_pnl)])
                             + '\n')
 
-    def close(self):
-        self.fills_file.close()
-        self.orders_file.close()
-        self.pnl_file.close()
+    def _log_candle(self, vals: list):
+        self.candles_file.write(','.join([str(i) for i in vals]) + '\n')
 
     def init_candles(self):
         end = pd.Timestamp.now(tz=pytz.UTC).floor(freq='1min')
@@ -182,6 +187,8 @@ class LiveBitMex(ExchangeInterface):
     def on_fill(self, raw):
         fill_id = raw['execID']
         if not raw['avgPx']:
+            # bitmex has this first empty fill that I don't know what it is
+            # just skipp it
             return
         # self.print_ws_output(raw)
         if fill_id in self.fills:
@@ -193,7 +200,13 @@ class LiveBitMex(ExchangeInterface):
                                        fill_time=pd.Timestamp(raw['transactTime']),
                                        fill_type=FillType.complete if raw['leavesQty'] == 0 else FillType.partial)
 
-        self._log_fill(self.fills[fill_id])
+        fill = self.fills[fill_id]
+        # this actually works because order's fields are a subset of fill's fields
+        fill.order.update_from_bitmex(raw)
+
+        fill.order.tactic.handle_fill(fill)
+
+        self._log_fill(fill)
 
     def on_order(self, raw):
         try:
@@ -211,6 +224,7 @@ class LiveBitMex(ExchangeInterface):
             return self.rename_old_order(raw)
 
         order.update_from_bitmex(raw)  # type: OrderCommon
+        order.confirmed_by_websocket = True
 
         if order.is_open():
             self.open_orders[order.id] = order
@@ -219,6 +233,10 @@ class LiveBitMex(ExchangeInterface):
                 del self.open_orders[order.id]
             except KeyError:
                 pass
+
+        if order.status == OrderStatus.Rejected:
+            order.tactic.handle_cancel(order)
+
         self._log_order(order)
 
     def rename_old_order(self, raw):
@@ -231,10 +249,16 @@ class LiveBitMex(ExchangeInterface):
         return
 
     def on_tradeBin1m(self, raw):
-        self.candles.loc[pd.Timestamp(raw['timestamp'])] = [raw[j] for j in REQUIRED_COLUMNS]
+        row = [raw[j] for j in REQUIRED_COLUMNS]
+        self.candles.loc[pd.Timestamp(raw['timestamp'])] = row
 
         # dead-man's switch
         self._curl_bitmex(path='order/cancelAllAfter', postdict={'timeout': 90000}, verb='POST')
+
+        for tac in self.tactics_map.values():
+            tac.handle_1m_candles(self.candles)
+
+        self._log_candle(row)
 
         # self.print_ws_output(raw)
 
@@ -265,6 +289,7 @@ class LiveBitMex(ExchangeInterface):
 
         if not pos.is_open and pos.realized_pnl and not np.isnan(pos.realized_pnl):
             self._log_and_update_pnl(pos)
+
 
     def print_ws_output(self, raw):
         print(json.dumps(raw, indent=4, sort_keys=True))
@@ -508,13 +533,6 @@ class LiveBitMex(ExchangeInterface):
         }
         return self._curl_bitmex(path=path, postdict=postdict, verb="POST", max_retries=0)
 
-    def print_summary(self, input_args):
-        fills_file = open(os.path.join(self.log_dir, 'fills.csv'), 'w')
-        orders_file = open(os.path.join(self.log_dir, 'orders.csv'), 'w')
-        pnl_file = open(os.path.join(self.log_dir, 'pnl.csv'), 'w')
-        pars_used_file = open(os.path.join(self.log_dir, 'parameters_used'), 'w')
-        summary_file = open(os.path.join(self.log_dir, 'summary'), 'w')
-
     def _curl_bitmex(self, path, query=None, postdict=None, timeout=None, verb=None, rethrow_errors=False,
                      max_retries=None):
         """Send a request to BitMEX Servers."""
@@ -676,23 +694,18 @@ def get_args(input_args=None):
 
 def test1(args):
     with LiveBitMex(args.log_dir) as live:
+        live.register_tactic(TacticTest1())
+        for tac in live.tactics_map.values():
+            tac.init(live, args.pref)
 
-        orders = live.post_orders([OrderCommon(symbol=Symbol.XBTUSD,
-                                               type=OrderType.Market,  # type=OrderType.Limit,
-                                               tactic=BitmexDummyTactic(),
-                                               signed_qty=+1000)])
-        # price=20000.5)])
-        if orders:
-            if not orders[0].is_open() and orders[0].type == OrderType.Limit:
-                raise AttributeError('Order supposed to be open: {}'.format(orders[0]))
-        for i in range(3):
-            print('sleeping')
+        live.tactics_map[TacticTest1.id()].handle_1m_candles(None)
+
+        for i in range(10):
+            print('sleeping ... ' + str(i))
             time.sleep(1)
 
-        orders = live.post_orders([OrderCommon(symbol=Symbol.XBTUSD,
-                                               type=OrderType.Market,  # type=OrderType.Limit,
-                                               tactic=BitmexDummyTactic(),
-                                               signed_qty=-1000)])
+        live.ws.log_summary()
+
     # price=20000.5)])
 
     # oo = live.get_opened_orders()

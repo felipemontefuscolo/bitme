@@ -54,6 +54,8 @@ class TimeInForce(Enum):
 
 
 class ContingencyType(Enum):
+
+    # TODO: this is probably wrong. They should be camelCase
     one_cancels_the_other = 'one_cancels_the_other'
     one_triggers_the_other = 'one_triggers_the_other'
     one_updates_the_other_absolute = 'one_updates_the_other_absolute'
@@ -94,6 +96,8 @@ class OrderCommon:
         self.status = OrderStatus.Pending  # type: OrderStatus
         self.status_msg = None  # type: OrderCancelReason
         self.bitmex_id = None  # type: str
+
+        self.confirmed_by_websocket = False
 
         # sanity check
         if not np.isnan(signed_qty):
@@ -142,12 +146,13 @@ class OrderCommon:
             str(self.price),
             str(self.type.name),
             str(self.status.name),
-            str(self.e_str(self.status_msg))
+            str(self.e_str(self.status_msg)),
+            str(self.confirmed_by_websocket)
         ])
 
     @staticmethod
     def get_header():
-        return 'time,symbol,id,side,qty,leaves_qty,price,type,status,status_msg'
+        return 'time,symbol,id,side,qty,leaves_qty,price,type,status,status_msg,websocket'
 
     @staticmethod
     def e_str(x: Enum) -> str:
@@ -221,9 +226,9 @@ class OrderCommon:
         if 'ordType' in order:
             self.type = OrderType[order['ordType']]
         if 'timeInForce' in order:
-            self.time_in_force = order['timeInForce']
+            self.time_in_force = TimeInForce[order['timeInForce']] if order['timeInForce'] else None
         if 'contingencyType' in order:
-            self.contingency_type = order['contingencyType']
+            self.contingency_type = ContingencyType[order['contingencyType']] if order['contingencyType'] else None
         if 'text' in order:
             self.status_msg = order['text']
         if 'leavesQty' in order:

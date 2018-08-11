@@ -35,12 +35,12 @@ def import_path(fullpath):
 user_settings = import_path(os.path.join('live', 'settings'))
 symbol_settings = None
 symbol = sys.argv[1] if len(sys.argv) > 1 else None
-if symbol:
-    print("Importing symbol settings for %s..." % symbol)
-    try:
-        symbol_settings = import_path(os.path.join('..', 'settings-%s' % symbol))
-    except Exception as e:
-        print("Unable to find settings-%s.py." % symbol)
+# if symbol:
+#     print("Importing symbol settings for %s..." % symbol)
+#     try:
+#         symbol_settings = import_path(os.path.join('..', 'settings-%s' % symbol))
+#     except Exception as e:
+#         print("Unable to find settings-%s.py." % symbol)
 
 # Assemble settings.
 settings = {}
