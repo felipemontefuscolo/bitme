@@ -63,9 +63,8 @@ class LiveBitMex(ExchangeInterface):
         self.timeout = settings.TIMEOUT
 
         self.candles = create_df_for_candles()  # type: pd.DataFrame
-        self.positions = defaultdict(
-            lambda: list())  # type: Dict[Symbol, List[PositionInterface]]
-        self.cum_pnl = 0  # updated during pnl logging
+        self.positions = defaultdict(list)  # type: Dict[Symbol, List[PositionInterface]]
+        self.cum_pnl = defaultdict(float)  # type: Dict[Symbol, float]]
 
         # all orders, opened and closed
         self.orders = dict()  # type: OrderContainerType
@@ -146,11 +145,11 @@ class LiveBitMex(ExchangeInterface):
 
     def _log_and_update_pnl(self, closed_position: PositionInterface):
         pnl = closed_position.realized_pnl
-        self.cum_pnl += closed_position.realized_pnl
+        self.cum_pnl[closed_position.symbol] += closed_position.realized_pnl
         self.pnl_file.write(','.join([str(closed_position.current_timestamp.strftime('%Y-%m-%dT%H:%M:%S')),
                                       closed_position.symbol.name,
                                       str(pnl),
-                                      str(self.cum_pnl)])
+                                      str(self.cum_pnl[closed_position.symbol])])
                             + '\n')
 
     def _log_candle(self, vals: list):
@@ -192,11 +191,13 @@ class LiveBitMex(ExchangeInterface):
             return
         # self.print_ws_output(raw)
         if fill_id in self.fills:
-            self.fills[fill_id].update_from_bitmex(raw)  # type: Fill
+            # self.fills[fill_id].update_from_bitmex(raw)  # type: Fill
+            raise AttributeError("that never happened before, not expecting this to happen now ...")
         else:
-            self.fills[fill_id] = Fill(order=self.orders[raw['clOrdID']],
-                                       qty_filled=raw['cumQty'],
-                                       price_fill=raw['avgPx'],
+            order = self.orders[raw['clOrdID']]
+            self.fills[fill_id] = Fill(order=order,
+                                       qty_filled=raw['lastQty'],
+                                       price_fill=raw['lastPx'],
                                        fill_time=pd.Timestamp(raw['transactTime']),
                                        fill_type=FillType.complete if raw['leavesQty'] == 0 else FillType.partial)
 
@@ -218,10 +219,9 @@ class LiveBitMex(ExchangeInterface):
             order = self.orders[id]
         except KeyError:
             # probably an order from a previous run, let's remove it from the way
-            if raw['leavesQty'] != 0:
-                raise AttributeError('Unregistered order clOrdID={} was supposed to be closed!'.format(id))
-            self.logger.warning('Order id {} is not in memory, it is probably a stale order'.format(id))
-            return self.rename_old_order(raw)
+            raise AttributeError('the only for that to happen is that our order-id-gen generated the same id'
+                                 'of an order in the previous run. The change for this to happen is super low, probably'
+                                 'it is an logic error.')
 
         order.update_from_bitmex(raw)  # type: OrderCommon
         order.confirmed_by_websocket = True
@@ -236,8 +236,6 @@ class LiveBitMex(ExchangeInterface):
 
         if order.status == OrderStatus.Rejected:
             order.tactic.handle_cancel(order)
-
-        self._log_order(order)
 
     def rename_old_order(self, raw):
         old_id = raw['clOrdID']
@@ -263,33 +261,19 @@ class LiveBitMex(ExchangeInterface):
         # self.print_ws_output(raw)
 
     def on_position(self, raw: dict):
-        if not raw:
-            return
-        if not raw.get('symbol'):
-            return
-        symbol = Symbol.value_of(raw['symbol'])
-        if symbol is None:
-            return
 
-        pos = PositionInterface(self.symbol)
-        pos.avg_entry_price = raw.get('avgEntryPrice')  # type: float
-        pos.break_even_price = raw.get('breakEvenPrice')  # type: float
-        pos.liquidation_price = raw.get('liquidationPrice')  # type: float
-        pos.leverage = raw.get('leverage')  # type: int
-        pos.current_qty = raw.get('currentQty')  # type: float
-        pos.side = None if pos.current_qty is None else (+1 if pos.current_qty >= 0 else -1)  # type: int
-        pos.realized_pnl = float(raw.get('realisedPnl', float('nan'))) / BITCOIN_TO_SATOSHI  # type: float
-        pos.is_open = raw.get('isOpen')  # type: bool
-        # TODO: those timestamps don't seem accurate! maybe use our own timestamp?
-        pos.current_timestamp = pd.Timestamp(raw.get('currentTimestamp'))  # type: pd.Timestamp
-        pos.open_timestamp = pd.Timestamp(raw.get('openingTimestamp'))  # type: pd.Timestamp
-        assert pos.current_timestamp >= pos.open_timestamp
+        symbol = Symbol[raw['symbol']]
 
-        self.positions[symbol].append(pos)
+        positions = self.positions[symbol]
 
-        if not pos.is_open and pos.realized_pnl and not np.isnan(pos.realized_pnl):
-            self._log_and_update_pnl(pos)
-
+        if positions and positions[-1].is_open:
+            positions[-1].update_from_bitmex(raw)
+            if not raw['isOpen']:
+                # if here, it means the position was opened and it just closed
+                self._log_and_update_pnl(positions[-1])
+        elif raw['isOpen']:
+            pos = PositionInterface(symbol)
+            self.positions[symbol].append(pos.update_from_bitmex(raw))
 
     def print_ws_output(self, raw):
         print(json.dumps(raw, indent=4, sort_keys=True))
@@ -372,6 +356,9 @@ class LiveBitMex(ExchangeInterface):
         raws = self._curl_bitmex(path='order/bulk', postdict={'orders': converted}, verb='POST')
 
         result = [self.orders[r['clOrdID']].update_from_bitmex(r) for r in raws]  # type: List[OrderCommon]
+
+        for r in result:
+            self._log_order(r)
 
         return result
 

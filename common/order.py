@@ -143,7 +143,7 @@ class OrderCommon:
             str(side),
             str(self.signed_qty),
             str(self.leaves_qty),
-            str(self.price),
+            str(self.price) if (self.price is not None and not np.isnan(self.price)) else '',
             str(self.type.name),
             str(self.status.name),
             str(self.e_str(self.status_msg)),

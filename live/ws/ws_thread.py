@@ -253,9 +253,6 @@ class BitMEXWebsocket():
                 if table not in self.keys:
                     self.keys[table] = []
 
-                if table == 'execution':
-                    print('EXECUTION action = {}'.format(action))
-
                 # There are four possible actions from the WS:
                 # 'partial' - full table image
                 # 'insert'  - new row

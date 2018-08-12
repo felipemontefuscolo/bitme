@@ -24,7 +24,7 @@ class TacticTest1(TacticInterface):
             orders = self.exchange.post_orders([OrderCommon(symbol=Symbol.XBTUSD,
                                                             type=OrderType.Market,
                                                             tactic=self,
-                                                            signed_qty=+123)])
+                                                            signed_qty=+12)])
 
 
         pass
@@ -37,7 +37,7 @@ class TacticTest1(TacticInterface):
             orders = self.exchange.post_orders([OrderCommon(symbol=Symbol.XBTUSD,
                                                             type=OrderType.Market,
                                                             tactic=self,
-                                                            signed_qty=-123)])
+                                                            signed_qty=-12)])
 
         pass
 
