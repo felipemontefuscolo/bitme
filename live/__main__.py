@@ -6,7 +6,7 @@ import logging
 import time
 import uuid
 from collections import defaultdict
-from typing import Iterable, Dict, List, Union
+from typing import Iterable, Dict, List, Union, Set
 
 import numpy as np
 import os
@@ -26,6 +26,8 @@ from live.settings import settings
 from live.ws.ws_thread import BitMEXWebsocket
 from tactic import TacticInterface
 from tactic.TacticTest1 import TacticTest1
+from tactic.TacticTest2 import TacticTest2
+from tactic.TacticTest3 import TacticTest3
 from tactic.bitmex_dummy_tactic import BitmexDummyTactic
 from utils import log
 
@@ -71,6 +73,7 @@ class LiveBitMex(ExchangeInterface):
         self.open_orders = dict()  # type: OrderContainerType
         self.bitmex_dummy_tactic = BitmexDummyTactic()
         self.fills = dict()  # type: Dict[str, Fill]
+        self.user_order_cancels = set()  # type: Set[str]
 
         self.tactics_map = {}  # type: Dict[str, TacticInterface]
 
@@ -234,7 +237,8 @@ class LiveBitMex(ExchangeInterface):
             except KeyError:
                 pass
 
-        if order.status == OrderStatus.Rejected:
+        if (order.status == OrderStatus.Canceled and order.id not in self.user_order_cancels) \
+                or order.status == OrderStatus.Rejected:
             order.tactic.handle_cancel(order)
 
     def rename_old_order(self, raw):
@@ -328,11 +332,14 @@ class LiveBitMex(ExchangeInterface):
         ids = get_orders_id(orders)
         if not ids:
             return dict()
+        self.user_order_cancels = set(ids).union(self.user_order_cancels)
         raws = self._curl_bitmex(path="order", postdict={'clOrdID': ','.join(ids)}, verb="DELETE")
 
         cancelled = {raw['clOrdID']: self.orders[raw['clOrdID']] for raw in raws}
 
         self.check_all_closed(cancelled.values())
+        for o in cancelled.values():
+            self._log_order(o)
 
         return cancelled
 
@@ -412,11 +419,6 @@ class LiveBitMex(ExchangeInterface):
                 a['execInst'] = 'ParticipateDoNotInitiate'  # post-only, postonly, post only
         if order.time_in_force:
             a['timeInForce'] = order.time_in_force.name
-        else:
-            if order.type == OrderType.Market:
-                a['timeInForce'] = TimeInForce.FillOrKill.name
-            elif order.type == OrderType.Limit or OrderType.Stop:
-                a['timeInForce'] = TimeInForce.GoodTillCancel.name
         if order.contingency_type:
             assert order.linked_order_id
             a['contingencyType'] = order.contingency_type.name
@@ -679,35 +681,57 @@ def get_args(input_args=None):
     return args
 
 
-def test1(args):
+def test_common_1(tactic, sleep_time, input_args):
+    args = get_args(input_args)
+
     with LiveBitMex(args.log_dir) as live:
-        live.register_tactic(TacticTest1())
+        live.register_tactic(tactic)
         for tac in live.tactics_map.values():
             tac.init(live, args.pref)
 
-        live.tactics_map[TacticTest1.id()].handle_1m_candles(None)
+        live.tactics_map[tactic.id()].handle_1m_candles(None)
 
-        for i in range(10):
+        for i in range(sleep_time):
             print('sleeping ... ' + str(i))
             time.sleep(1)
 
         live.ws.log_summary()
 
-    # price=20000.5)])
+    return 0
 
-    # oo = live.get_opened_orders()
-    # assert len(oo) == 1
-    #
-    # for oid, o in oo.items():
-    #     print(o)
 
-    exit(0)
+def test1(input_args=None):
+    return test_common_1(TacticTest1(), 10, input_args)
+
+
+def test2(input_args=None):
+    tactic = TacticTest2()
+    ret = test_common_1(tactic, 3, input_args)
+    time.sleep(1)
+    assert tactic.got_the_cancel
+    return ret
+
+
+def test3(input_args=None):
+    # assert that tactic doesn't get 'handle_cancel' if the cancel came from the tactic iteself
+    args = get_args(input_args)
+    tactic = TacticTest3()
+    with LiveBitMex(args.log_dir) as live:
+        live.register_tactic(tactic)
+        for tac in live.tactics_map.values():
+            tac.init(live, args.pref)
+
+        live.tactics_map[tactic.id()].handle_1m_candles(None)
+        time.sleep(1)
+        live.tactics_map[tactic.id()].handle_1m_candles(None)
+
+    assert not tactic.got_the_cancel
+
+    return 0
 
 
 def main(input_args=None):
     args = get_args(input_args)
-
-    test1(args)
 
     # live = LiveBitMex()
     # print(live.get_candles1m())
@@ -723,4 +747,4 @@ def main(input_args=None):
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(test3())

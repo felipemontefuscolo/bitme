@@ -85,7 +85,12 @@ class OrderCommon:
         self.stop_price = stop_price  # type: float
         self.linked_order_id = linked_order_id  # type: str
         self.type = type  # type: OrderType
-        self.time_in_force = time_in_force  # type: TimeInForce
+        if time_in_force is None:
+            self.time_in_force = time_in_force  # type: TimeInForce
+        elif type == OrderType.Market:
+            self.time_in_force = TimeInForce.FillOrKill
+        else:
+            self.time_in_force = TimeInForce.GoodTillCancel
         self.contingency_type = contingency_type  # type: ContingencyType
         self.tactic = tactic
 
@@ -154,11 +159,11 @@ class OrderCommon:
         return 'time,symbol,id,side,qty,leaves_qty,price,type,status,status_msg'
 
     @staticmethod
-    def e_str(x: Enum) -> str:
+    def e_str(x: Union[Enum, str]) -> str:
         try:
             return str(x.value)
         except AttributeError:
-            return ""
+            return str(x).replace(',', '...').replace('\n', '').replace('\r', '')
 
     def to_bitmex(self) -> dict:
         a = {}
@@ -257,13 +262,13 @@ def filter_symbol(orders: Dict, symbol: Symbol):
 def get_orders_id(orders: Union[OrderContainerType, List[OrderCommon], List[str], str]) -> List[str]:
     if len(orders) < 1:
         return
-    if isinstance(orders, OrderContainerType):
+    if isinstance(orders, dict):
         ids = [o.id for o in orders.values()]
     elif isinstance(orders[0], OrderCommon):
         ids = [o.id for o in orders]
     elif isinstance(orders, str):
         ids = [orders]
-    elif isinstance(orders, List):
+    elif isinstance(orders, list):
         ids = orders
     else:
         raise ValueError("Don't know how to get id from: " + str(orders))
