@@ -146,13 +146,12 @@ class OrderCommon:
             str(self.price) if (self.price is not None and not np.isnan(self.price)) else '',
             str(self.type.name),
             str(self.status.name),
-            str(self.e_str(self.status_msg)),
-            str(self.confirmed_by_websocket)
+            str(self.e_str(self.status_msg))
         ])
 
     @staticmethod
     def get_header():
-        return 'time,symbol,id,side,qty,leaves_qty,price,type,status,status_msg,websocket'
+        return 'time,symbol,id,side,qty,leaves_qty,price,type,status,status_msg'
 
     @staticmethod
     def e_str(x: Enum) -> str:
@@ -205,7 +204,6 @@ class OrderCommon:
             if self.bitmex_id != order['orderID']:
                 raise ValueError("Updating from order with different id. Self: {}, other: {}".format(self.bitmex_id,
                                                                                                      order['orderID']))
-
         if order['side'] == 'Buy':
             side = +1
         elif order['side'] == 'Sell':
@@ -217,22 +215,17 @@ class OrderCommon:
 
         if 'orderQty' in order:
             self.signed_qty = side * order['orderQty']
-        if 'price' in order:
-            self.price = order['price']
-        if 'stopPx' in order:
-            self.stop_price = order['stopPx']
-        if 'clOrdLinkID' in order:
-            self.linked_order_id = order['clOrdLinkID']
+        self.price = order.get('price', self.price)
+        self.stop_price = order.get('stopPx', self.stop_price)
+        self.linked_order_id = order.get('clOrdLinkID', self.linked_order_id)
         if 'ordType' in order:
             self.type = OrderType[order['ordType']]
         if 'timeInForce' in order:
             self.time_in_force = TimeInForce[order['timeInForce']] if order['timeInForce'] else None
         if 'contingencyType' in order:
             self.contingency_type = ContingencyType[order['contingencyType']] if order['contingencyType'] else None
-        if 'text' in order:
-            self.status_msg = order['text']
-        if 'leavesQty' in order:
-            self.leaves_qty = order['leavesQty']
+        self.status_msg = order.get('text', self.status_msg)
+        self.leaves_qty = order.get('leavesQty', self.leaves_qty)
 
         if not self.time_posted:
             self.time_posted = pd.Timestamp(order['transactTime'])
