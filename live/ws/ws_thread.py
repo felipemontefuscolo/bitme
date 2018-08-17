@@ -7,6 +7,10 @@ from time import sleep
 import json
 import decimal
 import logging
+
+from typing import Union
+
+from common.quote import Quote
 from live.settings import settings
 from live.auth.APIKeyAuth import generate_nonce, generate_signature
 from utils.log import setup_custom_logger
@@ -67,7 +71,7 @@ class BitMEXWebsocket():
         # Subscribe to all pertinent endpoints
         subscriptions = [sub + ':' + symbol for sub in ["quote", "trade"]]
         subscriptions += ['tradeBin1m:' + symbol]
-        subscriptions += ["instrument"]  # We want all of them
+        # subscriptions += ["instrument"]  # We want all of them
         if self.should_auth:
             subscriptions += [sub + ':' + symbol for sub in ["order", "execution"]]
             subscriptions += ["margin", "position"]

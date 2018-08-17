@@ -2,32 +2,64 @@ import sys
 import argparse
 import pandas as pd
 
-parser = argparse.ArgumentParser(description="Get bitmex data")
+TRADE_COLS = ['timestamp', 'symbol', 'side', 'price', 'size', 'tickDirection']
 
-parser.add_argument('-b', '--begin-time', type=pd.Timestamp, required=True, help="Example: '2018-04-01T00:00:01'")
+# Normalize data gotten on https://public.bitmex.com/
 
-parser.add_argument('-e', '--end-time', type=pd.Timestamp, required=True, help="Example: '2018-04-01T00:00:10'")
 
-parser.add_argument('-s', '--symbol', type=str, default='XBTUSD',
-                    help='Instrument symbol. Send a bare series (e.g. XBU) to get data for the nearest expiring'
-                         'contract in that series. You can also send a timeframe, e.g. `XBU:monthly`. '
-                         'Timeframes are `daily`, `weekly`, `monthly`, `quarterly`, and `biquarterly`. (optional)')
+def get_args(argv=None, namespace=None):
+    parser = argparse.ArgumentParser(description="Get bitmex data")
 
-parser.add_argument('-o', '--file-or-stdout', type=str, required=True, help='Output filename or "-" for stdout')
-parser.add_argument('-i', '--raw-data', type=str, required=True, help='Output filename or "-" for stdout')
+    parser.add_argument('-b', '--begin-time', type=pd.Timestamp, help="Example: '2018-04-01T00:00:01'")
 
-args = parser.parse_args(args, namespace)
+    parser.add_argument('-e', '--end-time', type=pd.Timestamp, help="Example: '2018-04-01T00:00:10'")
 
-args.begin_time = args.begin_time.to_pydatetime().astimezone(tzutc())
-args.end_time = args.end_time.to_pydatetime().astimezone(tzutc())
+    parser.add_argument('-n', '--num-ticks', type=int, help="Number of ticks to get'")
 
-return args
+    parser.add_argument('-s', '--symbol', type=str, default='XBTUSD', help='Instrument symbol')
+
+    parser.add_argument('-o', '--output', type=str, required=True, help='Output filename')
+    parser.add_argument('-i', '--input', type=str, required=True, help='Input filename')
+
+    args = parser.parse_args(argv, namespace)
+
+    return args
 
 
 def main():
-    if len(sys.argv) < 3:
-        raise ValueError('Should provide two arguments: input-name and output-name')
-    print(sys.argv)
+    args = get_args(None)
+
+    r = pd.read_csv(args.input)[TRADE_COLS]
+
+    if args.symbol:
+        r = r.query('symbol == "{}"'.format(args.symbol))
+        if args.symbol == 'XBTUSD':
+            r = r[r.price > 1]
+
+    r['timestamp'] = r['timestamp'].apply(lambda s: pd.Timestamp(s.replace('D', 'T')))
+    if args.begin_time:
+        r = r[r['timestamp'] >= args.begin_time]
+    if args.end_time:
+        r = r[r['timestamp'] < args.end_time]
+
+    # combine ticks with same timestamp and price level
+    def combine(x):
+        y = x.iloc[0].copy()
+        y['size'] = x['size'].sum()
+        return y
+
+    r = r.groupby(['timestamp', 'price']).apply(combine).reset_index('price', drop=True).drop(columns=['timestamp'])
+
+    if args.num_ticks:
+        r = r.iloc[:args.num_ticks]
+
+    rename = {'ZeroMinusTick': '0-', 'MinusTick': '--', 'ZeroPlusTick': '0+', 'PlusTick': '++'}
+    r['tickDirection'] = r['tickDirection'].transform(lambda x: rename[x])
+
+    if '.gz' == args.output.lower()[-3:]:
+        r.to_csv(args.output, compression='gzip')
+    else:
+        r.to_csv(args.output)
 
     return 0
 

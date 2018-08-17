@@ -23,7 +23,8 @@ class TacticTest3(TacticInterface):
     def handle_1m_candles(self, candles1m: pd.DataFrame) -> None:
         if self.num_subs == 0:
             self.num_subs += 1
-            price = self.exchange.get_tick_info()['buy']
+            quote = self.exchange.get_quote(self.get_symbol())
+            price = (quote.bid_price + quote.ask_price) / 2.
             # this should be rejected
             self.my_orders = self.exchange.post_orders([OrderCommon(symbol=Symbol.XBTUSD,
                                                                     price=math.floor(price / 2),

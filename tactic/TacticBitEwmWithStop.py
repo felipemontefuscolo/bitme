@@ -136,7 +136,8 @@ class TacticBitEwmWithStop(TacticInterface):
     def handle_1m_candles(self, candles1m: pd.DataFrame):
         # self.__log.info("handling candles")
 
-        price = self.exchange.get_tick_info()['last']
+        quote = self.exchange.get_quote(self.product_id)
+        price = (quote.ask_price + quote.bid_price) / 2.
 
         position = self.exchange.get_position(self.product_id)  # type: PositionInterface
 

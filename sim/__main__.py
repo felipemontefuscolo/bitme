@@ -153,7 +153,7 @@ class SimExchangeBitMex(ExchangeInterface):
         self.leverage[symbol] = value
         return True
 
-    def get_tick_info(self, symbol: Symbol = None) -> dict:
+    def get_quote(self, symbol: Symbol = None) -> dict:
         # TODO: implement symbol
         if symbol is not None:
             raise NotImplementedError()
@@ -294,7 +294,7 @@ class SimExchangeBitMex(ExchangeInterface):
             orders = [o for o in orders if o.type == OrderType.Market]
 
         # discard bad orders
-        current_price = self.get_tick_info()['last']
+        current_price = self.get_quote()['last']
         next_price = self.next_price() if not self.is_last_candle() else current_price
         for o in orders:  # type: OrderCommon
             if o.type is OrderType.Limit:

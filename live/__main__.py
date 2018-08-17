@@ -20,6 +20,7 @@ import sys
 from api import ExchangeInterface, PositionInterface
 from common import Symbol, REQUIRED_COLUMNS, create_df_for_candles, fix_bitmex_bug, BITCOIN_TO_SATOSHI, OrderCommon, \
     OrderType, TimeInForce, OrderContainerType, get_orders_id, OrderStatus, Fill, FillType
+from common.quote import Quote
 from live import errors
 from live.auth import APIKeyAuthWithExpires
 from live.settings import settings
@@ -59,9 +60,6 @@ class LiveBitMex(ExchangeInterface):
 
         self._init_files(log_dir)
 
-        self.span = 10  # minutes;
-        assert self.span <= MAX_NUM_CANDLES_BITMEX
-
         self.timeout = settings.TIMEOUT
 
         self.candles = create_df_for_candles()  # type: pd.DataFrame
@@ -74,6 +72,7 @@ class LiveBitMex(ExchangeInterface):
         self.bitmex_dummy_tactic = BitmexDummyTactic()
         self.fills = dict()  # type: Dict[str, Fill]
         self.user_order_cancels = set()  # type: Set[str]
+        self.quotes = dict()  # type: Dict[Symbol, Quote]
 
         self.tactics_map = {}  # type: Dict[str, TacticInterface]
 
@@ -103,7 +102,8 @@ class LiveBitMex(ExchangeInterface):
         callback_maps = {'tradeBin1m': self.on_tradeBin1m,
                          'position': self.on_position,
                          'order': self.on_order,
-                         'execution': self.on_fill}
+                         'execution': self.on_fill,
+                         'quote': self.on_quote}
 
         self.init_candles()
 
@@ -185,6 +185,14 @@ class LiveBitMex(ExchangeInterface):
     ######################
     # CALLBACKS
     ######################
+
+    def on_quote(self, raw):
+        symbol = Symbol[raw['symbol']]
+        quote = self.quotes.get(symbol)
+        if quote:
+            quote.update_from_bitmex(raw)
+        else:
+            self.quotes[symbol] = Quote.from_raw(raw)
 
     def on_fill(self, raw):
         fill_id = raw['execID']
@@ -292,14 +300,12 @@ class LiveBitMex(ExchangeInterface):
     def current_time(self) -> pd.Timestamp:
         return pd.Timestamp.now()
 
-    def get_tick_info(self, symbol=None) -> dict:
+    def get_quote(self, symbol: Symbol) -> Quote:
         """
         :param symbol:
         :return: dict, example: {"buy": 6630.0, "last": 6633.0, "mid": 6630.0, "sell": 6630.5}
         """
-        if symbol is None:
-            symbol = str(self.symbol)
-        return self.ws.get_ticker(symbol)
+        return self.quotes[symbol]
 
     @authentication_required
     def get_position(self, symbol: Symbol = None) -> PositionInterface:
@@ -730,6 +736,20 @@ def test3(input_args=None):
     return 0
 
 
+def test_print_quote(input_args=None):
+    args = get_args(input_args)
+
+    with LiveBitMex(args.log_dir) as live:
+        for i in range(3):
+            print('sleeping ... ' + str(i))
+            time.sleep(1)
+
+        live.ws.log_summary()
+        print(live.ws.data['instrument'])
+
+    return 0
+
+
 def main(input_args=None):
     args = get_args(input_args)
 
@@ -747,4 +767,4 @@ def main(input_args=None):
 
 
 if __name__ == "__main__":
-    sys.exit(test3())
+    sys.exit(test_print_quote())

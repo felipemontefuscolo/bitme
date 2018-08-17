@@ -6,6 +6,7 @@ from typing import Iterable, List, Union
 from api.position_interface import PositionInterface
 from api.symbol import Symbol
 from common.order import OrderCommon, OrderContainerType
+from common.quote import Quote
 
 
 class ExchangeInterface(metaclass=ABCMeta):
@@ -42,11 +43,7 @@ class ExchangeInterface(metaclass=ABCMeta):
         raise AttributeError("interface class")
 
     @abstractmethod
-    def get_tick_info(self, symbol: Symbol = None) -> dict:
-        """
-        :param symbol:
-        :return: dict, example: {"buy": 6630.0, "last": 6633.0, "mid": 6630.0, "sell": 6630.5}
-        """
+    def get_quote(self, symbol: Symbol) -> Quote:
         raise AttributeError("interface class")
 
     @abstractmethod
