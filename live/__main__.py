@@ -743,9 +743,9 @@ def test_print_quote(input_args=None):
         for i in range(3):
             print('sleeping ... ' + str(i))
             time.sleep(1)
+            print(live.get_quote(Symbol.XBTUSD).__dict__)
 
         live.ws.log_summary()
-        print(live.ws.data['instrument'])
 
     return 0
 

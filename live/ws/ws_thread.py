@@ -223,7 +223,7 @@ class BitMEXWebsocket():
 
     def __wait_for_symbol(self, symbol):
         """On subscribe, this data will come down. Wait for it."""
-        while not {'tradeBin1m', 'instrument', 'trade', 'quote'} <= set(self.data):
+        while not {'tradeBin1m', 'trade', 'quote'} <= set(self.data):
             sleep(0.1)
 
     # def __send_command(self, command, args):
@@ -296,16 +296,16 @@ class BitMEXWebsocket():
                         if not item:
                             continue  # No item found to update. Could happen before push
 
-                        # Log executions
-                        if table == 'order':
-                            is_canceled = 'ordStatus' in updateData and updateData['ordStatus'] == 'Canceled'
-                            if 'cumQty' in updateData and not is_canceled:
-                                contExecuted = updateData['cumQty'] - item['cumQty']
-                                if contExecuted > 0:
-                                    instrument = self.get_instrument(item['symbol'])
-                                    self.logger.info("Execution: %s %d Contracts of %s at %.*f" %
-                                                     (item['side'], contExecuted, item['symbol'],
-                                                      instrument['tickLog'], item['price']))
+                        # # Log executions
+                        # if table == 'order':
+                        #     is_canceled = 'ordStatus' in updateData and updateData['ordStatus'] == 'Canceled'
+                        #     if 'cumQty' in updateData and not is_canceled:
+                        #         contExecuted = updateData['cumQty'] - item['cumQty']
+                        #         if contExecuted > 0:
+                        #             instrument = self.get_instrument(item['symbol'])
+                        #             self.logger.info("Execution: %s %d Contracts of %s at %.*f" %
+                        #                              (item['side'], contExecuted, item['symbol'],
+                        #                               instrument['tickLog'], item['price']))
 
                         # Update this item.
                         item.update(updateData)
