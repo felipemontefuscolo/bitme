@@ -64,7 +64,7 @@ class TacticBitEwmWithStop(TacticInterface):
     def send_order(self, exchange: ExchangeInterface, order: OrderCommon, n_try=1) -> bool:
         # return True if failed
         for i in range(n_try):
-            orders_sent = exchange.post_orders([order])
+            orders_sent = exchange.send_orders([order])
             if len(orders_sent) != 0:
                 order_sent = next(iter(orders_sent))  # type: OrderCommon
                 if order_sent.is_open():

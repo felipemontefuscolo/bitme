@@ -21,7 +21,7 @@ class TacticTest1(TacticInterface):
     def handle_1m_candles(self, candles1m: pd.DataFrame) -> None:
         if self.num_subs == 0:
             self.num_subs += 1
-            orders = self.exchange.post_orders([OrderCommon(symbol=Symbol.XBTUSD,
+            orders = self.exchange.send_orders([OrderCommon(symbol=Symbol.XBTUSD,
                                                             type=OrderType.Market,
                                                             tactic=self,
                                                             signed_qty=+12)])
@@ -31,13 +31,24 @@ class TacticTest1(TacticInterface):
 
     def handle_fill(self, fill: Fill) -> None:
 
+        print('HANDLING FILL OF ORDER {}'.format(self.num_subs-1))
+
         if self.num_subs == 1 and fill.fill_type == FillType.complete:
             self.num_subs += 1
             time.sleep(5)
-            orders = self.exchange.post_orders([OrderCommon(symbol=Symbol.XBTUSD,
+            pos = self.exchange.get_position(Symbol.XBTUSD)
+            print("PRINTING FROM REST API ... before closing order")
+            print(pos)
+            orders = self.exchange.send_orders([OrderCommon(symbol=Symbol.XBTUSD,
                                                             type=OrderType.Market,
                                                             tactic=self,
                                                             signed_qty=-12)])
+        if self.num_subs == 2 and fill.fill_type == FillType.complete:
+            self.num_subs += 1
+            time.sleep(1)
+            pos = self.exchange.get_position(Symbol.XBTUSD)
+            print("PRINTING FROM REST API ... after closing order")
+            print(pos)
 
         pass
 

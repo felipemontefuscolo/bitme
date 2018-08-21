@@ -6,6 +6,9 @@ from api.symbol import Symbol
 from api.exchange_interface import ExchangeInterface
 import pandas as pd
 
+from common.quote import Quote
+from common.trade import Trade
+
 
 class TacticInterface(metaclass=ABCMeta):
     def __init__(self):
@@ -20,7 +23,11 @@ class TacticInterface(metaclass=ABCMeta):
         raise AttributeError("interface class")
 
     @abstractmethod
-    def handle_1m_candles(self, candles1m: pd.DataFrame) -> None:
+    def handle_trade(self, trade: Trade) -> None:
+        raise AttributeError("interface class")
+
+    @abstractmethod
+    def handle_quote(self, quote: Quote) -> None:
         raise AttributeError("interface class")
 
     @abstractmethod

@@ -14,6 +14,14 @@ class ExchangeInterface(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def subscribe_to_trades(self, tactic):
+        raise AttributeError("interface class")
+
+    @abstractmethod
+    def subscribe_to_quotes(self, tactic):
+        raise AttributeError("interface class")
+
+    @abstractmethod
     def get_candles1m(self) -> pd.DataFrame:
         raise AttributeError("interface class")
 
@@ -22,8 +30,10 @@ class ExchangeInterface(metaclass=ABCMeta):
         raise AttributeError("interface class")
 
     @abstractmethod
-    def post_orders(self, orders: List[OrderCommon]) -> List[OrderCommon]:
+    def send_orders(self, orders: List[OrderCommon]):
         """
+        It does not send orders immediately. These orders goes to a queue. If a order is canceled, the method
+        handle_cancel will be triggered.
         :param orders:
         :return: list of orders that were successfully posted
         NOTE: it changes orders id
@@ -33,6 +43,7 @@ class ExchangeInterface(metaclass=ABCMeta):
     @abstractmethod
     def cancel_orders(self, orders: Union[OrderContainerType, List[OrderCommon], List[str]]) -> OrderContainerType:
         """
+        It does not cancel orders immediately. These orders goes to a queue.
         :param orders: Dict of id -> order
         :return: list of cancelled orders
         """

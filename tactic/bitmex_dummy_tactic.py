@@ -27,3 +27,6 @@ class BitmexDummyTactic(TacticInterface):
 
     def handle_cancel(self, order: OrderCommon) -> None:
         pass
+
+    def handle_trade(self):
+        pass

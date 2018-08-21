@@ -41,11 +41,10 @@ class PositionInterface:
         self.liquidation_price = raw.get('liquidationPrice', self.liquidation_price)
         self.leverage = raw.get('leverage', self.leverage)
         self.current_qty = raw.get('currentQty', self.current_qty)
-        self.side = raw.get('side', self.side)
-        if self.side == 'Buy':
-            self.side = 1
-        elif self.side == 'Sell':
-            self.side = -1
+        if not self.current_qty:
+            self.side = None
+        else:
+            self.side = +1 if self.current_qty > 0 else -1
         if 'realisedPnl' in raw:
             self.realized_pnl = raw['realisedPnl'] / BITCOIN_TO_SATOSHI
         self.is_open = raw.get('isOpen', self.is_open)

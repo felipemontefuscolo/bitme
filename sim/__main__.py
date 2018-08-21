@@ -274,7 +274,7 @@ class SimExchangeBitMex(ExchangeInterface):
         # return OrderCommon(**order.__dict__)
         return order
 
-    def post_orders(self, orders: List[OrderCommon]) -> List[OrderCommon]:
+    def send_orders(self, orders: List[OrderCommon]) -> List[OrderCommon]:
         current_time = self.current_time()
         for i in range(len(orders)):
             orders[i].id = '{}_{}'.format(orders[i].id, i + len(self.order_hist))
@@ -493,7 +493,7 @@ class SimExchangeBitMex(ExchangeInterface):
                             tactic=self.liquidator)
         order.status_msg = order_cancel_reason
         self.can_call_handles = False
-        self.post_orders([order])
+        self.send_orders([order])
         self.can_call_handles = True
         assert order.status == OrderStatus.Filled
         if position.is_open:

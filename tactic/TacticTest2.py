@@ -25,7 +25,7 @@ class TacticTest2(TacticInterface):
             quote = self.exchange.get_quote(self.get_symbol())
             price = (quote.bid_price + quote.ask_price) / 2.
             # this should be rejected
-            orders = self.exchange.post_orders([OrderCommon(symbol=Symbol.XBTUSD,
+            orders = self.exchange.send_orders([OrderCommon(symbol=Symbol.XBTUSD,
                                                             price=2*price,
                                                             type=OrderType.Limit,
                                                             tactic=self,

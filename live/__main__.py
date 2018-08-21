@@ -21,6 +21,7 @@ from api import ExchangeInterface, PositionInterface
 from common import Symbol, REQUIRED_COLUMNS, create_df_for_candles, fix_bitmex_bug, BITCOIN_TO_SATOSHI, OrderCommon, \
     OrderType, TimeInForce, OrderContainerType, get_orders_id, OrderStatus, Fill, FillType
 from common.quote import Quote
+from common.trade import Trade
 from live import errors
 from live.auth import APIKeyAuthWithExpires
 from live.settings import settings
@@ -52,6 +53,7 @@ def authentication_required(fn):
 
 
 class LiveBitMex(ExchangeInterface):
+    SYMBOLS = list(Symbol)
 
     def __init__(self, log_dir: str):
         ExchangeInterface.__init__(self)
@@ -72,9 +74,12 @@ class LiveBitMex(ExchangeInterface):
         self.bitmex_dummy_tactic = BitmexDummyTactic()
         self.fills = dict()  # type: Dict[str, Fill]
         self.user_order_cancels = set()  # type: Set[str]
-        self.quotes = dict()  # type: Dict[Symbol, Quote]
+        self.quotes = {s: Quote(symbol=s) for s in self.SYMBOLS}  # type: Dict[Symbol, Quote]
+        self.trades = {s: Trade(symbol=s) for s in self.SYMBOLS}  # type: Dict[Symbol, Trade]
 
         self.tactics_map = {}  # type: Dict[str, TacticInterface]
+        self.trades_subscribers = {}  # type: Dict[str, TacticInterface]
+        self.quotes_subscribers = {}  # type: Dict[str, TacticInterface]
 
         self.logger = logging.getLogger('root')
         self.base_url = settings.BASE_URL
@@ -103,7 +108,8 @@ class LiveBitMex(ExchangeInterface):
                          'position': self.on_position,
                          'order': self.on_order,
                          'execution': self.on_fill,
-                         'quote': self.on_quote}
+                         'quote': self.on_quote,
+                         'trade': self.on_trade}
 
         self.init_candles()
 
@@ -186,13 +192,19 @@ class LiveBitMex(ExchangeInterface):
     # CALLBACKS
     ######################
 
+    def on_trade(self, raw):
+        symbol = Symbol[raw['symbol']]
+        trade = self.trades[symbol]
+        trade.update_from_bitmex(raw)
+        for tactic in self.trades_subscribers.values():
+            tactic.handle_trade(trade)
+
     def on_quote(self, raw):
         symbol = Symbol[raw['symbol']]
-        quote = self.quotes.get(symbol)
-        if quote:
-            quote.update_from_bitmex(raw)
-        else:
-            self.quotes[symbol] = Quote.from_raw(raw)
+        quote = self.quotes[symbol]
+        quote.update_from_bitmex(raw)
+        for tactic in self.quotes_subscribers.values():
+            tactic.handle_quote(quote)
 
     def on_fill(self, raw):
         fill_id = raw['execID']
@@ -203,7 +215,7 @@ class LiveBitMex(ExchangeInterface):
         # self.print_ws_output(raw)
         if fill_id in self.fills:
             # self.fills[fill_id].update_from_bitmex(raw)  # type: Fill
-            raise AttributeError("that never happened before, not expecting this to happen now ...")
+            raise AttributeError("Never got an fill update from bitmex, not expecting getting it now ...")
         else:
             order = self.orders[raw['clOrdID']]
             self.fills[fill_id] = Fill(order=order,
@@ -278,6 +290,9 @@ class LiveBitMex(ExchangeInterface):
 
         positions = self.positions[symbol]
 
+        print("PRINTING RAW FROM WEBSOCKET")
+        print(raw)
+
         if positions and positions[-1].is_open:
             positions[-1].update_from_bitmex(raw)
             if not raw['isOpen']:
@@ -288,11 +303,18 @@ class LiveBitMex(ExchangeInterface):
             self.positions[symbol].append(pos.update_from_bitmex(raw))
 
     def print_ws_output(self, raw):
+        print("PRINTING RAW")
         print(json.dumps(raw, indent=4, sort_keys=True))
 
     ######################
     # FROM INTERFACE
     ######################
+
+    def subscribe_to_trades(self, tactic):
+        self.trades_subscribers[tactic.id] = tactic
+
+    def subscribe_to_quotes(self, tactic):
+        self.quotes_subscribers[tactic.id] = tactic
 
     def get_candles1m(self) -> pd.DataFrame:
         return self.candles
@@ -307,11 +329,27 @@ class LiveBitMex(ExchangeInterface):
         """
         return self.quotes[symbol]
 
+    def get_last_trade(self, symbol: Symbol):
+        return self.trades[symbol]
+
     @authentication_required
     def get_position(self, symbol: Symbol = None) -> PositionInterface:
         if symbol is None:
             symbol = self.symbol
-        return self.positions[symbol][-1]
+        path = "position"
+        postdict = {'filter': {'symbol': symbol.name}}
+        raw = self._curl_bitmex(path=path, postdict=postdict, verb="GET")
+        # if raw and raw[-1]['isOpen']:
+        #     pos = PositionInterface(symbol)
+        #     pos.update_from_bitmex(raw[-1])
+        #     return pos
+        # return PositionInterface(symbol)
+        if raw:
+            pos = PositionInterface(symbol)
+            pos.update_from_bitmex(raw[-1])
+            return pos
+        else:
+            return PositionInterface(symbol)
 
     @authentication_required
     def get_closed_positions(self, symbol: Symbol = None) -> List[PositionInterface]:
@@ -350,7 +388,7 @@ class LiveBitMex(ExchangeInterface):
         return cancelled
 
     @authentication_required
-    def post_orders(self, orders: List[OrderCommon]) -> List[OrderCommon]:
+    def send_orders(self, orders: List[OrderCommon]) -> List[OrderCommon]:
         # sanity check
         if not all([o.status == OrderStatus.Pending for o in orders]):
             raise ValueError("New orders should have status OrderStatus.Pending")
@@ -750,6 +788,21 @@ def test_print_quote(input_args=None):
     return 0
 
 
+def test_print_trade(input_args=None):
+    args = get_args(input_args)
+
+    with LiveBitMex(args.log_dir) as live:
+        for i in range(3):
+            print('sleeping ... ' + str(i))
+            time.sleep(1)
+            print(live.trades[Symbol.XBTUSD])
+            # print(live.get_last_trade(Symbol.XBTUSD).__dict__)
+
+        live.ws.log_summary()
+
+    return 0
+
+
 def main(input_args=None):
     args = get_args(input_args)
 
@@ -767,4 +820,4 @@ def main(input_args=None):
 
 
 if __name__ == "__main__":
-    sys.exit(test_print_quote())
+    sys.exit(test_print_trade())
