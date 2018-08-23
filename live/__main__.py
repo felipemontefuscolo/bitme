@@ -63,6 +63,7 @@ class LiveBitMex(ExchangeInterface):
 
         self.log_dir = log_dir
         self.run_time_seconds = run_time_seconds
+        self.started = False
         self.finished = False
         self.threads = list()
 
@@ -111,13 +112,14 @@ class LiveBitMex(ExchangeInterface):
         self.events_queue = queue.Queue()
         self.ws = BitMEXWebsocket()
 
-        # dict of subscription -> callback
-        self.callback_maps = {'tradeBin1m': self.on_tradeBin1m,
-                              'position': self.on_position,
-                              'order': self.on_order,
-                              'execution': self.on_fill,
-                              'quote': self.on_quote,
-                              'trade': self.on_trade}
+        self.callback_maps = {
+            # Bitmex websocket names
+            'tradeBin1m': self.on_tradeBin1m,
+            'position': self.on_position,
+            'order': self.on_order,
+            'execution': self.on_fill,
+            'quote': self.on_quote,
+            'trade': self.on_trade}
 
         self.init_candles()
 
@@ -126,10 +128,12 @@ class LiveBitMex(ExchangeInterface):
         pass
 
     def __enter__(self):
+        self.start_main_loop()
         return self
 
     def __exit__(self, type, value, traceback):
-        self.close()
+        self.threads[-1].join()  # wait for the main-loop thread to finish
+        self._close()
         pass
 
     def _init_files(self, log_dir):
@@ -143,7 +147,8 @@ class LiveBitMex(ExchangeInterface):
         self.pnl_file.write('time,symbol,pnl,cum_pnl\n')
         self.candles_file.write(','.join(REQUIRED_COLUMNS) + '\n')
 
-    def close(self):
+    def _close(self):
+        assert self.finished
         self.fills_file.close()
         self.orders_file.close()
         self.pnl_file.close()
@@ -192,7 +197,12 @@ class LiveBitMex(ExchangeInterface):
         tactic_id = order_id.split('_')[0]
         return self.tactics_map[tactic_id]
 
-    def start(self):
+    def start_main_loop(self, run_time_seconds=None):
+        if self.started:
+            raise AttributeError('Live already started')
+        if run_time_seconds:
+            self.run_time_seconds = run_time_seconds
+        self.started = True
         threads = []
         for tac_event_handler in self.tactic_event_handlers.values():  # type: TacticEventHandler
             t = threading.Thread(target=tac_event_handler.run_forever)
@@ -277,6 +287,7 @@ class LiveBitMex(ExchangeInterface):
 
     def on_order(self, raw: dict, action: str):
         # DEV NOTE: this is the only method who can delete orders from self.all_orders
+        # DEV NOTE: this method may delete self.open_orders
         # DEV NOTE: this is the only method who broadcast orders to tactics
 
         order_id = raw.get('clOrdID')
@@ -347,7 +358,7 @@ class LiveBitMex(ExchangeInterface):
 
         positions = self.positions[symbol]
 
-        self._print_ws_output(raw)
+        # self._print_ws_output(raw)
 
         # if positions and positions[-1].is_open:
         #     positions[-1].update_from_bitmex(raw)
@@ -357,33 +368,6 @@ class LiveBitMex(ExchangeInterface):
         # elif raw['isOpen']:
         #     pos = PositionInterface(symbol)
         #     self.positions[symbol].append(pos.update_from_bitmex(raw))
-
-    def on_send_order(self, orders: List[OrderCommon], unused_parameter) -> List[OrderCommon]:
-        # NOTE: other methods assume that send_orders always store ALL orders
-
-        # sanity check
-        if not all([o.status == OrderStatus.Pending for o in orders]):
-            raise ValueError("New orders should have status OrderStatus.Pending")
-
-        for i in range(len(orders)):
-            orders[i].id = '{}_{}'.format(orders[i].id,
-                                          base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n'))
-
-        if not all([o.id not in self.all_orders for o in orders]):
-            raise ValueError("Orders contain an id that already exists")
-
-        for o in orders:
-            self.all_orders[o.id] = o
-
-        converted = [self.convert_order_to_bitmex(self.check_order_sanity(order)) for order in orders]
-        raws = self._curl_bitmex(path='order/bulk', postdict={'orders': converted}, verb='POST')
-
-        result = [self.all_orders[r['clOrdID']].update_from_bitmex(r) for r in raws]  # type: List[OrderCommon]
-
-        for r in result:
-            self._log_order(r)
-
-        return result
 
     def _print_ws_output(self, raw):
         print("PRINTING RAW")
@@ -874,9 +858,7 @@ def test_print_quote(input_args=None):
 def test_print_trade(input_args=None):
     args = get_args(input_args)
 
-    with LiveBitMex(args.log_dir) as live:
-        live.start()
-
+    with LiveBitMex(args.log_dir, 10) as live:
         for i in range(5):
             print('sleeping ... ' + str(i))
             time.sleep(1)
