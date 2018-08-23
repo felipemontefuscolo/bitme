@@ -20,6 +20,11 @@ class OrderStatus(Enum):
     def __str__(self):
         return self.name
 
+    @staticmethod
+    def is_open(raw: dict):
+        status = raw['ordStatus']
+        return status == 'PartiallyFilled' or status == 'New'
+
 
 # in bitmex: ordRejReason
 class OrderCancelReason(Enum):
@@ -54,7 +59,6 @@ class TimeInForce(Enum):
 
 
 class ContingencyType(Enum):
-
     # TODO: this is probably wrong. They should be camelCase
     one_cancels_the_other = 'one_cancels_the_other'
     one_triggers_the_other = 'one_triggers_the_other'
@@ -101,8 +105,6 @@ class OrderCommon:
         self.status = OrderStatus.Pending  # type: OrderStatus
         self.status_msg = None  # type: OrderCancelReason
         self.bitmex_id = None  # type: str
-
-        self.confirmed_by_websocket = False
 
         # sanity check
         if not np.isnan(signed_qty):

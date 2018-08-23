@@ -35,7 +35,19 @@ class TacticInterface(metaclass=ABCMeta):
         raise AttributeError("interface class")
 
     @abstractmethod
+    def handle_1m_candles(self, candles: pd.DataFrame) -> None:
+        raise AttributeError("interface class")
+
+    @abstractmethod
     def handle_cancel(self, order: OrderCommon) -> None:
+        raise AttributeError("interface class")
+
+    @abstractmethod
+    def handle_order_completed(self, order: OrderCommon) -> None:
+        raise AttributeError("interface class")
+
+    @abstractmethod
+    def handle_liquidation(self, pnl: float):
         raise AttributeError("interface class")
 
     @abstractmethod

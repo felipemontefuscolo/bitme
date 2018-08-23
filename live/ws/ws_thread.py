@@ -1,3 +1,4 @@
+import queue
 import sys
 import websocket
 import threading
@@ -40,7 +41,7 @@ class BitMEXWebsocket():
         self.symbol = None
         self.should_auth = True
 
-        self.callback_maps = None  # type: dict
+        self.events_queue = None  # type: queue.Queue
 
     def __del__(self):
         self.exit()
@@ -49,19 +50,16 @@ class BitMEXWebsocket():
                 endpoint="",
                 symbol="XBTUSD",
                 should_auth=True,
-                callback_maps=None):
+                events_queue: queue.Queue = None):
         """
         :param endpoint:
         :param symbol:
         :param should_auth:
-        :param callback_maps: 'bitmex subscription' -> callback .. if subs is present, this class won't store its data
+        :param events_queue:
         :return:
         """
 
-        if callback_maps is None:
-            self.callback_maps = {}
-        else:
-            self.callback_maps = callback_maps
+        self.events_queue = events_queue  # type: queue.Queue
 
         self.logger.debug("Connecting WebSocket.")
         self.symbol = symbol
@@ -269,19 +267,17 @@ class BitMEXWebsocket():
                     # an item. We use it for updates.
                     self.keys[table] = message['keys']
 
-                    callback = self.callback_maps.get(table)
-                    if callback:
+                    if self.events_queue:
                         for data in message['data']:
-                            callback(data)
+                            self.events_queue.put((table, action, data))
 
                 elif action == 'insert':
                     self.logger.debug('%s: inserting %s' % (table, message['data']))
                     self.data[table] += message['data']
 
-                    callback = self.callback_maps.get(table)
-                    if callback:
+                    if self.events_queue:
                         for data in message['data']:
-                            callback(data)
+                            self.events_queue.put((table, action, data))
 
                     # Limit the max length of the table to avoid excessive memory usage.
                     # Don't trim orders because we'll lose valuable state if we do.
@@ -310,9 +306,8 @@ class BitMEXWebsocket():
                         # Update this item.
                         item.update(updateData)
 
-                        callback = self.callback_maps.get(table)
-                        if callback:
-                            callback(item)
+                        if self.events_queue:
+                            self.events_queue.put((table, action, item))
 
                         # Remove canceled / filled orders
                         if (table == 'order' or table == 'execution') and item['leavesQty'] <= 0:

@@ -14,14 +14,6 @@ class ExchangeInterface(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def subscribe_to_trades(self, tactic):
-        raise AttributeError("interface class")
-
-    @abstractmethod
-    def subscribe_to_quotes(self, tactic):
-        raise AttributeError("interface class")
-
-    @abstractmethod
     def get_candles1m(self) -> pd.DataFrame:
         raise AttributeError("interface class")
 

@@ -1,3 +1,4 @@
+from common.quote import Quote
 from tactic import TacticInterface, ExchangeInterface, Symbol, OrderCommon, Fill
 import pandas as pd
 
@@ -6,6 +7,15 @@ class BitmexDummyTactic(TacticInterface):
     """
     This class is associated to orders issued by Bitmex
     """
+
+    def handle_quote(self, quote: Quote) -> None:
+        pass
+
+    def handle_order_completed(self, order: OrderCommon) -> None:
+        pass
+
+    def handle_liquidation(self, pnl: float):
+        pass
 
     def id(self):
         return 'DUMMY'
