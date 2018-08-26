@@ -1,7 +1,7 @@
 import logging
+import time
 
 import pandas as pd
-import time
 
 from api import ExchangeInterface, Symbol
 from common import Fill, OrderCommon, OrderType, FillType
@@ -14,8 +14,10 @@ logger = logging.getLogger('root')
 
 class TacticTest1(TacticInterface):
     """
-    Just send 1 buy followed buy 1 sell and check if everything is ok
+    Just send 1 market-buy followed buy 1 market-sell and check if everything is ok
     """
+    symbol = Symbol.XBTUSD
+
     exchange = None
     num_subs = 0
 
@@ -47,17 +49,17 @@ class TacticTest1(TacticInterface):
         raise AttributeError("Didn't expect to get here")
 
     def get_symbol(self) -> Symbol:
-        return Symbol.XBTUSD
+        return self.symbol
         pass
 
     def handle_1m_candles(self, candles1m: pd.DataFrame) -> None:
 
         if not self.buy_id:
-            self.initial_pos = self.exchange.get_position(Symbol.XBTUSD).current_qty
+            self.initial_pos = self.exchange.get_position(self.symbol).current_qty
 
             self.buy_id = self.gen_order_id()
             logger.info("sending buy order {}".format(self.buy_id))
-            self.exchange.send_orders([OrderCommon(symbol=Symbol.XBTUSD,
+            self.exchange.send_orders([OrderCommon(symbol=self.symbol,
                                                    type=OrderType.Market,
                                                    client_id=self.buy_id,
                                                    signed_qty=+self.qty)])
@@ -83,7 +85,7 @@ class TacticTest1(TacticInterface):
 
                 time.sleep(1)
 
-                pos = self.exchange.get_position(Symbol.XBTUSD)
+                pos = self.exchange.get_position(self.symbol)
                 if pos.current_qty != self.qty + self.initial_pos:
                     raise AttributeError('current_pos={}, initial_pos={}, qty to fill={}'.format(pos.current_qty,
                                                                                                  self.initial_pos,
@@ -91,14 +93,14 @@ class TacticTest1(TacticInterface):
 
                 self.sell_id = self.gen_order_id()
                 logger.info("sending sell order {}".format(self.sell_id))
-                self.exchange.send_orders([OrderCommon(symbol=Symbol.XBTUSD,
+                self.exchange.send_orders([OrderCommon(symbol=self.symbol,
                                                        type=OrderType.Market,
                                                        client_id=self.gen_order_id(),
                                                        signed_qty=-self.qty)])
             else:
                 time.sleep(.3)
                 logger.info("checking position, it should be = initial position ...")
-                pos = self.exchange.get_position(Symbol.XBTUSD)
+                pos = self.exchange.get_position(self.symbol)
                 assert pos.current_qty == self.initial_pos
                 assert not pos.is_open
 

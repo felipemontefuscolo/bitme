@@ -63,3 +63,9 @@ class TacticInterface(metaclass=ABCMeta):
     def gen_order_id(self) -> str:
         return "{}_{}".format(self.id(),
                               base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n'))
+
+    def does_own_order(self, order: OrderCommon):
+        my_id = self.id()
+        if not order.client_id:
+            return False
+        return order.client_id[:len(my_id)] == my_id

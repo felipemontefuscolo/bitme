@@ -278,9 +278,6 @@ class LiveBitMex(ExchangeInterface):
 
         fill = Fill.create_from_raw(raw)
 
-        print("ON_FILL")
-        print(raw)
-
         order_id = raw.get('clOrdID')
         order = self.all_orders.get(order_id) if order_id else None
         if order:
@@ -296,7 +293,6 @@ class LiveBitMex(ExchangeInterface):
 
         if order_id:
             tac_name = order_id.split('_')[0]
-            print("PUTTING FILL IN THE QUEUE")
             self.tactic_event_handlers[tac_name].queue.put(fill, block=True, timeout=None)
 
         self._log_fill(fill)
@@ -307,8 +303,6 @@ class LiveBitMex(ExchangeInterface):
         # DEV NOTE: this is the only method who broadcast orders to tactics
 
         order_id = raw.get('clOrdID')
-        print('PRINTING ORDER {}'.format(action))
-        print(raw)
 
         if not order_id:
             self.logger.warning('Got an order without "clOrdID", probably a bitmex order (e.g., liquidation)')
@@ -376,8 +370,6 @@ class LiveBitMex(ExchangeInterface):
 
         positions = self.positions[symbol]
 
-        print('PRINTING POSITION {}'.format(action))
-        print(raw)
         # self._print_ws_output(raw)
 
         # if positions and positions[-1].is_open:
@@ -424,11 +416,6 @@ class LiveBitMex(ExchangeInterface):
         path = "position"
         postdict = {'filter': {'symbol': symbol.name}}
         raw = self._curl_bitmex(path=path, postdict=postdict, verb="GET")
-        # if raw and raw[-1]['isOpen']:
-        #     pos = PositionInterface(symbol)
-        #     pos.update_from_bitmex(raw[-1])
-        #     return pos
-        # return PositionInterface(symbol)
         if raw:
             pos = PositionInterface(symbol)
             pos.update_from_bitmex(raw[-1])
@@ -485,7 +472,6 @@ class LiveBitMex(ExchangeInterface):
 
         converted = [self.convert_order_to_bitmex(self.check_order_sanity(order)) for order in orders]
         raws = self._curl_bitmex(path='order/bulk', postdict={'orders': converted}, verb='POST')
-        print("ORDERS SENT FROM SEND ORDER")
 
         for r in raws:
             symbol = Symbol[r['symbol']]
@@ -495,8 +481,10 @@ class LiveBitMex(ExchangeInterface):
             self._log_order(OrderCommon(symbol, type_).update_from_bitmex(r))
 
     @authentication_required
-    def get_opened_orders(self, symbol=None) -> OrderContainerType:
-        return self.open_orders
+    def get_opened_orders(self, symbol: Symbol) -> OrderContainerType:
+        raws = self._curl_bitmex(path='order', postdict={'symbol': symbol.name}, verb='GET')
+
+        return {r['clOrdID']: OrderCommon(symbol, OrderType[r['ordType']]).update_from_bitmex(r) for r in raws}
 
     ######################
     # END INTERFACE
@@ -824,14 +812,13 @@ def test_common_1(tactic, sleep_time, input_args):
     live.register_tactic(tactic)
     t.start()
     with live:
-
         live.ws.log_summary()
 
     return 0
 
 
 def test1(input_args=None):
-    return test_common_1(TacticTest1(), 10, input_args)
+    return test_common_1(TacticTest1(), 7, input_args)
 
 
 def test2(input_args=None):
