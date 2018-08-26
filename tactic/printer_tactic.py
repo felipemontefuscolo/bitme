@@ -5,7 +5,7 @@ class PrinterTactic(TacticInterface):
     """
     This class is associated to orders issued by Bitmex
     """
-    def init(self, exchange: ExchangeInterface, preferences: dict) -> None:
+    def initialize(self, exchange: ExchangeInterface, preferences: dict) -> None:
         pass
 
     def get_symbol(self) -> Symbol:

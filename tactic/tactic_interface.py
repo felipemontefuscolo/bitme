@@ -1,3 +1,5 @@
+import base64
+import uuid
 from abc import ABCMeta, abstractmethod
 
 from common.fill import Fill
@@ -15,7 +17,11 @@ class TacticInterface(metaclass=ABCMeta):
         super().__init__()
 
     @abstractmethod
-    def init(self, exchange: ExchangeInterface, preferences: dict) -> None:
+    def initialize(self, exchange: ExchangeInterface, preferences: dict) -> None:
+        raise AttributeError("interface class")
+
+    @abstractmethod
+    def finalize(self) -> None:
         raise AttributeError("interface class")
 
     @abstractmethod
@@ -43,13 +49,17 @@ class TacticInterface(metaclass=ABCMeta):
         raise AttributeError("interface class")
 
     @abstractmethod
-    def handle_order_completed(self, order: OrderCommon) -> None:
-        raise AttributeError("interface class")
-
-    @abstractmethod
     def handle_liquidation(self, pnl: float):
         raise AttributeError("interface class")
 
     @abstractmethod
     def id(self) -> str:
+        """
+        IMPORTANT: can not contain underscores!
+        :return:
+        """
         raise AttributeError("interface class")
+
+    def gen_order_id(self) -> str:
+        return "{}_{}".format(self.id(),
+                              base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n'))

@@ -1,59 +1,111 @@
+import logging
+
 import pandas as pd
 import time
 
 from api import ExchangeInterface, Symbol
 from common import Fill, OrderCommon, OrderType, FillType
+from common.quote import Quote
+from common.trade import Trade
 from tactic import TacticInterface
+
+logger = logging.getLogger('root')
 
 
 class TacticTest1(TacticInterface):
+    """
+    Just send 1 buy followed buy 1 sell and check if everything is ok
+    """
     exchange = None
     num_subs = 0
 
-    def init(self, exchange: ExchangeInterface, preferences: dict) -> None:
+    buy_id = None
+    sell_id = None
+
+    qty = 12
+    buy_leaves = qty
+    sell_leaves = qty
+
+    initial_pos = 0
+
+    def initialize(self, exchange: ExchangeInterface, preferences: dict) -> None:
         self.exchange = exchange
         pass
+
+    def finalize(self) -> None:
+        print('finalizing tactic')
+        assert self.buy_leaves == 0
+        assert self.sell_leaves == 0
+
+    def handle_trade(self, trade: Trade) -> None:
+        pass
+
+    def handle_quote(self, quote: Quote) -> None:
+        pass
+
+    def handle_liquidation(self, pnl: float):
+        raise AttributeError("Didn't expect to get here")
 
     def get_symbol(self) -> Symbol:
         return Symbol.XBTUSD
         pass
 
     def handle_1m_candles(self, candles1m: pd.DataFrame) -> None:
-        if self.num_subs == 0:
-            self.num_subs += 1
-            orders = self.exchange.send_orders([OrderCommon(symbol=Symbol.XBTUSD,
-                                                            type=OrderType.Market,
-                                                            tactic=self,
-                                                            signed_qty=+12)])
 
+        if not self.buy_id:
+            self.initial_pos = self.exchange.get_position(Symbol.XBTUSD).current_qty
+
+            self.buy_id = self.gen_order_id()
+            logger.info("sending buy order {}".format(self.buy_id))
+            self.exchange.send_orders([OrderCommon(symbol=Symbol.XBTUSD,
+                                                   type=OrderType.Market,
+                                                   client_id=self.buy_id,
+                                                   signed_qty=+self.qty)])
 
         pass
 
     def handle_fill(self, fill: Fill) -> None:
 
-        print('HANDLING FILL OF ORDER {}'.format(self.num_subs-1))
+        if fill.side.lower()[0] == 'b':
+            logger.info('Filled buy order. Leaves qty: before={}, after={}'.format(self.buy_leaves,
+                                                                                   self.buy_leaves - fill.qty))
+            self.buy_leaves -= fill.qty
+        else:
+            if fill.side.lower()[0] != 's':
+                raise AttributeError('side should be buy or sell, got {}'.format(fill.side))
 
-        if self.num_subs == 1 and fill.fill_type == FillType.complete:
-            self.num_subs += 1
-            time.sleep(5)
-            pos = self.exchange.get_position(Symbol.XBTUSD)
-            print("PRINTING FROM REST API ... before closing order")
-            print(pos)
-            orders = self.exchange.send_orders([OrderCommon(symbol=Symbol.XBTUSD,
-                                                            type=OrderType.Market,
-                                                            tactic=self,
-                                                            signed_qty=-12)])
-        if self.num_subs == 2 and fill.fill_type == FillType.complete:
-            self.num_subs += 1
-            time.sleep(1)
-            pos = self.exchange.get_position(Symbol.XBTUSD)
-            print("PRINTING FROM REST API ... after closing order")
-            print(pos)
+            logger.info('Filled sell order. Leaves qty: before={}, after={}'.format(self.sell_leaves,
+                                                                                    self.sell_leaves - fill.qty))
+            self.sell_leaves -= fill.qty
+
+        if fill.fill_type == FillType.complete:
+            if self.sell_id is None:
+
+                time.sleep(1)
+
+                pos = self.exchange.get_position(Symbol.XBTUSD)
+                if pos.current_qty != self.qty + self.initial_pos:
+                    raise AttributeError('current_pos={}, initial_pos={}, qty to fill={}'.format(pos.current_qty,
+                                                                                                 self.initial_pos,
+                                                                                                 self.qty))
+
+                self.sell_id = self.gen_order_id()
+                logger.info("sending sell order {}".format(self.sell_id))
+                self.exchange.send_orders([OrderCommon(symbol=Symbol.XBTUSD,
+                                                       type=OrderType.Market,
+                                                       client_id=self.gen_order_id(),
+                                                       signed_qty=-self.qty)])
+            else:
+                time.sleep(.3)
+                logger.info("checking position, it should be = initial position ...")
+                pos = self.exchange.get_position(Symbol.XBTUSD)
+                assert pos.current_qty == self.initial_pos
+                assert not pos.is_open
 
         pass
 
     def handle_cancel(self, order: OrderCommon) -> None:
-        pass
+        raise AttributeError("Didn't expect to get here")
 
     @staticmethod
     def id() -> str:

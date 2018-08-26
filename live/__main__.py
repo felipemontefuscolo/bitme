@@ -58,16 +58,17 @@ def authentication_required(fn):
 class LiveBitMex(ExchangeInterface):
     SYMBOLS = list(Symbol)
 
-    def __init__(self, log_dir: str, run_time_seconds=None):
+    def __init__(self, log_dir: str, tac_prefs: dict, run_time_seconds=None):
         ExchangeInterface.__init__(self)
 
+        self.exc_info = None  # if a thread needs to throws, it should populate this variable
+        self.run_loop_in_main_thread = True
         self.log_dir = log_dir
         self.run_time_seconds = run_time_seconds
+        self.tac_prefs = tac_prefs
         self.started = False
         self.finished = False
-        self.threads = list()
-
-        self._init_files(log_dir)
+        self.threads = list()  # first thread is the run loop, the rest are the tactics loop
 
         self.timeout = settings.TIMEOUT
 
@@ -79,7 +80,7 @@ class LiveBitMex(ExchangeInterface):
         self.all_orders = dict()  # type: OrderContainerType
         self.open_orders = dict()  # type: OrderContainerType
         self.bitmex_dummy_tactic = BitmexDummyTactic()
-        self.user_order_cancels = set()  # type: Set[str]
+        self.solicited_cancels = set()  # type: Set[str]
         self.quotes = {s: Quote(symbol=s) for s in self.SYMBOLS}  # type: Dict[Symbol, Quote]
         self.trades = {s: Trade(symbol=s) for s in self.SYMBOLS}  # type: Dict[Symbol, Trade]
 
@@ -121,19 +122,12 @@ class LiveBitMex(ExchangeInterface):
             'quote': self.on_quote,
             'trade': self.on_trade}
 
-        self.init_candles()
-
-        self._curl_bitmex(path='order/all', postdict={}, verb='DELETE')
-
-        pass
-
     def __enter__(self):
         self.start_main_loop()
         return self
 
     def __exit__(self, type, value, traceback):
-        self.threads[-1].join()  # wait for the main-loop thread to finish
-        self._close()
+        self.end_main_loop()
         pass
 
     def _init_files(self, log_dir):
@@ -147,7 +141,7 @@ class LiveBitMex(ExchangeInterface):
         self.pnl_file.write('time,symbol,pnl,cum_pnl\n')
         self.candles_file.write(','.join(REQUIRED_COLUMNS) + '\n')
 
-    def _close(self):
+    def close_files(self):
         assert self.finished
         self.fills_file.close()
         self.orders_file.close()
@@ -191,7 +185,18 @@ class LiveBitMex(ExchangeInterface):
 
     def register_tactic(self, tactic: TacticInterface):
         self.tactics_map[tactic.id()] = tactic
-        self.tactic_event_handlers[tactic.id()] = TacticEventHandler(tactic)
+        tactic.initialize(self, self.tac_prefs)
+        tac_event_handler = TacticEventHandler(tactic, self)
+
+        t = threading.Thread(target=tac_event_handler.run_forever)
+        t.daemon = True
+        t.start()
+
+        self.threads.append(t)
+        self.tactic_event_handlers[tactic.id()] = tac_event_handler
+
+    def throw_exception_from_tactic(self, exc_info):
+        self.exc_info = exc_info
 
     def get_tactic_from_order_id(self, order_id: str) -> TacticInterface:
         tactic_id = order_id.split('_')[0]
@@ -203,36 +208,43 @@ class LiveBitMex(ExchangeInterface):
         if run_time_seconds:
             self.run_time_seconds = run_time_seconds
         self.started = True
-        threads = []
-        for tac_event_handler in self.tactic_event_handlers.values():  # type: TacticEventHandler
-            t = threading.Thread(target=tac_event_handler.run_forever)
-            t.daemon = True
-            t.start()
-            threads.append(t)
+
+        self.init_candles()
+        self._curl_bitmex(path='order/all', postdict={}, verb='DELETE')
+        self._init_files(self.log_dir)
 
         self.ws.connect(endpoint=self.base_url,
                         symbol=str(self.symbol),
                         should_auth=True,
                         events_queue=self.events_queue)
 
-        t = threading.Thread(target=self._run)
-        t.daemon = True
-        t.start()
-        threads.append(t)
+        if self.run_loop_in_main_thread:
+            self._run()
+        else:
+            t = threading.Thread(target=self._run)
+            t.daemon = True
+            t.start()
+            self.threads = [t] + self.threads
 
-        self.threads = threads
+    def end_main_loop(self):
+        if not self.run_loop_in_main_thread:
+            self.threads[0].join()  # wait for the main-loop thread to finish
+        self.close_files()
 
     def _run(self):
         start = time.time()
 
         while self.run_time_seconds is None or time.time() - start <= self.run_time_seconds:
             event = self.events_queue.get()
-            if event is None:
-                continue
             name, action, raw = event
             method = self.callback_maps.get(name)
             if method:
                 method(raw, action)
+            if self.exc_info:
+                raise self.exc_info[1].with_traceback(self.exc_info[2])
+
+        for tac in self.tactics_map.values():
+            tac.finalize()
 
         self.finished = True
         del self.threads
@@ -266,6 +278,9 @@ class LiveBitMex(ExchangeInterface):
 
         fill = Fill.create_from_raw(raw)
 
+        print("ON_FILL")
+        print(raw)
+
         order_id = raw.get('clOrdID')
         order = self.all_orders.get(order_id) if order_id else None
         if order:
@@ -281,6 +296,7 @@ class LiveBitMex(ExchangeInterface):
 
         if order_id:
             tac_name = order_id.split('_')[0]
+            print("PUTTING FILL IN THE QUEUE")
             self.tactic_event_handlers[tac_name].queue.put(fill, block=True, timeout=None)
 
         self._log_fill(fill)
@@ -291,42 +307,44 @@ class LiveBitMex(ExchangeInterface):
         # DEV NOTE: this is the only method who broadcast orders to tactics
 
         order_id = raw.get('clOrdID')
+        print('PRINTING ORDER {}'.format(action))
+        print(raw)
 
         if not order_id:
-            self.logger.info('Got an order without "clOrdID", probably a bitmex order (e.g., liquidation)')
+            self.logger.warning('Got an order without "clOrdID", probably a bitmex order (e.g., liquidation)')
             # TODO: maybe we should log those orders
+            # TODO: we should find a way to indentify those type of orders .. maybe look for 'liquidation'?
             return
 
-        try:
-            order = self.all_orders[order_id]
-        except KeyError:
-            msg = '''
-            Order id {} is not an open order, and we don't expect to get two not-open orders in a row. The only for
-            that to happen is that our order-id-gen generated the same id of an order in the previous run. The chance
-            for this to happen is super low, probably it is an logic error.
-            '''.format(order_id)
-            msg = ' '.join(msg.split())
-            raise AttributeError(msg)
+        order = self.all_orders.get(order_id)
 
-        order.update_from_bitmex(raw)  # type: OrderCommon
+        if order:
+            order.update_from_bitmex(raw)  # type: OrderCommon
 
-        if order.is_open():
-            self.open_orders[order.id] = order
+            if not order.is_open():
+                del self.all_orders[order.client_id]
+
+                if order.status == OrderStatus.Rejected:
+                    raise ValueError('A order should never be rejected. Order: {}'.format(order))
+
+                if order.status == OrderStatus.Canceled:
+                    if order.client_id not in self.solicited_cancels:
+                        tac_name = order.client_id.split('_')[0]
+                        self.tactic_event_handlers[tac_name].queue.put(order, block=True, timeout=None)
+                    else:
+                        del self.solicited_cancels[order.client_id]
+
         else:
-            try:
-                del self.open_orders[order.id]
-            except KeyError:
-                pass
-            del self.all_orders[order.id]
+            order_status = OrderStatus[raw['ordStatus']]
+            if order_status == OrderStatus.New:
+                symbol = Symbol[raw['symbol']]
+                type_ = OrderType[raw['ordType']]
+                order = OrderCommon(symbol=symbol, type=type_).update_from_bitmex(raw)
 
-        if (order.status == OrderStatus.Canceled and order.id not in self.user_order_cancels) \
-                or order.status == OrderStatus.Rejected:
-            try:
-                self.user_order_cancels.remove(order.id)
-            except KeyError:
-                pass
-            tac_name = order.id.split('_')[0]
-            self.tactic_event_handlers[tac_name].queue.put(order, block=True, timeout=None)
+                self.all_orders[order_id] = order
+            else:
+                # bitmex can send updates twice ... shame
+                return
 
     def _rename_prev_run_order(self, raw):
         old_id = raw['clOrdID']
@@ -358,6 +376,8 @@ class LiveBitMex(ExchangeInterface):
 
         positions = self.positions[symbol]
 
+        print('PRINTING POSITION {}'.format(action))
+        print(raw)
         # self._print_ws_output(raw)
 
         # if positions and positions[-1].is_open:
@@ -434,51 +454,45 @@ class LiveBitMex(ExchangeInterface):
 
     @authentication_required
     def cancel_orders(self, orders: Union[OrderContainerType, List[OrderCommon], List[str]]) -> OrderContainerType:
+        # DEV NOTE: it should NOT change any internal state
         """
         :return: Dict of cancelled orders
         """
         # TODO: add a warning if the order ids passed by the user don't exist
+        # DEV NOTE: it should not log order, let on_orders log instead
+
         ids = get_orders_id(orders)
         if not ids:
             return dict()
-        self.user_order_cancels = set(ids).union(self.user_order_cancels)
-        raws = self._curl_bitmex(path="order", postdict={'clOrdID': ','.join(ids)}, verb="DELETE")
-
-        cancelled = {raw['clOrdID']: self.all_orders[raw['clOrdID']] for raw in raws}
-
-        self.check_all_closed(cancelled.values())
-        for o in cancelled.values():
-            self._log_order(o)
-
-        return cancelled
+        self.solicited_cancels = set(ids).union(self.solicited_cancels)
+        self._curl_bitmex(path="order", postdict={'clOrdID': ','.join(ids)}, verb="DELETE")
 
     @authentication_required
-    def send_orders(self, orders: List[OrderCommon]) -> List[OrderCommon]:
-        # NOTE: other methods assume that send_orders always store ALL orders
+    def send_orders(self, orders: List[OrderCommon]):
+        # DEV NOTE: it logs all sent orders, good or bad orders
+        # DEV NOTE: it should NOT change any internal state
 
         # sanity check
         if not all([o.status == OrderStatus.Pending for o in orders]):
             raise ValueError("New orders should have status OrderStatus.Pending")
 
-        for i in range(len(orders)):
-            orders[i].id = '{}_{}'.format(orders[i].id,
-                                          base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n'))
-
-        if not all([o.id not in self.all_orders for o in orders]):
-            raise ValueError("Orders contain an id that already exists")
-
         for o in orders:
-            self.all_orders[o.id] = o
+            if o.client_id:
+                tokens = o.client_id.split('_')
+                tactic_id = tokens[0]
+            if not o.client_id or len(tokens) < 2 or tactic_id not in self.tactics_map:
+                raise ValueError('The order client_id should be a string in the form TACTICID_HASH')
 
         converted = [self.convert_order_to_bitmex(self.check_order_sanity(order)) for order in orders]
         raws = self._curl_bitmex(path='order/bulk', postdict={'orders': converted}, verb='POST')
+        print("ORDERS SENT FROM SEND ORDER")
 
-        result = [self.all_orders[r['clOrdID']].update_from_bitmex(r) for r in raws]  # type: List[OrderCommon]
-
-        for r in result:
-            self._log_order(r)
-
-        return result
+        for r in raws:
+            symbol = Symbol[r['symbol']]
+            type_ = OrderType[r['ordType']]
+            tactic_id = r['clOrdID'].split('_')[0]
+            tactic = self.tactics_map[tactic_id]
+            self._log_order(OrderCommon(symbol, type_).update_from_bitmex(r))
 
     @authentication_required
     def get_opened_orders(self, symbol=None) -> OrderContainerType:
@@ -497,21 +511,21 @@ class LiveBitMex(ExchangeInterface):
             t += 0.1
             n_opened = sum(order.is_open() for order in orders_cancelled)
             if t >= self.timeout / 2:
-                opened = [order.id for order in orders_cancelled if order.is_open()]
+                opened = [order.client_id for order in orders_cancelled if order.is_open()]
                 raise TimeoutError(
                     "Orders cancelled through http (ids={}) were not confirmed in websocket within {} seconds".format(
                         ','.join(opened), self.timeout / 2))
 
     @staticmethod
     def check_order_sanity(order: OrderCommon) -> OrderCommon:
-        assert order.id
+        assert order.client_id
         return order
 
     @staticmethod
     def convert_order_to_bitmex(order: OrderCommon) -> dict:
         a = {'leavesQty': order.leaves_qty}
-        if order.id:
-            a['clOrdID'] = order.id
+        if order.client_id:
+            a['clOrdID'] = order.client_id
         if order.symbol:
             a['symbol'] = order.symbol.name
         if order.signed_qty and not np.isnan(order.signed_qty):
@@ -792,19 +806,24 @@ def get_args(input_args=None):
     return args
 
 
+def print_sleep():
+    i = 0
+    while True:
+        print('sleeping ... {}'.format(i))
+        time.sleep(1)
+        i += 1
+
+
 def test_common_1(tactic, sleep_time, input_args):
     args = get_args(input_args)
 
-    with LiveBitMex(args.log_dir) as live:
-        live.register_tactic(tactic)
-        for tac in live.tactics_map.values():
-            tac.init(live, args.pref)
+    t = threading.Thread(target=print_sleep)
+    t.daemon = True
 
-        live.tactics_map[tactic.id()].handle_1m_candles(None)
-
-        for i in range(sleep_time):
-            print('sleeping ... ' + str(i))
-            time.sleep(1)
+    live = LiveBitMex(args.log_dir, args.pref, sleep_time + 1)
+    live.register_tactic(tactic)
+    t.start()
+    with live:
 
         live.ws.log_summary()
 
@@ -830,7 +849,7 @@ def test3(input_args=None):
     with LiveBitMex(args.log_dir) as live:
         live.register_tactic(tactic)
         for tac in live.tactics_map.values():
-            tac.init(live, args.pref)
+            tac.initialize(live, args.pref)
 
         live.tactics_map[tactic.id()].handle_1m_candles(None)
         time.sleep(1)
@@ -887,4 +906,4 @@ def main(input_args=None):
 
 
 if __name__ == "__main__":
-    sys.exit(test_print_trade())
+    sys.exit(test1())

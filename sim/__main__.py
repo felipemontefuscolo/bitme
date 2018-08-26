@@ -72,7 +72,7 @@ class Liquidator(TacticInterface):
     def get_symbol(self) -> Symbol:
         pass
 
-    def init(self, exchange, preferences):
+    def initialize(self, exchange, preferences):
         pass
 
     def handle_1m_candles(self, candles: pd.DataFrame):
@@ -240,7 +240,7 @@ class SimExchangeBitMex(ExchangeInterface):
     def _cancel_orders_helper(self,
                               orders: Dict,
                               reason: OrderCancelReason) -> Dict:
-        orders_list = [o for o in orders.values() if o.id in self.active_orders]
+        orders_list = [o for o in orders.values() if o.client_id in self.active_orders]
         if len(orders_list) == 0:
             return dict()
         for o in orders_list:  # type: OrderCommon
@@ -253,7 +253,7 @@ class SimExchangeBitMex(ExchangeInterface):
                 if o.tactic and o.tactic != Liquidator:
                     o.tactic.handle_cancel(self, o)
 
-        cancelled = {o.id: o for o in orders_list if o.status == OrderStatus.Canceled}
+        cancelled = {o.client_id: o for o in orders_list if o.status == OrderStatus.Canceled}
         if len(cancelled) < 1:
             print("time at: " + str(self.current_time()))
             raise AttributeError("no orders were closed")
@@ -277,9 +277,9 @@ class SimExchangeBitMex(ExchangeInterface):
     def send_orders(self, orders: List[OrderCommon]) -> List[OrderCommon]:
         current_time = self.current_time()
         for i in range(len(orders)):
-            orders[i].id = '{}_{}'.format(orders[i].id, i + len(self.order_hist))
+            orders[i].client_id = '{}_{}'.format(orders[i].client_id, i + len(self.order_hist))
 
-        assert all([o.id not in self.active_orders for o in orders])
+        assert all([o.client_id not in self.active_orders for o in orders])
 
         self.order_hist += orders
 
@@ -313,7 +313,7 @@ class SimExchangeBitMex(ExchangeInterface):
             o.time_posted = current_time
             if o.status == OrderStatus.Pending:
                 o.status = OrderStatus.New
-                self.active_orders[o.id] = o
+                self.active_orders[o.client_id] = o
             else:
                 assert o.status == OrderStatus.Canceled
 
@@ -603,7 +603,7 @@ def main(input_args=None):
     with SimExchangeBitMex(0.2, args.file, args.log_dir, tactics) as exchange:
 
         for tac in exchange.tactics_map.values():
-            tac.init(exchange, args.pref)
+            tac.initialize(exchange, args.pref)
 
         while exchange.is_open():
             exchange.advance_time(print_progress=True)

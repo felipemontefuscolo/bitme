@@ -73,15 +73,13 @@ class OrderCommon:
     def __init__(self,
                  symbol: Symbol,
                  type: OrderType,
-                 tactic,
+                 client_id: str = None,
                  signed_qty: float = float('nan'),
                  price: float = float('nan'),
                  stop_price: float = float('nan'),
                  linked_order_id: str = None,
                  time_in_force: TimeInForce = None,
                  contingency_type: ContingencyType = None):
-
-        self.id = tactic.id() if tactic is not None else None
 
         self.symbol = symbol  # type: Symbol
         self.signed_qty = signed_qty  # type: float
@@ -96,15 +94,14 @@ class OrderCommon:
         else:
             self.time_in_force = TimeInForce.GoodTillCancel
         self.contingency_type = contingency_type  # type: ContingencyType
-        self.tactic = tactic
 
         # data change by the exchange
         self.leaves_qty = abs(signed_qty)
-        self.fill_price = float('nan') if self.type == OrderType.Market else self.price
         self.time_posted = None  # type: pd.Timestamp
         self.status = OrderStatus.Pending  # type: OrderStatus
         self.status_msg = None  # type: OrderCancelReason
         self.bitmex_id = None  # type: str
+        self.client_id = client_id  # type: str
 
         # sanity check
         if not np.isnan(signed_qty):
@@ -146,7 +143,7 @@ class OrderCommon:
         return ','.join([
             str(self.time_posted.strftime('%Y-%m-%dT%H:%M:%S')),
             str(self.symbol),
-            str(self.id),
+            str(self.client_id),
             str(side),
             str(self.signed_qty),
             str(self.leaves_qty),
@@ -169,13 +166,13 @@ class OrderCommon:
 
     def to_bitmex(self) -> dict:
         a = {}
-        if self.id:
-            a['clOrdID'] = self.id
+        if self.client_id:
+            a['clOrdID'] = self.client_id
         if self.symbol:
             a['symbol'] = self.symbol.name
         if self.signed_qty and not np.isnan(self.signed_qty):
             a['orderQty'] = abs(self.signed_qty)
-            a['side'] = 'Buy' if self.side() > 0 else 'Sell'
+            a['side'] = 'Buy' if self.signed_qty > 0 else 'Sell'
         if self.price and not np.isnan(self.price):
             a['price'] = self.price
         if self.stop_price and not np.isnan(self.stop_price):
@@ -202,15 +199,24 @@ class OrderCommon:
 
     # update this object and return itself
     def update_from_bitmex(self, order: dict) -> 'OrderCommon':
-        assert self.id == order.get('clOrdID')
         assert self.symbol.name == order['symbol']
+        if 'ordType' in order:
+            assert self.type == OrderType[order['ordType']]
+
+        if self.client_id is None:
+            self.client_id = order.get('clOrdID')
+        else:
+            if self.client_id != order['clOrdID']:
+                raise ValueError("Updating from order with different id. Self: {}, other: {}".format(self.client_id,
+                                                                                                     order['clOrdID']))
 
         if self.bitmex_id is None:
             self.bitmex_id = order['orderID']
         else:
             if self.bitmex_id != order['orderID']:
-                raise ValueError("Updating from order with different id. Self: {}, other: {}".format(self.bitmex_id,
-                                                                                                     order['orderID']))
+                raise ValueError(
+                    "Updating from order with different bitmex id. Self: {}, other: {}".format(self.bitmex_id,
+                                                                                               order['orderID']))
         if order['side'] == 'Buy':
             side = +1
         elif order['side'] == 'Sell':
@@ -225,8 +231,7 @@ class OrderCommon:
         self.price = order.get('price', self.price)
         self.stop_price = order.get('stopPx', self.stop_price)
         self.linked_order_id = order.get('clOrdLinkID', self.linked_order_id)
-        if 'ordType' in order:
-            self.type = OrderType[order['ordType']]
+
         if 'timeInForce' in order:
             self.time_in_force = TimeInForce[order['timeInForce']] if order['timeInForce'] else None
         if 'contingencyType' in order:
@@ -265,9 +270,9 @@ def get_orders_id(orders: Union[OrderContainerType, List[OrderCommon], List[str]
     if len(orders) < 1:
         return
     if isinstance(orders, dict):
-        ids = [o.id for o in orders.values()]
+        ids = [o.client_id for o in orders.values()]
     elif isinstance(orders[0], OrderCommon):
-        ids = [o.id for o in orders]
+        ids = [o.client_id for o in orders]
     elif isinstance(orders, str):
         ids = [orders]
     elif isinstance(orders, list):

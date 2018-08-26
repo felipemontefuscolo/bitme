@@ -24,20 +24,17 @@ class ExchangeInterface(metaclass=ABCMeta):
     @abstractmethod
     def send_orders(self, orders: List[OrderCommon]):
         """
-        It does not send orders immediately. These orders goes to a queue. If a order is canceled, the method
-        handle_cancel will be triggered.
+        Send orders
         :param orders:
-        :return: list of orders that were successfully posted
         NOTE: it changes orders id
         """
         raise AttributeError("interface class")
 
     @abstractmethod
-    def cancel_orders(self, orders: Union[OrderContainerType, List[OrderCommon], List[str]]) -> OrderContainerType:
+    def cancel_orders(self, orders: Union[OrderContainerType, List[OrderCommon], List[str]]):
         """
-        It does not cancel orders immediately. These orders goes to a queue.
+        Send cancel request.
         :param orders: Dict of id -> order
-        :return: list of cancelled orders
         """
         raise AttributeError("interface class")
 

@@ -12,7 +12,7 @@ class TacticTest3(TacticInterface):
     my_orders = []
     got_the_cancel = False
 
-    def init(self, exchange: ExchangeInterface, preferences: dict) -> None:
+    def initialize(self, exchange: ExchangeInterface, preferences: dict) -> None:
         self.exchange = exchange
         pass
 
@@ -29,7 +29,7 @@ class TacticTest3(TacticInterface):
             self.my_orders = self.exchange.send_orders([OrderCommon(symbol=Symbol.XBTUSD,
                                                                     price=math.floor(price / 2),
                                                                     type=OrderType.Limit,
-                                                                    tactic=self,
+                                                                    client_id=self.gen_order_id(),
                                                                     signed_qty=+12)])
         else:
             r = self.exchange.cancel_orders(self.my_orders)
