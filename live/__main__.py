@@ -120,7 +120,8 @@ class LiveBitMex(ExchangeInterface):
             'order': self.on_order,
             'execution': self.on_fill,
             'quote': self.on_quote,
-            'trade': self.on_trade}
+            'trade': self.on_trade,
+            'margin': self.on_margin}
 
     def __enter__(self):
         self.start_main_loop()
@@ -239,6 +240,12 @@ class LiveBitMex(ExchangeInterface):
             name, action, raw = event
             method = self.callback_maps.get(name)
             if method:
+                # if name != 'quote' and name != 'trade':
+                #     print("GOT RAW {} {}".format(name, action))
+                #     print(raw)
+                if name == 'margin':
+                    print("GOT RAW {} {}".format(name, action))
+                    print(raw)
                 method(raw, action)
             if self.exc_info:
                 raise self.exc_info[1].with_traceback(self.exc_info[2])
@@ -252,6 +259,9 @@ class LiveBitMex(ExchangeInterface):
     ######################
     # CALLBACKS
     ######################
+
+    def on_margin(self, raw, action):
+        pass
 
     def on_trade(self, raw: dict, action: str):
         symbol = Symbol[raw['symbol']]
@@ -818,7 +828,7 @@ def test_common_1(tactic, sleep_time, input_args):
 
 
 def test1(input_args=None):
-    return test_common_1(TacticTest1(), 7, input_args)
+    return test_common_1(TacticTest2(n_trades=3), 7, input_args)
 
 
 def test2(input_args=None):

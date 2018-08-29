@@ -19,7 +19,6 @@ class TacticTest1(TacticInterface):
     symbol = Symbol.XBTUSD
 
     exchange = None
-    num_subs = 0
 
     buy_id = None
     sell_id = None
