@@ -58,7 +58,7 @@ class Fill:
 
     def to_line(self):
         return ','.join([
-            str(self.fill_time.strftime('%Y-%m-%dT%H:%M:%S')),  # type: pd.Timestamp
+            str(self.fill_time),  # type: pd.Timestamp
             str(self.symbol.name),
             str(self.order_id),
             str(self.side),

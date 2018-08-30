@@ -141,7 +141,7 @@ class OrderCommon:
     def to_line(self):
         side = 'buy' if self.signed_qty > 0 else 'sell'
         return ','.join([
-            str(self.time_posted.strftime('%Y-%m-%dT%H:%M:%S')),
+            str(self.time_posted),
             str(self.symbol),
             str(self.client_id),
             str(side),

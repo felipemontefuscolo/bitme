@@ -16,7 +16,7 @@ assertEqual = unittest.TestCase().assertEqual
 assertFalse = unittest.TestCase().assertFalse
 
 
-class TacticTest2(TacticInterface):
+class TacticMarketOrderTest(TacticInterface):
     """
     Just send n market-buys followed buy n market-sells and check if everything is ok
     """
@@ -25,13 +25,18 @@ class TacticTest2(TacticInterface):
     qty = 5
     initial_pos = 0
 
-    def __init__(self, n_trades):
+    def __init__(self, n_trades, n_positions):
+        """
+        :param n_trades: num buys (and sells)
+        :param n_positions: number of times it will open a position
+        """
         self.n_trades = n_trades
         self.buy_id = [None] * n_trades
         self.sell_id = [None] * n_trades
         self.buy_leaves = [self.qty] * n_trades
         self.sell_leaves = [self.qty] * n_trades
         self.next_action = 0
+        self.n_positions = n_positions
 
     def initialize(self, exchange: ExchangeInterface, preferences: dict) -> None:
         self.exchange = exchange
@@ -57,7 +62,8 @@ class TacticTest2(TacticInterface):
 
     def handle_1m_candles(self, candles1m: pd.DataFrame) -> None:
 
-        if not self.buy_id[0]:
+        if self.n_trades > 0 and not self.buy_id[0] and self.n_positions > 0:
+            logger.info("opening a position")
             self.initial_pos = self.exchange.get_position(self.symbol).current_qty
 
             self.buy_id[0] = self.gen_order_id()
@@ -138,6 +144,11 @@ class TacticTest2(TacticInterface):
                 logger.info("checking position, it should be = initial position ...")
                 pos = self.exchange.get_position(self.symbol)
                 assertEqual(pos.current_qty, self.initial_pos)
+
+                self.n_positions -= 1
+                if self.n_positions > 0:
+                    self.__init__(self.n_trades, self.n_positions)
+                    self.handle_1m_candles(None)
 
         pass
 

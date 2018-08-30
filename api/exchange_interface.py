@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
+from typing import List, Union
 
 import pandas as pd
-from typing import Iterable, List, Union
 
 from api.position_interface import PositionInterface
 from api.symbol import Symbol
@@ -62,4 +62,8 @@ class ExchangeInterface(metaclass=ABCMeta):
                Send 0 to enable cross margin.
         :return: True if succeeded
         """
+        raise AttributeError("interface class")
+
+    @abstractmethod
+    def get_balance_xbt(self) -> float:
         raise AttributeError("interface class")

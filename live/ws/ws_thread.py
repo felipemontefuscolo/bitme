@@ -266,6 +266,7 @@ class BitMEXWebsocket():
                     # Keys are communicated on partials to let you know how to uniquely identify
                     # an item. We use it for updates.
                     self.keys[table] = message['keys']
+                    self.logger.info("Keys for {} are {}".format(table, message['keys']))
 
                     if self.events_queue:
                         for data in message['data']:

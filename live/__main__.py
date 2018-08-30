@@ -1,9 +1,13 @@
 import argparse
 import base64
+import copy
 import datetime
 import json
 import logging
+import os
 import queue
+import shutil
+import sys
 import threading
 import time
 import uuid
@@ -11,17 +15,13 @@ from collections import defaultdict
 from typing import Iterable, Dict, List, Union, Set
 
 import numpy as np
-import os
 import pandas as pd
 import pytz
 import requests
-import shutil
-
-import sys
 
 from api import ExchangeInterface, PositionInterface
-from common import Symbol, REQUIRED_COLUMNS, create_df_for_candles, fix_bitmex_bug, BITCOIN_TO_SATOSHI, OrderCommon, \
-    OrderType, TimeInForce, OrderContainerType, get_orders_id, OrderStatus, Fill, FillType
+from common import Symbol, REQUIRED_COLUMNS, create_df_for_candles, fix_bitmex_bug, OrderCommon, \
+    OrderType, OrderContainerType, get_orders_id, OrderStatus, Fill, BITCOIN_TO_SATOSHI
 from common.quote import Quote
 from common.trade import Trade
 from live import errors
@@ -30,8 +30,7 @@ from live.settings import settings
 from live.tactic_event_handler import TacticEventHandler
 from live.ws.ws_thread import BitMEXWebsocket
 from tactic import TacticInterface
-from tactic.TacticTest1 import TacticTest1
-from tactic.TacticTest2 import TacticTest2
+from tactic.TacticMarketOrderTest import TacticMarketOrderTest
 from tactic.TacticTest3 import TacticTest3
 from tactic.bitmex_dummy_tactic import BitmexDummyTactic
 from utils import log
@@ -75,6 +74,8 @@ class LiveBitMex(ExchangeInterface):
         self.candles = create_df_for_candles()  # type: pd.DataFrame
         self.positions = defaultdict(list)  # type: Dict[Symbol, List[PositionInterface]]
         self.cum_pnl = defaultdict(float)  # type: Dict[Symbol, float]]
+        self.last_margin = dict()  # type: Dict[str, dict]
+        self.last_closed_margin = dict()  # type: Dict[str, dict]
 
         # all orders, opened and closed
         self.all_orders = dict()  # type: OrderContainerType
@@ -140,7 +141,7 @@ class LiveBitMex(ExchangeInterface):
         self.fills_file.write(Fill.get_header() + '\n')
         self.orders_file.write(OrderCommon.get_header() + '\n')
         self.pnl_file.write('time,symbol,pnl,cum_pnl\n')
-        self.candles_file.write(','.join(REQUIRED_COLUMNS) + '\n')
+        self.candles_file.write(','.join(['timestamp'] + REQUIRED_COLUMNS) + '\n')
 
     def close_files(self):
         assert self.finished
@@ -155,13 +156,21 @@ class LiveBitMex(ExchangeInterface):
     def _log_order(self, order: OrderCommon):
         self.orders_file.write(order.to_line() + '\n')
 
-    def _log_and_update_pnl(self, closed_position: PositionInterface):
-        pnl = closed_position.realized_pnl
-        self.cum_pnl[closed_position.symbol] += closed_position.realized_pnl
-        self.pnl_file.write(','.join([str(closed_position.current_timestamp.strftime('%Y-%m-%dT%H:%M:%S')),
-                                      closed_position.symbol.name,
+    # def _log_and_update_pnl(self, closed_position: PositionInterface):
+    #     pnl = closed_position.realized_pnl
+    #     self.cum_pnl[closed_position.symbol] += closed_position.realized_pnl
+    #     self.pnl_file.write(','.join([str(closed_position.current_timestamp.strftime('%Y-%m-%dT%H:%M:%S')),
+    #                                   closed_position.symbol.name,
+    #                                   str(pnl),
+    #                                   str(self.cum_pnl[closed_position.symbol])])
+    #                         + '\n')
+
+    def _log_and_update_pnl(self, pnl: float, symbol: Symbol, timestamp: pd.Timestamp):
+        self.cum_pnl[symbol] += pnl
+        self.pnl_file.write(','.join([str(timestamp.strftime('%Y-%m-%dT%H:%M:%S')),
+                                      symbol.name,
                                       str(pnl),
-                                      str(self.cum_pnl[closed_position.symbol])])
+                                      str(self.cum_pnl[symbol])])
                             + '\n')
 
     def _log_candle(self, vals: list):
@@ -232,6 +241,10 @@ class LiveBitMex(ExchangeInterface):
             self.threads[0].join()  # wait for the main-loop thread to finish
         self.close_files()
 
+        print("Total pnl (in XBT): ")
+        for k, v in self.cum_pnl.items():
+            print("{}: {}".format(k, v))
+
     def _run(self):
         start = time.time()
 
@@ -243,9 +256,9 @@ class LiveBitMex(ExchangeInterface):
                 # if name != 'quote' and name != 'trade':
                 #     print("GOT RAW {} {}".format(name, action))
                 #     print(raw)
-                if name == 'margin':
-                    print("GOT RAW {} {}".format(name, action))
-                    print(raw)
+                # if name == 'margin':
+                #     print("GOT RAW {} {}".format(name, action))
+                #     print(raw)
                 method(raw, action)
             if self.exc_info:
                 raise self.exc_info[1].with_traceback(self.exc_info[2])
@@ -261,6 +274,27 @@ class LiveBitMex(ExchangeInterface):
     ######################
 
     def on_margin(self, raw, action):
+        # margin is the best most reliable way to keep track of the pnl
+
+        last_margin = self.last_margin.get(raw['currency'])
+        if last_margin is None:
+            assert action == 'partial'
+            self.last_margin[raw['currency']] = copy.copy(raw)
+            self.last_closed_margin[raw['currency']] = copy.copy(raw)
+            return
+
+        last_closed_margin = self.last_closed_margin[raw['currency']]
+
+        if last_margin['riskValue'] > 0 and raw['riskValue'] == 0:
+            # assuming that this condition implies that the position was closed
+            assert raw['walletBalance'] == raw['withdrawableMargin']
+            pnl_satoshi = raw['walletBalance'] - last_closed_margin['walletBalance']
+            self._log_and_update_pnl(pnl_satoshi / BITCOIN_TO_SATOSHI,
+                                     Symbol.XBTUSD,
+                                     pd.Timestamp(raw['timestamp']))
+            last_closed_margin.update(raw)
+
+        last_margin.update(raw)
         pass
 
     def on_trade(self, raw: dict, action: str):
@@ -361,12 +395,13 @@ class LiveBitMex(ExchangeInterface):
 
     def on_tradeBin1m(self, raw: dict, action: str):
         row = [raw[j] for j in REQUIRED_COLUMNS]
-        self.candles.loc[pd.Timestamp(raw['timestamp'])] = row
+        timestamp = pd.Timestamp(raw['timestamp'])
+        self.candles.loc[timestamp] = row
 
         # dead-man's switch
         self._curl_bitmex(path='order/cancelAllAfter', postdict={'timeout': 90000}, verb='POST')
 
-        self._log_candle(row)
+        self._log_candle([timestamp] + row)
 
         for tac_handler in self.tactic_event_handlers.values():
             tac_handler.queue.put(self.candles, block=True, timeout=None)
@@ -402,6 +437,9 @@ class LiveBitMex(ExchangeInterface):
     ######################
     # FROM INTERFACE
     ######################
+
+    def get_balance_xbt(self) -> float:
+        return self.last_margin['XBt']['withdrawableMargin']
 
     def get_candles1m(self) -> pd.DataFrame:
         return self.candles
@@ -827,12 +865,12 @@ def test_common_1(tactic, sleep_time, input_args):
     return 0
 
 
-def test1(input_args=None):
-    return test_common_1(TacticTest2(n_trades=3), 7, input_args)
+def test_market_order(n_trades, n_positions, input_args=None):
+    return test_common_1(TacticMarketOrderTest(n_trades=n_trades, n_positions=n_positions), 9, input_args)
 
 
 def test2(input_args=None):
-    tactic = TacticTest2()
+    tactic = TacticMarketOrderTest()
     ret = test_common_1(tactic, 3, input_args)
     time.sleep(1)
     assert tactic.got_the_cancel
@@ -903,4 +941,4 @@ def main(input_args=None):
 
 
 if __name__ == "__main__":
-    sys.exit(test1())
+    sys.exit(test_market_order(n_trades=2, n_positions=2))
