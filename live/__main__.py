@@ -30,6 +30,7 @@ from live.settings import settings
 from live.tactic_event_handler import TacticEventHandler
 from live.ws.ws_thread import BitMEXWebsocket
 from tactic import TacticInterface
+from tactic.TacticLimitOrderTest import TacticLimitOrderTest
 from tactic.TacticMarketOrderTest import TacticMarketOrderTest
 from tactic.TacticTest3 import TacticTest3
 from tactic.bitmex_dummy_tactic import BitmexDummyTactic
@@ -869,6 +870,10 @@ def test_market_order(n_trades, n_positions, input_args=None):
     return test_common_1(TacticMarketOrderTest(n_trades=n_trades, n_positions=n_positions), 9, input_args)
 
 
+def test_limit_order_and_cancels(input_args=None):
+    return test_common_1(TacticLimitOrderTest(), 5, input_args)
+
+
 def test2(input_args=None):
     tactic = TacticMarketOrderTest()
     ret = test_common_1(tactic, 3, input_args)
@@ -941,4 +946,5 @@ def main(input_args=None):
 
 
 if __name__ == "__main__":
-    sys.exit(test_market_order(n_trades=2, n_positions=2))
+    # sys.exit(test_market_order(n_trades=2, n_positions=2))
+    sys.exit(test_limit_order_and_cancels())

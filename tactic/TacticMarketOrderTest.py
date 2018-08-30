@@ -112,6 +112,7 @@ class TacticMarketOrderTest(TacticInterface):
             self.sell_leaves[i] -= fill.qty
 
         if fill.fill_type == FillType.complete:
+            # we need this little delays because it seems that bitmex takes a while to update the position
             time.sleep(.3)
             pos = self.exchange.get_position(self.symbol)
             assertEqual(pos.current_qty, self.expected_position(), "n_buys={}, n_sells={}, init_pos={}".format(
@@ -157,4 +158,4 @@ class TacticMarketOrderTest(TacticInterface):
 
     @staticmethod
     def id() -> str:
-        return "TTest2"
+        return "TMOT"
