@@ -24,6 +24,7 @@ class TacticMarketOrderTest(TacticInterface):
     exchange = None
     qty = 5
     initial_pos = 0
+    n_closed_positions = 0
 
     def __init__(self, n_trades, n_positions):
         """
@@ -145,6 +146,12 @@ class TacticMarketOrderTest(TacticInterface):
                 logger.info("checking position, it should be = initial position ...")
                 pos = self.exchange.get_position(self.symbol)
                 assertEqual(pos.current_qty, self.initial_pos)
+                self.n_closed_positions += 1
+
+                pnls = self.exchange.get_pnl_history(self.symbol)
+                if len(pnls) != self.n_closed_positions:
+                    raise AttributeError(
+                        "Expected to have {} closed position, got {}".format(self.n_closed_positions,len(pnls)))
 
                 self.n_positions -= 1
                 if self.n_positions > 0:

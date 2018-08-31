@@ -74,7 +74,8 @@ class LiveBitMex(ExchangeInterface):
 
         self.candles = create_df_for_candles()  # type: pd.DataFrame
         self.positions = defaultdict(list)  # type: Dict[Symbol, List[PositionInterface]]
-        self.cum_pnl = defaultdict(float)  # type: Dict[Symbol, float]]
+        self.cum_pnl = defaultdict(float)  # type: Dict[Symbol, float]
+        self.pnl_history =  defaultdict(list)  # type: Dict[Symbol, List[float]]
         self.last_margin = dict()  # type: Dict[str, dict]
         self.last_closed_margin = dict()  # type: Dict[str, dict]
 
@@ -167,6 +168,7 @@ class LiveBitMex(ExchangeInterface):
     #                         + '\n')
 
     def _log_and_update_pnl(self, pnl: float, symbol: Symbol, timestamp: pd.Timestamp):
+        self.pnl_history[symbol].append(pnl)
         self.cum_pnl[symbol] += pnl
         self.pnl_file.write(','.join([str(timestamp.strftime('%Y-%m-%dT%H:%M:%S')),
                                       symbol.name,
@@ -473,20 +475,18 @@ class LiveBitMex(ExchangeInterface):
             return PositionInterface(symbol)
 
     @authentication_required
-    def get_closed_positions(self, symbol: Symbol = None) -> List[PositionInterface]:
-        if symbol is None:
-            symbol = self.symbol
-        return [pos for pos in self.positions[symbol] if (not pos.is_open) and pos.avg_entry_price]
+    def get_pnl_history(self, symbol: Symbol) -> List[float]:
+        return copy.copy(self.pnl_history[symbol])
 
     @authentication_required
-    def set_leverage(self, symbol, leverage, rethrow_errors=False):
+    def set_leverage(self, symbol: Symbol, leverage: float) -> None:
         """Set the leverage on an isolated margin position"""
         path = "position/leverage"
         postdict = {
-            'symbol': symbol,
+            'symbol': symbol.name,
             'leverage': leverage
         }
-        return self._curl_bitmex(path=path, postdict=postdict, verb="POST", rethrow_errors=rethrow_errors)
+        self._curl_bitmex(path=path, postdict=postdict, verb="POST", rethrow_errors=False)
 
     @authentication_required
     def cancel_orders(self, orders: Union[OrderContainerType, List[OrderCommon], List[str]]) -> OrderContainerType:
@@ -946,5 +946,5 @@ def main(input_args=None):
 
 
 if __name__ == "__main__":
-    # sys.exit(test_market_order(n_trades=2, n_positions=2))
-    sys.exit(test_limit_order_and_cancels())
+    sys.exit(test_market_order(n_trades=2, n_positions=2))
+    # sys.exit(test_limit_order_and_cancels())

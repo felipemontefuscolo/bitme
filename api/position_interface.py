@@ -1,8 +1,6 @@
-from api.symbol import Symbol
-import pandas as pd
 import json
 
-from common import BITCOIN_TO_SATOSHI
+from api.symbol import Symbol
 
 
 class PositionInterface:
@@ -22,10 +20,7 @@ class PositionInterface:
     leverage = None  # type: int
     current_qty = None  # type: float
     side = None  # type: int
-    realized_pnl = float('nan')  # type: float
     is_open = False  # type: bool
-    current_timestamp = None  # type: pd.Timestamp
-    open_timestamp = None  # type: pd.Timestamp
 
     def __str__(self):
         m = {i: str(self.__getattribute__(i)) for i in dir(PositionInterface) if '__' not in i}
@@ -45,11 +40,6 @@ class PositionInterface:
             self.side = None
         else:
             self.side = +1 if self.current_qty > 0 else -1
-        if 'realisedPnl' in raw:
-            self.realized_pnl = raw['realisedPnl'] / BITCOIN_TO_SATOSHI
         self.is_open = raw.get('isOpen', self.is_open)
-        # TODO: those timestamps don't seem accurate! maybe use our own timestamp?
-        self.current_timestamp = pd.Timestamp(raw.get('currentTimestamp', self.current_timestamp))
-        self.open_timestamp = pd.Timestamp(raw.get('openingTimestamp', self.open_timestamp))
 
         return self

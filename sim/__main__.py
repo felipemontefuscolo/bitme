@@ -190,7 +190,7 @@ class SimExchangeBitMex(ExchangeInterface):
         self.positions[symbol] = pos
         return pos
 
-    def get_closed_positions(self, symbol: Symbol = None):
+    def get_pnl_history(self, symbol: Symbol = None):
         # type: (Enum) -> list(PositionSim)
         return self.closed_positions_hist[symbol]
 
@@ -363,7 +363,7 @@ class SimExchangeBitMex(ExchangeInterface):
 
         if not position.is_open:
             self.closed_positions_hist[symbol] += [position]
-            self.xbt_balance += position.realized_pnl
+            self.xbt_balance += position.realized_pnl  # TODO: position realized_pnl is deprecated
             del self.positions[symbol]
 
         return position

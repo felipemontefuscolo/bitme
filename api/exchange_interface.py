@@ -51,16 +51,15 @@ class ExchangeInterface(metaclass=ABCMeta):
         raise AttributeError("interface class")
 
     @abstractmethod
-    def get_closed_positions(self, symbol: Symbol = None) -> List[PositionInterface]:
+    def get_pnl_history(self, symbol: Symbol) -> List[float]:
         raise AttributeError("interface class")
 
     @abstractmethod
-    def set_leverage(self, symbol: Symbol, value: float) -> bool:
+    def set_leverage(self, symbol: Symbol, leverage: float):
         """
         :param symbol
         :param value Leverage value. Send a number between 0.01 and 100 to enable isolated margin with a fixed leverage.
                Send 0 to enable cross margin.
-        :return: True if succeeded
         """
         raise AttributeError("interface class")
 

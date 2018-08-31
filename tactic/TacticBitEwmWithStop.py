@@ -124,7 +124,7 @@ class TacticBitEwmWithStop(TacticInterface):
                 self.send_order(self.exchange, order_to_send, 10)
 
     def is_losing_too_much(self, exchange):
-        closed_position = exchange.get_closed_positions(self.product_id)
+        closed_position = exchange.get_pnl_history(self.product_id)
         if not closed_position:
             return False
         last_losses = [bool(i.realized_pnl <= 0) for i in closed_position[-self.loss_limit:]]
