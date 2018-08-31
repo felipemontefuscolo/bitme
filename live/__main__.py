@@ -75,7 +75,7 @@ class LiveBitMex(ExchangeInterface):
         self.candles = create_df_for_candles()  # type: pd.DataFrame
         self.positions = defaultdict(list)  # type: Dict[Symbol, List[PositionInterface]]
         self.cum_pnl = defaultdict(float)  # type: Dict[Symbol, float]
-        self.pnl_history =  defaultdict(list)  # type: Dict[Symbol, List[float]]
+        self.pnl_history = defaultdict(list)  # type: Dict[Symbol, List[float]]
         self.last_margin = dict()  # type: Dict[str, dict]
         self.last_closed_margin = dict()  # type: Dict[str, dict]
 
@@ -823,6 +823,7 @@ def get_args(input_args=None):
     parser = argparse.ArgumentParser(description='Simulation')
     parser.add_argument('-l', '--log-dir', type=str, help='log directory', required=True)
     parser.add_argument('-x', '--pref', action='append', help='args for tactics, given in the format "key=value"')
+    parser.add_argument('--test', action='store_true', help='run basic tests (WARNING: it maybe spend money!!!!!!!!!)')
 
     args = parser.parse_args(args=input_args)
 
@@ -929,22 +930,23 @@ def test_print_trade(input_args=None):
     return 0
 
 
+def test_all(args):
+    test_market_order(n_trades=2, n_positions=2)
+    test_limit_order_and_cancels()
+
+    logger.info("ALL TESTS PASSED !!!")
+    return 0
+
+
 def main(input_args=None):
     args = get_args(input_args)
 
-    # live = LiveBitMex()
-    # print(live.get_candles1m())
-    # g = live.get_position()
-    # g = None
-    # for i in range(120):
-    #     time.sleep(1)
-
-    # print('oi')
-
-    # print(type(g))
-    # print(g)
+    raise NotImplementedError()
 
 
 if __name__ == "__main__":
-    sys.exit(test_market_order(n_trades=2, n_positions=2))
-    # sys.exit(test_limit_order_and_cancels())
+    args = get_args()
+    if args.test:
+        sys.exit(test_all(args))
+    else:
+        sys.exit(main())
