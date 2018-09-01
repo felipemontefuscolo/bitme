@@ -29,18 +29,18 @@ from .sim_stats import SimSummary
 
 def get_args(input_args=None):
     parser = argparse.ArgumentParser(description='Simulation')
-    parser.add_argument('-f', '--file', type=str, help='csv filename with candles data', required=True)
+    parser.add_argument('--ohlcv_file', type=str, help='csv filename with candles data', required=True)
+    parser.add_argument('--trades_file', type=str, help='csv filename with trades data', required=True)
     parser.add_argument('-l', '--log-dir', type=str, help='log directory')
     parser.add_argument('-b', '--begin', type=str, help='begin time')
     parser.add_argument('-e', '--end', type=str, help='end time')
     parser.add_argument('-x', '--pref', action='append', help='args for tactics, given in the format "key=value"')
-    parser.add_argument('--no-summary', action="store_true", default=False)
-    parser.add_argument('--no-output', action="store_true", default=False)
 
     args = parser.parse_args(args=input_args)
 
-    if not os.path.isfile(args.file):
-        raise ValueError("invalid file {}".format(args.file))
+    for f in [args.ohlcv_file, args.trades_file]:
+        if not os.path.isfile(f):
+            raise ValueError("invalid file {}".format(f))
 
     if args.log_dir is not None:
         if os.path.isfile(args.log_dir):
@@ -101,7 +101,12 @@ class SimExchangeBitMex(ExchangeInterface):
     # reference: https://www.bitmex.com/app/riskLimits#instrument-risk-limits
     RISK_LIMITS = {Symbol.XBTUSD: 0.0015}
 
-    def __init__(self, initial_balance, file_name, log_dir, tactics):
+    def __init__(self,
+                 initial_balance: float,
+                 ohlcv: pd.DataFrame,
+                 trades: pd.DataFrame,
+                 log_dir: str,
+                 tactics: list):
         ExchangeInterface.__init__(self)
         self.xbt_initial_balance = initial_balance
         self.xbt_balance = initial_balance
@@ -586,6 +591,20 @@ class SimExchangeBitMex(ExchangeInterface):
         summary_file.close()
 
 
+def read_ohlcv_and_trades(ohlcv_file, trades_file) -> tuple:
+    ohlcv = pd.read_csv(ohlcv_file)
+    ohlcv.set_index('timestamp', inplace=True)
+    ohlcv.index = pd.DatetimeIndex(ohlcv.index)
+    assert list(ohlcv.columns) == ['symbol', 'open', 'high', 'low', 'close', 'size']
+
+    trades = pd.read_csv(trades_file)
+    trades.set_index('timestamp', inplace=True)
+    trades.index = pd.DatetimeIndex(trades.index)
+    assert list(trades.columns) == ['symbol', 'side', 'price', 'size', 'tickDirection']
+
+    return ohlcv, trades
+
+
 # @logged
 def main(input_args=None):
     # logging.basicConfig(
@@ -600,7 +619,9 @@ def main(input_args=None):
     # defin here the tactic you want to activate
     tactics = [TacticBitEwmWithStop(Symbol.XBTUSD)]
 
-    with SimExchangeBitMex(0.2, args.file, args.log_dir, tactics) as exchange:
+    ohlcv, trades = read_ohlcv_and_trades(args.ohlcv_file, args.trades_file)
+
+    with SimExchangeBitMex(0.2, ohlcv, trades, args.log_dir, tactics) as exchange:
 
         for tac in exchange.tactics_map.values():
             tac.initialize(exchange, args.pref)
@@ -609,10 +630,8 @@ def main(input_args=None):
             exchange.advance_time(print_progress=True)
 
         summary = exchange.summary  # type: SimSummary
-        if not args.no_summary:
-            print(summary.to_str())
-        if args.log_dir is not None and not args.no_output:
-            exchange.print_output_files(input_args if input_args else sys.argv)
+        print(summary.to_str())
+        exchange.print_output_files(input_args if input_args else sys.argv)
 
     if __name__ == "__main__":
         return 0

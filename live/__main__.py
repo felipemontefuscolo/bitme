@@ -79,9 +79,8 @@ class LiveBitMex(ExchangeInterface):
         self.last_margin = dict()  # type: Dict[str, dict]
         self.last_closed_margin = dict()  # type: Dict[str, dict]
 
-        # all orders, opened and closed
+        # opened orders, but can hold closed/filled orders temporarily
         self.all_orders = dict()  # type: OrderContainerType
-        self.open_orders = dict()  # type: OrderContainerType
         self.bitmex_dummy_tactic = BitmexDummyTactic()
         self.solicited_cancels = set()  # type: Set[str]
         self.quotes = {s: Quote(symbol=s) for s in self.SYMBOLS}  # type: Dict[Symbol, Quote]
@@ -244,9 +243,9 @@ class LiveBitMex(ExchangeInterface):
             self.threads[0].join()  # wait for the main-loop thread to finish
         self.close_files()
 
-        print("Total pnl (in XBT): ")
+        logger.info("Total pnl (in XBT): ")
         for k, v in self.cum_pnl.items():
-            print("{}: {}".format(k, v))
+            logger.info("{}: {}".format(k, v))
 
     def _run(self):
         start = time.time()
@@ -315,8 +314,6 @@ class LiveBitMex(ExchangeInterface):
             tac_handler.queue.put(quote, block=True, timeout=None)
 
     def on_fill(self, raw: dict, action: str):
-        # DEV NOTE: this method can delete order from self.open_orders
-
         if not raw['avgPx']:
             # bitmex has this first empty fill that I don't know what it is
             # just skipp it
@@ -326,17 +323,6 @@ class LiveBitMex(ExchangeInterface):
         fill = Fill.create_from_raw(raw)
 
         order_id = raw.get('clOrdID')
-        order = self.all_orders.get(order_id) if order_id else None
-        if order:
-            # TODO: if we update order here, do we need to update again in on_order?
-            # TODO: maybe yes, because we would have the most updated data
-            # this actually works because order's fields are a subset of fill's fields
-            order.update_from_bitmex(raw)
-            if not OrderStatus.is_open(raw):
-                try:
-                    del self.open_orders[order_id]
-                except KeyError:
-                    pass
 
         if order_id:
             tac_name = order_id.split('_')[0]
@@ -344,48 +330,63 @@ class LiveBitMex(ExchangeInterface):
 
         self._log_fill(fill)
 
+    def _notify_cancel_if_the_case(self, order_: OrderCommon):
+        if order_.status == OrderStatus.Canceled:
+            if order_.client_id not in self.solicited_cancels:
+                tac_name = order_.client_id.split('_')[0]
+                self.tactic_event_handlers[tac_name].queue.put(order_, block=True, timeout=None)
+            else:
+                self.solicited_cancels.remove(order_.client_id)
+
     def on_order(self, raw: dict, action: str):
         # DEV NOTE: this is the only method who can delete orders from self.all_orders
-        # DEV NOTE: this method may delete self.open_orders
         # DEV NOTE: this is the only method who broadcast orders to tactics
 
         order_id = raw.get('clOrdID')
 
         if not order_id:
-            self.logger.warning('Got an order without "clOrdID", probably a bitmex order (e.g., liquidation)')
-            # TODO: maybe we should log those orders
-            # TODO: we should find a way to indentify those type of orders .. maybe look for 'liquidation'?
-            return
+            self.logger.error('Got an order without "clOrdID", probably a bitmex order (e.g., liquidation)')
+            self.logger.error('order: {}'.format(raw))
+            raise AttributeError('If we were liquidated, we should change our tactics')
+
+        if OrderStatus[raw['ordStatus']] == OrderStatus.Rejected:
+            raise ValueError('A order should never be rejected, please fix the tactic. Order: {}'.format(raw))
 
         order = self.all_orders.get(order_id)
 
         if order:
+            if action != 'update':
+                raise AttributeError('Got action "{}". This should be an "update", since this order already '
+                                     'exist in our data and we don\'t expect a "delete"'
+                                     .format(action))
+
+            if not order.is_open():
+                # This is the case when a closed (e.g. Canceled) order where inserted, now we clean it up in the insert
+                # We also assume that bitmex will not update a canceled/closed order twice
+                del self.all_orders[order.client_id]
+                return
+
             order.update_from_bitmex(raw)  # type: OrderCommon
 
             if not order.is_open():
                 del self.all_orders[order.client_id]
 
-                if order.status == OrderStatus.Rejected:
-                    raise ValueError('A order should never be rejected. Order: {}'.format(order))
-
-                if order.status == OrderStatus.Canceled:
-                    if order.client_id not in self.solicited_cancels:
-                        tac_name = order.client_id.split('_')[0]
-                        self.tactic_event_handlers[tac_name].queue.put(order, block=True, timeout=None)
-                    else:
-                        del self.solicited_cancels[order.client_id]
+                self._notify_cancel_if_the_case(order)
 
         else:
-            order_status = OrderStatus[raw['ordStatus']]
-            if order_status == OrderStatus.New:
-                symbol = Symbol[raw['symbol']]
-                type_ = OrderType[raw['ordType']]
-                order = OrderCommon(symbol=symbol, type=type_).update_from_bitmex(raw)
+            symbol = Symbol[raw['symbol']]
+            type_ = OrderType[raw['ordType']]
+            order = OrderCommon(symbol=symbol, type=type_).update_from_bitmex(raw)
 
-                self.all_orders[order_id] = order
-            else:
-                # bitmex can send updates twice ... shame
-                return
+            if action != 'insert' and order.is_open():
+                raise AttributeError('Got action "{}". This should be an "insert", since this data does\'nt exist '
+                                     'in memory and is open. Order: {}'
+                                     .format(action, raw))
+
+            # yes, always add an order to the list, even if it is closed. If so, it will be removed in the "update" feed
+            self.all_orders[order_id] = order
+
+            self._notify_cancel_if_the_case(order)
 
     def _rename_prev_run_order(self, raw):
         old_id = raw['clOrdID']
@@ -430,8 +431,8 @@ class LiveBitMex(ExchangeInterface):
         #     self.positions[symbol].append(pos.update_from_bitmex(raw))
 
     def _print_ws_output(self, raw):
-        print("PRINTING RAW")
-        print(json.dumps(raw, indent=4, sort_keys=True))
+        logger.info("PRINTING RAW")
+        logger.info(json.dumps(raw, indent=4, sort_keys=True))
 
     @staticmethod
     def _update_position(pos: PositionInterface, raw: dict):
@@ -464,9 +465,12 @@ class LiveBitMex(ExchangeInterface):
     def get_position(self, symbol: Symbol = None) -> PositionInterface:
         if symbol is None:
             symbol = self.symbol
-        path = "position"
-        postdict = {'filter': {'symbol': symbol.name}}
-        raw = self._curl_bitmex(path=path, postdict=postdict, verb="GET")
+        raw = self._curl_bitmex(
+            path="position",
+            query={
+                'filter': json.dumps({'symbol': symbol.name})
+            },
+            verb="GET")
         if raw:
             pos = PositionInterface(symbol)
             pos.update_from_bitmex(raw[-1])
@@ -530,10 +534,20 @@ class LiveBitMex(ExchangeInterface):
             self._log_order(OrderCommon(symbol, type_).update_from_bitmex(r))
 
     @authentication_required
-    def get_opened_orders(self, symbol: Symbol) -> OrderContainerType:
-        raws = self._curl_bitmex(path='order', postdict={'symbol': symbol.name}, verb='GET')
+    def get_opened_orders(self, symbol: Symbol, client_id_prefix: str) -> OrderContainerType:
 
-        return {r['clOrdID']: OrderCommon(symbol, OrderType[r['ordType']]).update_from_bitmex(r) for r in raws}
+        raws = self._curl_bitmex(path='order',
+                                 query={
+                                     'symbol': symbol.name,
+                                     'filter': '{"open": true}'
+                                 },
+                                 verb='GET')
+
+        def is_owner(client_id: str):
+            return client_id.split('_')[0] == client_id_prefix
+
+        return {r['clOrdID']: OrderCommon(symbol, OrderType[r['ordType']]).update_from_bitmex(r)
+                for r in raws if r['leavesQty'] != 0 and is_owner(r['clOrdID'])}
 
     ######################
     # END INTERFACE
@@ -585,104 +599,6 @@ class LiveBitMex(ExchangeInterface):
             assert order.linked_order_id
             a['contingencyType'] = order.contingency_type.name
         return a
-
-    def instruments(self, filter=None):
-        query = {}
-        if filter is not None:
-            query['filter'] = json.dumps(filter)
-        return self._curl_bitmex(path='instrument', query=query, verb='GET')
-
-    def recent_trades(self):
-        """Get recent trades.
-
-                Returns
-                -------
-                A list of dicts:
-                      {u'amount': 60,
-                       u'date': 1306775375,
-                       u'price': 8.7401099999999996,
-                       u'tid': u'93842'},
-
-                """
-        return self.ws.recent_trades()
-
-    @authentication_required
-    def funds(self):
-        """Get your current balance."""
-        return self.ws.funds()
-
-    @authentication_required
-    def place_order(self, quantity, price):
-        """Place an order."""
-        if price < 0:
-            raise Exception("Price must be positive.")
-
-        endpoint = "order"
-        # Generate a unique clOrdID with our prefix so we can identify it.
-        clOrdID = self.orderIDPrefix + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n')
-        postdict = {
-            'symbol': self.symbol,
-            'orderQty': quantity,
-            'price': price,
-            'clOrdID': clOrdID
-        }
-        return self._curl_bitmex(path=endpoint, postdict=postdict, verb="POST")
-
-    @authentication_required
-    def amend_bulk_orders(self, orders):
-        """Amend multiple orders."""
-        # Note rethrow; if this fails, we want to catch it and re-tick
-        return self._curl_bitmex(path='order/bulk', postdict={'orders': orders}, verb='PUT', rethrow_errors=True)
-
-    @authentication_required
-    def create_bulk_orders(self, orders):
-        """Create multiple orders."""
-        for order in orders:
-            order['clOrdID'] = self.orderIDPrefix + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n')
-            order['symbol'] = self.symbol
-            if self.postOnly:
-                order['execInst'] = 'ParticipateDoNotInitiate'
-        return self._curl_bitmex(path='order/bulk', postdict={'orders': orders}, verb='POST')
-
-    @authentication_required
-    def open_orders(self):
-        """Get open orders."""
-        return self.ws.open_orders(self.orderIDPrefix)
-
-    @authentication_required
-    def http_open_orders(self):
-        """Get open orders via HTTP. Used on close to ensure we catch them all."""
-        path = "order"
-        orders = self._curl_bitmex(
-            path=path,
-            query={
-                'filter': json.dumps({'ordStatus.isTerminated': False, 'symbol': self.symbol}),
-                'count': 500
-            },
-            verb="GET"
-        )
-        # Only return orders that start with our clOrdID prefix.
-        return [o for o in orders if str(o['clOrdID']).startswith(self.orderIDPrefix)]
-
-    @authentication_required
-    def cancel(self, orderID):
-        """Cancel an existing order."""
-        path = "order"
-        postdict = {
-            'orderID': orderID,
-        }
-        return self._curl_bitmex(path=path, postdict=postdict, verb="DELETE")
-
-    @authentication_required
-    def withdraw(self, amount, fee, address):
-        path = "user/requestWithdrawal"
-        postdict = {
-            'amount': amount,
-            'fee': fee,
-            'currency': 'XBt',
-            'address': address
-        }
-        return self._curl_bitmex(path=path, postdict=postdict, verb="POST", max_retries=0)
 
     def _curl_bitmex(self, path, query=None, postdict=None, timeout=None, verb=None, rethrow_errors=False,
                      max_retries=None):
@@ -764,7 +680,7 @@ class LiveBitMex(ExchangeInterface):
 
                 # We're ratelimited, and we may be waiting for a long time. Cancel orders.
                 self.logger.warning("Canceling all known orders in the meantime.")
-                self.cancel([o.bitmex_id for o in self.open_orders.values()])
+                self._curl_bitmex(path="order/all", postdict={}, verb="DELETE")
 
                 self.logger.error("Your ratelimit will reset at %s. Sleeping for %d seconds." % (reset_str, to_sleep))
                 time.sleep(to_sleep)

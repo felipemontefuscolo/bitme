@@ -18,7 +18,7 @@ class ExchangeInterface(metaclass=ABCMeta):
         raise AttributeError("interface class")
 
     @abstractmethod
-    def get_opened_orders(self, symbol: Symbol) -> OrderContainerType:
+    def get_opened_orders(self, symbol: Symbol, client_id_prefix: str) -> OrderContainerType:
         raise AttributeError("interface class")
 
     @abstractmethod

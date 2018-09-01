@@ -5,7 +5,7 @@ import unittest
 import pandas as pd
 
 from api import ExchangeInterface, Symbol
-from common import Fill, OrderCommon, OrderType, FillType, OrderContainerType
+from common import Fill, OrderCommon, OrderType, OrderContainerType
 from common.quote import Quote
 from common.trade import Trade
 from tactic import TacticInterface
@@ -21,6 +21,7 @@ class TacticLimitOrderTest(TacticInterface):
     exchange = None
     qty = 123
     initial_pos = 0
+    tactic_cancel_called = False
 
     def __init__(self):
         logger.info("Starting {}".format(self.id()))
@@ -32,6 +33,8 @@ class TacticLimitOrderTest(TacticInterface):
         pass
 
     def finalize(self) -> None:
+        if not self.tactic_cancel_called:
+            raise AttributeError('handle_cancel never called')
         pass
 
     def handle_trade(self, trade: Trade) -> None:
@@ -50,6 +53,10 @@ class TacticLimitOrderTest(TacticInterface):
     def handle_1m_candles(self, candles1m: pd.DataFrame) -> None:
 
         if not self.sell_id:
+            opened_orders = self.exchange.get_opened_orders(self.symbol, self.id())
+            if len(opened_orders) != 0:
+                raise ValueError('This test has to start with no opened orders')
+
             # wait for quotes
             time.sleep(0.1)
 
@@ -84,14 +91,17 @@ class TacticLimitOrderTest(TacticInterface):
         raise AttributeError("Didn't expect to get here")
 
     def handle_cancel(self, order: OrderCommon) -> None:
+        self.tactic_cancel_called = True
         if order.client_id != self.sell_id[1]:
             if order.client_id == self.sell_id[0]:
                 raise AttributeError("Tactics should not need to handle their own cancels")
             raise AttributeError("Expecting to get id {}, got {} instead".format(self.sell_id[1], order.client_id))
 
-        opened_orders = self.exchange.get_opened_orders(self.symbol)  # type: OrderContainerType
+        time.sleep(0.5)
+        opened_orders = self.exchange.get_opened_orders(self.symbol, self.id())  # type: OrderContainerType
         if len(opened_orders) != 1:
-            raise AttributeError("Expected to have exactly 1 order opened, but got ids: {}".format(opened_orders.keys()))
+            raise AttributeError(
+                "Expected to have exactly 1 order opened, but got ids: {}".format(opened_orders.keys()))
 
         try:
             opened_orders[self.sell_id[0]]
@@ -102,10 +112,12 @@ class TacticLimitOrderTest(TacticInterface):
         self.exchange.cancel_orders([self.sell_id[0]])
         time.sleep(1)
 
-        opened_orders = self.exchange.get_opened_orders(self.symbol)
+        opened_orders = self.exchange.get_opened_orders(self.symbol, self.id())
 
         if len(opened_orders) != 0:
             raise AttributeError("not expeting to have order opened")
+
+        self.sell_id = 'handle_cancel_called'
 
     @staticmethod
     def id() -> str:
