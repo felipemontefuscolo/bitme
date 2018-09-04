@@ -196,6 +196,8 @@ class LiveBitMex(ExchangeInterface):
         self.candles = fix_bitmex_bug(self.candles)
 
     def register_tactic(self, tactic: TacticInterface):
+        # TODO: we shouldn't allow tactic trading the same symbol
+
         self.tactics_map[tactic.id()] = tactic
         tactic.initialize(self, self.tac_prefs)
         tac_event_handler = TacticEventHandler(tactic, self)

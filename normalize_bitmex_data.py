@@ -1,11 +1,13 @@
-import sys
 import argparse
+import sys
+
 import pandas as pd
 
 TRADE_COLS = ['timestamp', 'symbol', 'side', 'price', 'size', 'tickDirection']
+QUOTE_COLS = ['timestamp', 'symbol', 'bidSize', 'bidPrice', 'askPrice', 'askSize']
 
 
-# Normalize data gotten on https://public.bitmex.com/
+# Normalize data gotten from https://public.bitmex.com/
 
 
 def get_args(argv=None, namespace=None):
@@ -19,8 +21,13 @@ def get_args(argv=None, namespace=None):
 
     parser.add_argument('-s', '--symbol', type=str, default='XBTUSD', help='Instrument symbol')
 
-    parser.add_argument('-o', '--output', type=str, required=True, help='Output filename, NO EXTENSION')
-    parser.add_argument('-i', '--input', type=str, required=True, help='Input filename')
+    parser.add_argument('-o', '--output', type=str, required=True, help='Output template path, NO EXTENSION. E.g., '
+                                                                        '"~/data/20180701-%TYPE%", where %TYPE% is '
+                                                                        'a placeholder for "trades" & "quotes"')
+
+    parser.add_argument('-t', '--trades', type=str, required=True, help='Trades filename')
+
+    parser.add_argument('-q', '--quotes', type=str, required=True, help='Quotes filename')
 
     args = parser.parse_args(argv, namespace)
 
@@ -28,28 +35,34 @@ def get_args(argv=None, namespace=None):
 
 
 def create_1m_candles(normalized_trades: pd.DataFrame):
+    print('creating ohlcv ...')
+
     r = normalized_trades.resample('1min').agg({'symbol': 'last', 'price': 'ohlc', 'size': 'sum'})
     r.columns = r.columns.get_level_values(1)
     return r
 
 
-def main():
-    args = get_args(None)
-
-    r = pd.read_csv(args.input)[TRADE_COLS]
-
-    if args.symbol:
-        r = r.query('symbol == "{}"'.format(args.symbol))
-        if args.symbol == 'XBTUSD':
-            r = r[r.price > 1]
-        else:
-            r = r[r.price > 0.01]
-
-    r['timestamp'] = r['timestamp'].apply(lambda s: pd.Timestamp(s.replace('D', 'T')))
+def common_process(args, table: pd.DataFrame):
+    table['timestamp'] = table['timestamp'].apply(lambda s: pd.Timestamp(s.replace('D', 'T')))
     if args.begin_time:
-        r = r[r['timestamp'] >= args.begin_time]
+        table = table[table['timestamp'] >= args.begin_time]
     if args.end_time:
-        r = r[r['timestamp'] < args.end_time]
+        table = table[table['timestamp'] < args.end_time]
+
+    table = table.query('symbol == "{}"'.format(args.symbol))
+
+    return table
+
+
+def read_trades(args) -> pd.DataFrame:
+    print('reading trades ...')
+    trades = pd.read_csv(args.trades)[TRADE_COLS]
+    trades = common_process(args, trades)
+
+    if args.symbol == 'XBTUSD':
+        trades = trades[trades.price > 1]
+    else:
+        trades = trades[trades.price > 0.01]
 
     # combine ticks with same timestamp and price level
     def combine(x):
@@ -57,17 +70,58 @@ def main():
         y['size'] = x['size'].sum()
         return y
 
-    r = r.groupby(['timestamp', 'price']).apply(combine).reset_index('price', drop=True).drop(columns=['timestamp'])
+    trades = trades.groupby(['timestamp', 'price']).apply(combine).reset_index('price', drop=True).drop(
+        columns=['timestamp'])
 
     if args.num_ticks:
-        r = r.iloc[:args.num_ticks]
+        trades = trades.iloc[:args.num_ticks]
 
     rename = {'ZeroMinusTick': '0-', 'MinusTick': '--', 'ZeroPlusTick': '0+', 'PlusTick': '++'}
-    r['tickDirection'] = r['tickDirection'].transform(lambda x: rename[x])
+    trades['tickDirection'] = trades['tickDirection'].transform(lambda x: rename[x])
 
-    r.to_csv(args.output + '-trades.csv.gz', compression='gzip')
+    return trades
 
-    create_1m_candles(r).to_csv(args.output + '-ohlcv.csv.gz`', compression='gzip')
+
+def read_quotes(args):
+    print('reading quotes ...')
+    quotes = pd.read_csv(args.quotes)[QUOTE_COLS]
+    quotes = common_process(args, quotes)
+
+    if args.symbol == 'XBTUSD':
+        quotes = quotes[(quotes.bidPrice > 1) & (quotes.bidPrice < quotes.askPrice)]
+    else:
+        quotes = quotes[(quotes.bidPrice > 0.01) & (quotes.bidPrice < quotes.askPrice)]
+
+    quotes.set_index('timestamp', inplace=True)
+
+    if args.num_ticks:
+        quotes = quotes.iloc[:args.num_ticks]
+
+    return quotes
+
+
+def main():
+    args = get_args(None)
+
+    trades = read_trades(args)
+    quotes = read_quotes(args)
+    ohlcv = create_1m_candles(trades)
+
+    df_map = {'trades': trades, 'quotes': quotes, 'ohlcv': ohlcv}
+
+    out_map = {}
+    for name in df_map.keys():
+        out_map[name] = args.output.replace("%TYPE%", name)
+
+    if out_map['trades'] == out_map['quotes']:
+        for name in out_map.keys():
+            out_map[name] += '-' + name
+
+    for name in out_map.keys():
+        out_map[name] += '.csv.gz'
+
+    for name, df in df_map.items():
+        df.to_csv(out_map[name], compression='gzip')
 
     return 0
 

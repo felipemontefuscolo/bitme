@@ -115,7 +115,7 @@ class TacticLimitOrderTest(TacticInterface):
         opened_orders = self.exchange.get_opened_orders(self.symbol, self.id())
 
         if len(opened_orders) != 0:
-            raise AttributeError("not expeting to have order opened")
+            raise AttributeError("not expecting to have order opened")
 
         self.sell_id = 'handle_cancel_called'
 
