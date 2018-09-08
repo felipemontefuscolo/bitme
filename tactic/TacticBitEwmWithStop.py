@@ -149,7 +149,7 @@ class TacticBitEwmWithStop(TacticInterface):
 
         if len(self.opened_orders) == 0 and position and position.is_open:
             raise AttributeError("Invalid state. We have a position of {} but there is not opened order to reduce this"
-                                 " position. Probably a tactic logic error.".format(position.current_qty))
+                                 " position. Probably a tactic logic error.".format(position.signed_qty))
 
         if len(self.opened_orders) > 0:
             if self.exchange.current_time() - self.last_activity_time > pd.Timedelta(minutes=self.no_activity_tol):

@@ -2,11 +2,11 @@ from typing import Union
 
 import pandas as pd
 
-REQUIRED_COLUMNS = ['open', 'high', 'low', 'close', 'volume']
+OHLCV_COLUMNS = ['open', 'high', 'low', 'close', 'volume']
 
 
 def create_df_for_candles():
-    return pd.DataFrame(columns=REQUIRED_COLUMNS, dtype=float, index=pd.DatetimeIndex(data=[], name='timestamp'))
+    return pd.DataFrame(columns=OHLCV_COLUMNS, dtype=float, index=pd.DatetimeIndex(data=[], name='timestamp'))
 
 
 def fix_bitmex_bug(df: pd.DataFrame) -> pd.DataFrame:

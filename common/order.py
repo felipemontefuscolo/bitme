@@ -30,6 +30,7 @@ class OrderStatus(Enum):
 class OrderCancelReason(Enum):
     insufficient_funds = "insufficient funds"
     invalid_price = "invalid price"
+    cross_during_post_only = "cross during post only"
     end_of_sim = "end of sim"
     requested_by_user = "requested by user"
     liquidation = "liquidation"
@@ -95,7 +96,7 @@ class OrderCommon:
             self.time_in_force = TimeInForce.GoodTillCancel
         self.contingency_type = contingency_type  # type: ContingencyType
 
-        # data change by the exchange
+        # data changed by the exchange
         self.leaves_qty = abs(signed_qty)
         self.time_posted = None  # type: pd.Timestamp
         self.status = OrderStatus.Pending  # type: OrderStatus
@@ -108,11 +109,18 @@ class OrderCommon:
             q = abs(self.signed_qty) * 2 + 1.e-10
             assert abs(q - math.floor(q)) < 1.e-8
 
+        # used in sim only and only valid for limit orders
+        # this is an extra information to help with the fill simulator
+        self._made_spread = None  # type: bool
+
     def filled(self):
         return abs(self.signed_qty) - self.leaves_qty
 
     def side(self) -> int:
-        return -1 if self.signed_qty < 0 else + 1
+        return -1 if self.signed_qty < 0 else +1
+
+    def side_str(self) -> str:
+        return 'Sell' if self.signed_qty < 0 else 'Buy'
 
     def is_open(self):
         return self.status == OrderStatus.New or self.status == OrderStatus.PartiallyFilled
@@ -123,16 +131,18 @@ class OrderCommon:
     def is_buy(self):
         return self.signed_qty > 0
 
-    def fill(self, signed_fill_qty):
+    def fill(self, qty: '> 0'):
         # type: (float) -> bool
         """ :return: True if fully filled, False otherwise  """
-        assert np.sign(signed_fill_qty) == np.sign(self.signed_qty)
+
+        assert qty > 0
         assert self.is_open()
-        self.leaves_qty = max(0, self.leaves_qty - abs(signed_fill_qty))
+
+        self.leaves_qty = max(0, self.leaves_qty - qty)
         if self.leaves_qty == 0:
             self.status = OrderStatus.Filled
             return True
-
+        self.status = OrderStatus.PartiallyFilled
         return False
 
     def __str__(self):

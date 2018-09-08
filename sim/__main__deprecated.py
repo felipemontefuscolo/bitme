@@ -395,7 +395,7 @@ class SimExchangeBitMex(ExchangeInterface):
         close = current_candle.close
 
         position = self.positions[order.symbol]  # type: PositionSim
-        current_qty = position.current_qty
+        current_qty = position.signed_qty
         qty_fill = qty_to_close = outstanding_qty = None
         crossed = False
 
@@ -494,7 +494,7 @@ class SimExchangeBitMex(ExchangeInterface):
             return
         assert position.is_open
         order = OrderCommon(symbol=symbol,
-                            signed_qty=-position.current_qty,
+                            signed_qty=-position.signed_qty,
                             type=OrderType.Market,
                             tactic=self.liquidator)
         order.status_msg = order_cancel_reason
@@ -503,7 +503,7 @@ class SimExchangeBitMex(ExchangeInterface):
         self.can_call_handles = True
         assert order.status == OrderStatus.Filled
         if position.is_open:
-            raise AttributeError("position was not close during liquidation. position = %f" % position.current_qty)
+            raise AttributeError("position was not close during liquidation. position = %f" % position.signed_qty)
         if not self.is_last_tick():
             self.n_liquidations[symbol.name] += 1
         if order_cancel_reason == OrderCancelReason.liquidation:

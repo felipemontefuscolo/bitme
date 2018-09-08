@@ -18,7 +18,7 @@ class PositionInterface:
     break_even_price = None  # type: float
     liquidation_price = None  # type: float
     leverage = None  # type: int
-    current_qty = None  # type: float
+    signed_qty = None  # type: float
     side = None  # type: int
     is_open = False  # type: bool
 
@@ -35,11 +35,11 @@ class PositionInterface:
         self.break_even_price = raw.get('breakEvenPrice', self.break_even_price)
         self.liquidation_price = raw.get('liquidationPrice', self.liquidation_price)
         self.leverage = raw.get('leverage', self.leverage)
-        self.current_qty = raw.get('currentQty', self.current_qty)
-        if not self.current_qty:
+        self.signed_qty = raw.get('currentQty', self.signed_qty)
+        if not self.signed_qty:
             self.side = None
         else:
-            self.side = +1 if self.current_qty > 0 else -1
+            self.side = +1 if self.signed_qty > 0 else -1
         self.is_open = raw.get('isOpen', self.is_open)
 
         return self

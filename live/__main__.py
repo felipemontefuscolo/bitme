@@ -20,7 +20,7 @@ import pytz
 import requests
 
 from api import ExchangeInterface, PositionInterface
-from common import Symbol, REQUIRED_COLUMNS, create_df_for_candles, fix_bitmex_bug, OrderCommon, \
+from common import Symbol, OHLCV_COLUMNS, create_df_for_candles, fix_bitmex_bug, OrderCommon, \
     OrderType, OrderContainerType, get_orders_id, OrderStatus, Fill, BITCOIN_TO_SATOSHI
 from common.quote import Quote
 from common.trade import Trade
@@ -142,9 +142,9 @@ class LiveBitMex(ExchangeInterface):
         self.fills_file.write(Fill.get_header() + '\n')
         self.orders_file.write(OrderCommon.get_header() + '\n')
         self.pnl_file.write('time,symbol,pnl,cum_pnl\n')
-        self.candles_file.write(','.join(['timestamp'] + REQUIRED_COLUMNS) + '\n')
+        self.candles_file.write(','.join(['timestamp'] + OHLCV_COLUMNS) + '\n')
 
-    def close_files(self):
+    def _close_files(self):
         assert self.finished
         self.fills_file.close()
         self.orders_file.close()
@@ -156,15 +156,6 @@ class LiveBitMex(ExchangeInterface):
 
     def _log_order(self, order: OrderCommon):
         self.orders_file.write(order.to_line() + '\n')
-
-    # def _log_and_update_pnl(self, closed_position: PositionInterface):
-    #     pnl = closed_position.realized_pnl
-    #     self.cum_pnl[closed_position.symbol] += closed_position.realized_pnl
-    #     self.pnl_file.write(','.join([str(closed_position.current_timestamp.strftime('%Y-%m-%dT%H:%M:%S')),
-    #                                   closed_position.symbol.name,
-    #                                   str(pnl),
-    #                                   str(self.cum_pnl[closed_position.symbol])])
-    #                         + '\n')
 
     def _log_and_update_pnl(self, pnl: float, symbol: Symbol, timestamp: pd.Timestamp):
         self.pnl_history[symbol].append(pnl)
@@ -190,7 +181,7 @@ class LiveBitMex(ExchangeInterface):
                  }
         raw = self._curl_bitmex(path='trade/bucketed', query=query, verb='GET')
         for candle in raw:
-            self.candles.loc[pd.Timestamp(candle['timestamp'])] = [candle[j] for j in REQUIRED_COLUMNS]
+            self.candles.loc[pd.Timestamp(candle['timestamp'])] = [candle[j] for j in OHLCV_COLUMNS]
         if self.candles.index[0] > self.candles.index[1]:
             self.candles = self.candles[-1::-1]
         self.candles = fix_bitmex_bug(self.candles)
@@ -243,7 +234,7 @@ class LiveBitMex(ExchangeInterface):
     def end_main_loop(self):
         if not self.run_loop_in_main_thread:
             self.threads[0].join()  # wait for the main-loop thread to finish
-        self.close_files()
+        self._close_files()
 
         logger.info("Total pnl (in XBT): ")
         for k, v in self.cum_pnl.items():
@@ -400,7 +391,7 @@ class LiveBitMex(ExchangeInterface):
         return
 
     def on_tradeBin1m(self, raw: dict, action: str):
-        row = [raw[j] for j in REQUIRED_COLUMNS]
+        row = [raw[j] for j in OHLCV_COLUMNS]
         timestamp = pd.Timestamp(raw['timestamp'])
         self.candles.loc[timestamp] = row
 

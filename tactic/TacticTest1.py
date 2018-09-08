@@ -54,7 +54,7 @@ class TacticTest1(TacticInterface):
     def handle_1m_candles(self, candles1m: pd.DataFrame) -> None:
 
         if not self.buy_id:
-            self.initial_pos = self.exchange.get_position(self.symbol).current_qty
+            self.initial_pos = self.exchange.get_position(self.symbol).signed_qty
 
             self.buy_id = self.gen_order_id()
             logger.info("sending buy order {}".format(self.buy_id))
@@ -85,8 +85,8 @@ class TacticTest1(TacticInterface):
                 time.sleep(1)
 
                 pos = self.exchange.get_position(self.symbol)
-                if pos.current_qty != self.qty + self.initial_pos:
-                    raise AttributeError('current_pos={}, initial_pos={}, qty to fill={}'.format(pos.current_qty,
+                if pos.signed_qty != self.qty + self.initial_pos:
+                    raise AttributeError('current_pos={}, initial_pos={}, qty to fill={}'.format(pos.signed_qty,
                                                                                                  self.initial_pos,
                                                                                                  self.qty))
 
@@ -100,7 +100,7 @@ class TacticTest1(TacticInterface):
                 time.sleep(.3)
                 logger.info("checking position, it should be = initial position ...")
                 pos = self.exchange.get_position(self.symbol)
-                assert pos.current_qty == self.initial_pos
+                assert pos.signed_qty == self.initial_pos
                 assert not pos.is_open
 
         pass

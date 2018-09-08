@@ -65,7 +65,7 @@ class TacticMarketOrderTest(TacticInterface):
 
         if self.n_trades > 0 and not self.buy_id[0] and self.n_positions > 0:
             logger.info("opening a position")
-            self.initial_pos = self.exchange.get_position(self.symbol).current_qty
+            self.initial_pos = self.exchange.get_position(self.symbol).signed_qty
 
             self.buy_id[0] = self.gen_order_id()
             self.next_action = 1
@@ -116,7 +116,7 @@ class TacticMarketOrderTest(TacticInterface):
             # we need this little delays because it seems that bitmex takes a while to update the position
             time.sleep(.3)
             pos = self.exchange.get_position(self.symbol)
-            assertEqual(pos.current_qty, self.expected_position(), "n_buys={}, n_sells={}, init_pos={}".format(
+            assertEqual(pos.signed_qty, self.expected_position(), "n_buys={}, n_sells={}, init_pos={}".format(
                 min(self.next_action, self.n_trades), max(self.next_action - self.n_trades, 0), self.initial_pos
             ))
 
@@ -145,7 +145,7 @@ class TacticMarketOrderTest(TacticInterface):
                 time.sleep(.3)
                 logger.info("checking position, it should be = initial position ...")
                 pos = self.exchange.get_position(self.symbol)
-                assertEqual(pos.current_qty, self.initial_pos)
+                assertEqual(pos.signed_qty, self.initial_pos)
                 self.n_closed_positions += 1
 
                 pnls = self.exchange.get_pnl_history(self.symbol)

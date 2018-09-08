@@ -12,6 +12,14 @@ class TickDirection(Enum):
     MinusTick = 'MinusTick'
 
 
+TICK_DIRECTION = {
+    '--': TickDirection.MinusTick,
+    '0-': TickDirection.ZeroMinusTick,
+    '0+': TickDirection.ZeroPlusTick,
+    '++': TickDirection.PlusTick
+}
+
+
 class Trade:
     def __init__(self,
                  symbol: Symbol,
