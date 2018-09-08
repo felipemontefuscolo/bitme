@@ -10,6 +10,7 @@ from collections import defaultdict, deque
 from typing import List, Union, Dict
 
 import pandas as pd
+import numpy as np
 
 from api import PositionInterface
 from api.exchange_interface import ExchangeInterface
@@ -188,6 +189,7 @@ class SimExchangeBitMex(ExchangeInterface):
     def _log_and_update_pnl(self, position: PositionSim):
         timestamp = self.current_timestamp
         pnl = position.realized_pnl
+        assert not np.isnan(pnl)
         symbol = position.symbol
         self.pnl_history[symbol].append(pnl)
         self.cum_pnl[symbol] += pnl
@@ -231,7 +233,7 @@ class SimExchangeBitMex(ExchangeInterface):
 
         print("Total pnl (in XBT): ")
         for k, v in self.cum_pnl.items():
-            print("{}: {}".format(k, v))
+            print(" -- {}: {}".format(k, v))
         print("sim time: {}s".format(time.time() - self.sim_start_time))
 
     def _process_queue_until(self, end_inclusive: pd.Timestamp = None, execute_all = False):
@@ -473,7 +475,7 @@ class SimExchangeBitMex(ExchangeInterface):
                     order_id=order.client_id)
         self._log_fill(fill)
         self.positions[order.symbol].update(signed_qty=qty_to_fill * side,
-                                            price=order.price,
+                                            price=price_fill,
                                             leverage=self.leverage[order.symbol],
                                             current_timestamp=self.current_timestamp,
                                             fee=fee)

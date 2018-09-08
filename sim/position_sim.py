@@ -51,8 +51,8 @@ class PositionSim(PositionInterface):
         fake_price = price * (1. + int(sign(signed_qty)) * fee)
 
         if sign(signed_qty) == sign(self.signed_qty) or just_opened:
-            self.avg_entry_price = (self.avg_entry_price * self.signed_qty + fake_price * signed_qty) / (
-                    self.signed_qty + signed_qty)
+            self.avg_entry_price = (self.avg_entry_price * self.signed_qty + fake_price * signed_qty) /\
+                                   (self.signed_qty + signed_qty + 1.e-4)
         else:
             # TODO: take into account rebates. In this case, the line below could be outside the condition if/else
             d_price = fake_price - self.avg_entry_price
@@ -69,7 +69,6 @@ class PositionSim(PositionInterface):
                 curr_qty=self.signed_qty,
                 lev=self.leverage
             )
-        #print(self.avg_entry_price, self.liquidation_price, self.current_qty, self.realized_pnl, qty, fake_price)
 
         # close position
         if abs(self.signed_qty) < ZERO_TOL:
