@@ -27,6 +27,9 @@ from .sim_stats import SimSummary
 
 # from autologging import logged
 
+# TODO: prevent send orders where you would be liquidated immediately
+# TODO; prevent send orders if you have no funds
+
 
 # import logging
 
@@ -214,6 +217,8 @@ class SimExchangeBitMex(ExchangeInterface):
             pass
 
     def end_main_loop(self):
+        for symbol in list(Symbol):
+            self._exec_liquidation(symbol, reason=OrderCancelReason.end_of_sim)
         self._close_files()
 
         print("Total pnl (in XBT): ")
@@ -267,25 +272,20 @@ class SimExchangeBitMex(ExchangeInterface):
         self.current_timestamp = next_ts
         return
 
-    def _check_position(self, symbol: Symbol, current_price: float):
-        pos = self.positions[symbol]
-        if pos.is_open:
-            if (current_price - pos.liquidation_price) * pos.side < 0:
-                self.queue.append((self.current_timestamp, self._exec_liquidation, pos.symbol))
-
-    def _exec_liquidation(self, symbol: Symbol):
+    def _exec_liquidation(self, symbol: Symbol, reason = OrderCancelReason.liquidation):
         orders_to_cancel = [o for o in self.active_orders.values() if o.symbol == symbol]
         for order in orders_to_cancel:
-            order.status_msg = OrderCancelReason.liquidation
+            order.status_msg = reason
         self._exec_order_cancels(orders_to_cancel)
 
-        order = OrderCommon(symbol=symbol,
-                            type=OrderType.Market,
-                            client_id=self.liquidator_tactic.gen_order_id(),
-                            signed_qty=-self.positions[symbol].signed_qty
-                            )
+        if self.positions[symbol].is_open:
+            order = OrderCommon(symbol=symbol,
+                                type=OrderType.Market,
+                                client_id=self.liquidator_tactic.gen_order_id(),
+                                signed_qty=-self.positions[symbol].signed_qty
+                                )
 
-        self._exec_market_order(order)
+            self._exec_market_order(order)
 
         return
 
