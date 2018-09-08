@@ -6,15 +6,6 @@ from api.symbol import Symbol
 from common.constants import ZERO_TOL
 
 
-def prevent_call_closed(fn):
-    def wrapped(self, *args, **kwargs):
-        if not self.is_open and self.open_timestamp is not None:
-            raise ValueError("Can't call this method if position was closed")
-        else:
-            return fn(self, *args, **kwargs)
-    return wrapped
-
-
 class PositionSim(PositionInterface):
 
     def __init__(self, symbol: Symbol, on_position_close):
@@ -25,11 +16,11 @@ class PositionSim(PositionInterface):
         """
         super().__init__(symbol)
         self.on_position_close = on_position_close
+        self.open_timestamp = None
 
     def __str__(self):
         return super().__str__()
 
-    @prevent_call_closed
     def update(self, signed_qty, price, leverage, current_timestamp, fee, mark_price=None) -> PositionInterface:
 
         # TODO: support mark price
@@ -41,7 +32,6 @@ class PositionSim(PositionInterface):
         just_opened = False
         if not self.is_open:
             assert not self.open_timestamp
-            assert not self.current_timestamp
             assert not self.signed_qty
             assert not self.side
             just_opened = True
@@ -52,8 +42,6 @@ class PositionSim(PositionInterface):
             self.is_open = True
             assert abs(signed_qty) > ZERO_TOL
             self.side = int(sign(signed_qty))
-
-        self.current_timestamp = current_timestamp
 
         new_qty = self.signed_qty + signed_qty
 
@@ -87,7 +75,7 @@ class PositionSim(PositionInterface):
         if abs(self.signed_qty) < ZERO_TOL:
             self.is_open = False
             self.on_position_close(self)
-            super().__init__(self.symbol)
+            self.__init__(self.symbol, self.on_position_close)
 
         return self
 
@@ -97,6 +85,5 @@ class PositionSim(PositionInterface):
         maintenance_margin = float(sign(curr_qty)) * (1. / lev - (0.5 + 0.075 + funding_rate) / 100)
         return avg_entry / max(abs(1. + maintenance_margin), ZERO_TOL)
 
-    @prevent_call_closed
     def would_change_side(self, qty):
         return self.signed_qty * (qty + self.signed_qty) < ZERO_TOL

@@ -6,6 +6,13 @@ from api.symbol import Symbol
 class PositionInterface:
     def __init__(self, symbol):
         self.symbol = symbol
+        self.avg_entry_price = None  # type: float
+        self.break_even_price = None  # type: float
+        self.liquidation_price = None  # type: float
+        self.leverage = None  # type: int
+        self.signed_qty = 0  # type: float
+        self.side = None  # type: int
+        self.is_open = False  # type: bool
 
     """
         Only isolated margin is supported (see isolated vs cross here: https://www.bitmex.com/app/isolatedMargin)
@@ -14,13 +21,6 @@ class PositionInterface:
     """
 
     symbol = Symbol.XBTUSD
-    avg_entry_price = None  # type: float
-    break_even_price = None  # type: float
-    liquidation_price = None  # type: float
-    leverage = None  # type: int
-    signed_qty = None  # type: float
-    side = None  # type: int
-    is_open = False  # type: bool
 
     def __str__(self):
         m = {i: str(self.__getattribute__(i)) for i in dir(PositionInterface) if '__' not in i}

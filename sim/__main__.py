@@ -42,7 +42,7 @@ def get_args(input_args=None):
     parser.add_argument('--trades-file', type=str, help='csv filename with trades data', required=files_required)
     parser.add_argument('--quotes-file', type=str, help='csv filename with quotes data', required=files_required)
     parser.add_argument('--files', type=str, help='template path to the ohlcv, trades and quotes files (use %TYPE%)')
-    parser.add_argument('-l', '--log-dir', type=str, help='log directory')
+    parser.add_argument('-l', '--log-dir', type=str, help='log directory', required=True)
     parser.add_argument('-b', '--begin', type=str, help='begin time')
     parser.add_argument('-e', '--end', type=str, help='end time')
     parser.add_argument('-x', '--pref', action='append', help='args for tactics, given in the format "key=value"')
@@ -101,14 +101,15 @@ class SimExchangeBitMex(ExchangeInterface):
                  quotes: pd.DataFrame,
                  log_dir: str,
                  tactics: List[TacticInterface],
-                 begin_timestamp: pd.Timestamp,
-                 end_timestamp: pd.Timestamp):
+                 tactic_prefs: dict):
         ExchangeInterface.__init__(self)
 
         self.finished = False
+        self.sim_start_time = False
         self.xbt_initial_balance = initial_balance
         self.xbt_balance = initial_balance
         self.log_dir = log_dir
+        self.tactic_prefs = tactic_prefs
 
         assert ohlcv is not None
         assert trades is not None
@@ -124,7 +125,8 @@ class SimExchangeBitMex(ExchangeInterface):
         self.end_timestamp = min(trades.index[-1], quotes.index[-1], ohlcv.index[-1])  # type: pd.Timestamp
 
         if self.end_timestamp <= self.begin_timestamp:
-            raise ValueError("end_timestamp less or equal begin_timestamp. Please check arguments or/and market data.")
+            raise ValueError("end_timestamp less or equal begin_timestamp. Please check arguments and make sure "
+                             "the market data first event occurs before end time")
 
         self.current_timestamp = self.begin_timestamp  # type: pd.Timestamp
 
@@ -163,6 +165,10 @@ class SimExchangeBitMex(ExchangeInterface):
         self.pnl_file.write('time,symbol,pnl,cum_pnl\n')
         self.candles_file.write(','.join(['timestamp'] + OHLCV_COLUMNS) + '\n')
 
+    def _init_tactics(self):
+        for tac in self.tactics_map.values():
+            tac.initialize(self, self.tactic_prefs)
+
     def _close_files(self):
         assert self.finished
         self.fills_file.close()
@@ -180,7 +186,7 @@ class SimExchangeBitMex(ExchangeInterface):
         self.candles_file.write(','.join([str(i) for i in vals]) + '\n')
 
     def _log_and_update_pnl(self, position: PositionSim):
-        timestamp = position.current_timestamp
+        timestamp = self.current_timestamp
         pnl = position.realized_pnl
         symbol = position.symbol
         self.pnl_history[symbol].append(pnl)
@@ -204,17 +210,19 @@ class SimExchangeBitMex(ExchangeInterface):
         self.end_main_loop()
 
     def start_main_loop(self):
-        if self.started:
+        if self.sim_start_time:
             raise AttributeError('Live already started')
-        self.started = True
+        self.sim_start_time = time.time()
 
         self._init_files(self.log_dir)
+        self._init_tactics()
 
         print("Running sims from {} to {}".format(self.begin_timestamp, self.end_timestamp))
         while not self.finished:
             self._process_queue_until(self.current_timestamp)
             self._advance_timestamp(print_progress=True)
             pass
+        self._process_queue_until(execute_all=True)
 
     def end_main_loop(self):
         for symbol in list(Symbol):
@@ -224,9 +232,10 @@ class SimExchangeBitMex(ExchangeInterface):
         print("Total pnl (in XBT): ")
         for k, v in self.cum_pnl.items():
             print("{}: {}".format(k, v))
+        print("sim time: {}s".format(time.time() - self.sim_start_time))
 
-    def _process_queue_until(self, end_inclusive: pd.Timestamp):
-        while len(self.queue) > 0 and self.queue[0][0] <= end_inclusive:
+    def _process_queue_until(self, end_inclusive: pd.Timestamp = None, execute_all = False):
+        while len(self.queue) > 0 and (execute_all or self.queue[0][0] <= end_inclusive):
             task = self.queue.popleft()
             method = task[1]
             args = task[2]  # if we ever need to change the number of arguments to more than one, you can use *args
@@ -315,6 +324,8 @@ class SimExchangeBitMex(ExchangeInterface):
 
     def _exec_market_order(self, order: OrderCommon):
         assert order.type == OrderType.Market
+        assert order.status == OrderStatus.Pending
+        order.status = OrderStatus.New
         tick_size = order.symbol.tick_size
 
         # TODO: watch for self-cross
@@ -583,32 +594,34 @@ def main(input_args=None):
                             cols=['symbol', 'open', 'high', 'low', 'close', 'size'],
                             begin=args.begin,
                             end=args.end)
-    print('Time reading ohlcv (s): {}'.format(time.time() - start))
+    print('ohlcv : n_rows={}, range=[{},{}], time reading: {}s'.format(len(ohlcv), ohlcv.index[0], ohlcv.index[-1],
+                                                                       time.time() - start))
 
     start = time.time()
     trades = read_timeseries(filename=args.trades_file,
                              cols=['symbol', 'side', 'price', 'size', 'tickDirection'],
                              begin=args.begin,
                              end=args.end)
-    print('Time reading trades (s): {}'.format(time.time() - start))
+    print('trades: n_rows={}, range=[{},{}], time reading: {}s'.format(len(trades), trades.index[0], trades.index[-1],
+                                                                       time.time() - start))
 
     start = time.time()
     quotes = read_timeseries(filename=args.quotes_file,
                              cols=['symbol', 'bidSize', 'bidPrice', 'askPrice', 'askSize'],
                              begin=args.begin,
                              end=args.end)
-    print('Time reading quotes (s): {}'.format(time.time() - start))
+    print('quotes: n_rows={}, range=[{},{}], time reading: {}s'.format(len(quotes), quotes.index[0], quotes.index[-1],
+                                                                       time.time() - start))
 
-    sim = SimExchangeBitMex(initial_balance=0.2,
+    sim = SimExchangeBitMex(initial_balance=1,
                             ohlcv=ohlcv,
                             trades=trades,
                             quotes=quotes,
                             log_dir=args.log_dir,
                             tactics=tactics,
-                            begin_timestamp=args.begin,
-                            end_timestamp=args.end)
+                            tactic_prefs=args.pref)
 
-    # sim.run_sim()
+    sim.run_sim()
 
     return 0
 
