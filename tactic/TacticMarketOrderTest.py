@@ -25,6 +25,7 @@ class TacticMarketOrderTest(TacticInterface):
     qty = 5
     initial_pos = 0
     n_closed_positions = 0
+    candle_last_ts = None
 
     def __init__(self, n_trades, n_positions):
         """
@@ -62,6 +63,10 @@ class TacticMarketOrderTest(TacticInterface):
         pass
 
     def handle_1m_candles(self, candles1m: pd.DataFrame) -> None:
+        if not self.candle_last_ts:
+            self.candle_last_ts = candles1m.index[-1]
+        elif not isinstance(candles1m, str):
+            assert self.candle_last_ts != candles1m.index[-1]
 
         if self.n_trades > 0 and not self.buy_id[0] and self.n_positions > 0:
             logger.info("opening a position")
@@ -156,7 +161,7 @@ class TacticMarketOrderTest(TacticInterface):
                 self.n_positions -= 1
                 if self.n_positions > 0:
                     self.__init__(self.n_trades, self.n_positions)
-                    self.handle_1m_candles(None)
+                    self.handle_1m_candles('skip_candle')
 
         pass
 

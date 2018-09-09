@@ -33,5 +33,6 @@ class Liquidator(TacticInterface):
     def handle_liquidation(self, pnl: float):
         pass
 
-    def id(self) -> str:
+    @staticmethod
+    def id() -> str:
         return "LIQ"
