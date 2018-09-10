@@ -22,7 +22,7 @@ def get_args(argv=None, namespace=None):
     parser.add_argument('-s', '--symbol', type=str, default='XBTUSD', help='Instrument symbol')
 
     parser.add_argument('-o', '--output', type=str, required=True, help='Output template path, NO EXTENSION. E.g., '
-                                                                        '"~/data/20180701-%TYPE%", where %TYPE% is '
+                                                                        '"~/data/20180701-%%TYPE%%", where %%TYPE%% is '
                                                                         'a placeholder for "trades" & "quotes"')
 
     parser.add_argument('-t', '--trades', type=str, required=True, help='Trades filename')

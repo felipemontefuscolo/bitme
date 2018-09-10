@@ -1,10 +1,22 @@
 class SimSummary:
-    def __init__(self, initial_xbt=None, position_xbt=None, num_fills=None, num_orders=None, num_cancels=None,
-                 num_liq=None, close_price=None,
-                 pnl=None, pnl_total=None, profit_total=None, loss_total=None):
+    def __init__(self,
+                 initial_xbt=None,
+                 position_xbt=None,
+                 num_fills=None,
+                 volume=None,
+                 num_orders=None,
+                 num_cancels=None,
+                 num_liq=None,
+                 close_price=None,
+                 pnl=None,
+                 pnl_total=None,
+                 profit_total=None,
+                 loss_total=None):
+
         self.initial_xbt = initial_xbt  # type: float
         self.position_xbt = position_xbt  # type: float
         self.num_fills = num_fills  # type: dict
+        self.volume = volume  # type: dict
         self.num_orders = num_orders  # type: dict
         self.num_cancels = num_cancels  # type: dict
         self.num_liq = num_liq  # type: dict
@@ -18,6 +30,7 @@ class SimSummary:
         li = ["initial_xbt",
               "position_xbt",
               "num_fills",
+              "volume",
               "num_orders",
               "num_cancels",
               "num_liq",

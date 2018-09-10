@@ -34,3 +34,6 @@ class Quote:
         self.ask_size = raw['askSize']
         self.ask_price = raw['askPrice']
         return self
+
+    def w_mid(self):
+        return (self.bid_size * self.bid_price + self.ask_size * self.ask_price) / (self.bid_size + self.ask_size)
