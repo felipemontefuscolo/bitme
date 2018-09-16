@@ -148,6 +148,9 @@ class OrderCommon:
     def __str__(self):
         return str(self.to_line())
 
+    def __repr__(self):
+        return str(self.to_line())
+
     def to_line(self):
         side = 'buy' if self.signed_qty > 0 else 'sell'
         return ','.join([

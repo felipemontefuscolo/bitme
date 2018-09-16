@@ -84,5 +84,5 @@ class PositionSim(PositionInterface):
         maintenance_margin = float(sign(curr_qty)) * (1. / lev - (0.5 + 0.075 + funding_rate) / 100)
         return avg_entry / max(abs(1. + maintenance_margin), ZERO_TOL)
 
-    def would_change_side(self, qty):
-        return self.signed_qty * (qty + self.signed_qty) < ZERO_TOL
+    def would_change_side(self, signed_qty):
+        return self.signed_qty * (signed_qty + self.signed_qty) < ZERO_TOL

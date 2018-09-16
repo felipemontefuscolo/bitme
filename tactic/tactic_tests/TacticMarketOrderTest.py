@@ -66,7 +66,7 @@ class TacticMarketOrderTest(TacticInterface):
         if not self.candle_last_ts:
             self.candle_last_ts = candles1m.index[-1]
         elif not isinstance(candles1m, str):
-            assert self.candle_last_ts != candles1m.index[-1]
+            assert self.candle_last_ts < candles1m.index[-1]
 
         if self.n_trades > 0 and not self.buy_id[0] and self.n_positions > 0:
             logger.info("opening a position")

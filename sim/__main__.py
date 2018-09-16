@@ -2,12 +2,12 @@
 # timestamps are of type pd.Timestamp
 # side are of type str ('buy' or 'sell')
 import argparse
-import json
+import heapq
 import os
 import shutil
 import sys
 import time
-from collections import defaultdict, deque
+from collections import defaultdict
 from typing import List, Union, Dict
 
 import numpy as np
@@ -23,8 +23,8 @@ from common.trade import Trade, TICK_DIRECTION
 from sim.liquidator import Liquidator
 from sim.position_sim import PositionSim
 from tactic import TacticInterface
-from tactic.TacticMarketOrderTest import TacticMarketOrderTest
-from utils import log
+from tactic.tactic_tests.SimTacticLimitTest import SimTacticLimitTest
+from tactic.tactic_tests.SimTacticMarketTest import SimTacticMarketTest
 
 # logger = log.setup_custom_logger('root')
 
@@ -44,6 +44,11 @@ CANCEL_NOTIF_DELAY = REQUEST_DELAY
 # import logging
 
 
+ALL_TACTICS = {
+    SimTacticMarketTest.id(): SimTacticMarketTest,
+    SimTacticLimitTest.id(): SimTacticLimitTest
+}
+
 def get_args(input_args=None):
     files_required = '--files' not in (input_args if input_args else sys.argv)
 
@@ -52,6 +57,7 @@ def get_args(input_args=None):
     parser.add_argument('--trades-file', type=str, help='csv filename with trades data', required=files_required)
     parser.add_argument('--quotes-file', type=str, help='csv filename with quotes data', required=files_required)
     parser.add_argument('--files', type=str, help='template path to the ohlcv, trades and quotes files (use %TYPE%)')
+    parser.add_argument('--tactics', type=str, help='comma-delimited list of tactics (id) to run', required=True)
     parser.add_argument('-l', '--log-dir', type=str, help='log directory', required=True)
     parser.add_argument('-b', '--begin', type=str, help='begin time')
     parser.add_argument('-e', '--end', type=str, help='end time')
@@ -90,6 +96,12 @@ def get_args(input_args=None):
     for i in range(len(args.pref)):
         args.pref[i] = args.pref[i].split("=")
     args.pref = dict(args.pref)
+
+    tactics = args.tactics.split(',')
+    for tactic in tactics:
+        if tactic not in ALL_TACTICS.keys():
+            ValueError("Unknown tactic {}".format(tactic))
+    args.tactics = [ALL_TACTICS[t] for t in tactics]
 
     return args
 
@@ -138,14 +150,15 @@ class SimExchangeBitMex(ExchangeInterface):
         self.quote_idx = 0
 
         if self.end_timestamp <= self.begin_timestamp:
-            raise ValueError("end_timestamp ({}) less or equal begin_timestamp ({}). Please check arguments and make sure "
-                             "the market data first event occurs before the end time".format(
-                self.end_timestamp, self.begin_timestamp
-            ))
+            raise ValueError(
+                "end_timestamp ({}) less or equal begin_timestamp ({}). Please check arguments and make sure "
+                "the market data first event occurs before the end time".format(
+                    self.end_timestamp, self.begin_timestamp
+                ))
 
         self.current_timestamp = self.begin_timestamp  # type: pd.Timestamp
         # market data tick: quotes, trades, ohlcv
-        self.next_tick_ts = None  # type: pd.Timestamp
+        self.next_tick_ts = self.begin_timestamp  # type: pd.Timestamp
 
         self.liquidator_tactic = Liquidator()
         self.tactics_map = {t.id(): t for t in [self.liquidator_tactic] + tactics}  # type: Dict[str, TacticInterface]
@@ -165,7 +178,8 @@ class SimExchangeBitMex(ExchangeInterface):
                           self.SYMBOLS}  # type: Dict[Symbol, PositionSim]
         self.leverage = {s: 1.0 for s in self.SYMBOLS}  # type: Dict[Symbol, float]
 
-        self.queue = deque()  # queue of tuples (timestamp, method, method_argument) to be called
+        self.queue = []  # queue of events. See self._queue_append
+        self.event_num = 0
 
         self.active_orders = dict()  # type: OrderContainerType
 
@@ -175,12 +189,10 @@ class SimExchangeBitMex(ExchangeInterface):
         self.fills_file = open(os.path.join(log_dir, 'fills.csv'), 'w')
         self.orders_file = open(os.path.join(log_dir, 'orders.csv'), 'w')
         self.pnl_file = open(os.path.join(log_dir, 'pnl.csv'), 'w')
-        self.candles_file = open(os.path.join(log_dir, 'candles.csv'), 'w')
 
         self.fills_file.write(Fill.get_header() + '\n')
         self.orders_file.write(OrderCommon.get_header() + '\n')
         self.pnl_file.write('time,symbol,pnl,cum_pnl\n')
-        self.candles_file.write(','.join(['timestamp'] + OHLCV_COLUMNS) + '\n')
 
     def _init_tactics(self):
         for tac in self.tactics_map.values():
@@ -192,16 +204,12 @@ class SimExchangeBitMex(ExchangeInterface):
         self.fills_file.close()
         self.orders_file.close()
         self.pnl_file.close()
-        self.candles_file.close()
 
     def _log_fill(self, fill: Fill):
         self.fills_file.write(fill.to_line() + '\n')
 
     def _log_order(self, order: OrderCommon):
         self.orders_file.write(order.to_line() + '\n')
-
-    def _log_candle(self, vals: list):
-        self.candles_file.write(','.join([str(i) for i in vals]) + '\n')
 
     def _log_and_update_pnl(self, position: PositionSim):
         timestamp = self.current_timestamp
@@ -241,16 +249,15 @@ class SimExchangeBitMex(ExchangeInterface):
         print("Tactics running: {}".format(tactics_names))
         print("Market data tick range: {} - {}".format(self.begin_timestamp, self.end_timestamp))
         while not self.finished:
+            self._advance_tick_timestamp()
             self._process_queue_until(self.next_tick_ts)
-            self._advance_timestamp(print_progress=True)
-            self.print_progress(self.current_timestamp)
-
         self._process_queue_until(execute_all=True)
-        self.print_progress(self.end_timestamp)
 
     def end_main_loop(self):
         for symbol in list(Symbol):
             self._exec_liquidation(symbol, reason=OrderCancelReason.end_of_sim)
+        for tac in self.tactics_map.values():
+            tac.finalize()
         self._close_files()
 
         profit_part = defaultdict(float)
@@ -292,14 +299,28 @@ class SimExchangeBitMex(ExchangeInterface):
             return d
 
     def _process_queue_until(self, end_inclusive: pd.Timestamp = None, execute_all=False):
+        assert (end_inclusive is not None) ^ execute_all  # XOR
         while len(self.queue) > 0 and (execute_all or self.queue[0][0] <= end_inclusive):
-            task = self.queue.popleft()
+            task = heapq.heappop(self.queue)
+            if self.current_timestamp > task[0]:
+                raise AttributeError("Going back in time")
             self.current_timestamp = task[0]
-            method = task[1]
-            args = task[2]  # if we ever need to change the number of arguments to more than one, you can use *args
+            method = task[2]
+            args = task[3]  # if we ever need to change the number of arguments to more than one, you can use *args
+            # print(self.current_timestamp, method)
             method(args)
 
-    def _advance_timestamp(self, print_progress: bool = True):
+        if end_inclusive:
+            self.print_progress(self.current_timestamp)
+        else:
+            self.print_progress(self.end_timestamp)
+
+    def _queue_append(self, timestamp, method, method_argument):
+        tuple_ = (timestamp, self.event_num, method, method_argument)
+        self.event_num += 1
+        heapq.heappush(self.queue, tuple_)
+
+    def _advance_tick_timestamp(self):
         # DEV NOTE: advance time stamp and put market data in the queue
 
         def get_table_ts_at_idx(table, idx):
@@ -327,7 +348,7 @@ class SimExchangeBitMex(ExchangeInterface):
 
         def add_data_to_queue_until(end_ts_inclusive, method, table, idx):
             while idx < len(table) and table.index[idx] <= end_ts_inclusive:
-                self.queue.append((table.index[idx], method, table.iloc[idx]))
+                self._queue_append(table.index[idx], method, table.iloc[idx])
                 idx += 1
             return idx
 
@@ -365,6 +386,10 @@ class SimExchangeBitMex(ExchangeInterface):
         :param orders:
         :return:
         """
+        for o in orders:
+            if o.status_msg is None:
+                raise AttributeError("Order cancel must have a reason")
+
         ids_to_delete = {o.client_id for o in orders}
         self.active_orders = {oid: self.active_orders[oid] for oid in self.active_orders.keys()
                               if oid not in ids_to_delete}
@@ -376,7 +401,7 @@ class SimExchangeBitMex(ExchangeInterface):
                                    order.status_msg != OrderCancelReason.end_of_sim
             if should_notify_tactic:
                 method = self._get_tactic(order.client_id).handle_cancel
-                self.queue.append((self.current_timestamp + CANCEL_NOTIF_DELAY, method, order))
+                self._queue_append(self.current_timestamp + CANCEL_NOTIF_DELAY, method, order)
                 self.n_unsolicited_cancels[order.symbol] += 1
 
     def _get_tactic(self, order_client_id: str) -> TacticInterface:
@@ -427,6 +452,8 @@ class SimExchangeBitMex(ExchangeInterface):
             self._exec_order_cancels([order])
             return
 
+        order.status = OrderStatus.New
+        self.active_orders[order.client_id] = order
         order._made_spread = order_side > 0 and order.price > bid or order_side < 0 and order.price < ask
 
     def _check_price_sanity(self, order: OrderCommon):
@@ -461,7 +488,7 @@ class SimExchangeBitMex(ExchangeInterface):
                           size=trade_qty,
                           tick_direction=TICK_DIRECTION[trade['tickDirection']])
 
-            self.queue.append((self.current_timestamp + WS_DELAY, tac.handle_trade, trade))
+            self._queue_append(self.current_timestamp + WS_DELAY, tac.handle_trade, trade)
 
         for order in self.active_orders.values():
             if order.type != OrderType.Limit:
@@ -503,15 +530,28 @@ class SimExchangeBitMex(ExchangeInterface):
         bid = quote['bidPrice']
         ask = quote['askPrice']
         symbol = Symbol[quote['symbol']]
-        for order in self.active_orders.values():  # type: OrderCommon
-            if order.type == OrderType.Limit:
-                order_side = order.side()
-                if (order_side > 0 and ask <= order.price) or (order_side < 0 and bid >= order.price):
-                    self._fill_order(order=order,
-                                     qty_to_fill=order.leaves_qty,
-                                     price_fill=order.price)
+        if len(self.active_orders) > 0:
+            for order in self.active_orders.values():  # type: OrderCommon
+                if order.type == OrderType.Limit:
+                    order_side = order.side()
+                    if (order_side > 0 and ask <= order.price) or (order_side < 0 and bid >= order.price):
+                        self._fill_order(order=order,
+                                         qty_to_fill=order.leaves_qty,
+                                         price_fill=order.price)
 
-        self.active_orders = {o.client_id: o for o in self.active_orders.values() if o.is_open()}
+            self.active_orders = {o.client_id: o for o in self.active_orders.values() if o.is_open()}
+
+        for tac in self.tactics_map.values():
+            if tac.get_symbol() != symbol:
+                continue
+            q = Quote(symbol=symbol,
+                      timestamp=self.current_time(),
+                      bid_size=quote['bidSize'],
+                      bid_price=quote['bidPrice'],
+                      ask_size=quote['askSize'],
+                      ask_price=quote['askPrice'])
+
+            self._queue_append(self.current_timestamp + WS_DELAY, tac.handle_quote, q)
         return
 
     def _process_ohlcv(self, ohlcv: pd.Series):
@@ -520,7 +560,7 @@ class SimExchangeBitMex(ExchangeInterface):
         ohlcv_view = self.get_candles1m()
         for tactic in self.tactics_map.values():
             method = tactic.handle_1m_candles
-            self.queue.append((self.current_timestamp + WS_DELAY, method, ohlcv_view))
+            self._queue_append(self.current_timestamp + WS_DELAY, method, ohlcv_view)
 
     def _fill_order(self, order: OrderCommon, qty_to_fill, price_fill, fee=0.):
         fully_filled = order.fill(qty_to_fill)
@@ -535,14 +575,28 @@ class SimExchangeBitMex(ExchangeInterface):
         self._log_fill(fill)
         self.volume[order.symbol] += abs(qty_to_fill) * price_fill
         self.n_fills[order.symbol] += 1
-        self.positions[order.symbol].update(signed_qty=qty_to_fill * side,
-                                            price=price_fill,
-                                            leverage=self.leverage[order.symbol],
-                                            current_timestamp=self.current_timestamp,
-                                            fee=fee)
+
+        position = self.positions[order.symbol]
+        # we have to fill in 2 steps, in case the size to be filled invert our position
+        cur_pos = position.signed_qty
+        signed_qty_to_fill = qty_to_fill * side
+        qty1 = max(-cur_pos, signed_qty_to_fill) if cur_pos > 0 else min(-cur_pos, signed_qty_to_fill)
+        qty2 = signed_qty_to_fill - qty1
+        position.update(signed_qty=qty1,
+                        price=price_fill,
+                        leverage=self.leverage[order.symbol],
+                        current_timestamp=self.current_timestamp,
+                        fee=fee)
+        if abs(qty2) > 0:
+            assert not position.is_open
+            position.update(signed_qty=qty2,
+                            price=price_fill,
+                            leverage=self.leverage[order.symbol],
+                            current_timestamp=self.current_timestamp,
+                            fee=fee)
 
         method = self._get_tactic(order.client_id).handle_fill
-        self.queue.append((self.current_timestamp + WS_DELAY, method, fill))
+        self._queue_append(self.current_timestamp + WS_DELAY, method, fill)
 
         return fully_filled
 
@@ -559,7 +613,7 @@ class SimExchangeBitMex(ExchangeInterface):
                 raise ValueError("Sending order with status different from Pending: {}".format(o))
             self.n_orders[o.symbol] += 1
 
-        self.queue.append((self.current_timestamp + ORDER_TO_FILL_DELAY, self._send_orders_impl, orders))
+        self._queue_append(self.current_timestamp + ORDER_TO_FILL_DELAY, self._send_orders_impl, orders)
 
     def _send_orders_impl(self, orders: List[OrderCommon]):
         for o in orders:
@@ -576,7 +630,7 @@ class SimExchangeBitMex(ExchangeInterface):
         pass
 
     def cancel_orders(self, orders: Union[OrderContainerType, List[OrderCommon], List[str]]):
-        self.queue.append((self.current_timestamp + CANCEL_DELAY, self._cancel_orders_impl, orders))
+        self._queue_append(self.current_timestamp + CANCEL_DELAY, self._cancel_orders_impl, orders)
 
     def _cancel_orders_impl(self, orders: Union[OrderContainerType, List[OrderCommon], List[str]]):
         # The reason to split this function from cancel_orders is to simulate the delay in the cancels
@@ -586,7 +640,9 @@ class SimExchangeBitMex(ExchangeInterface):
             if order:
                 order.status = OrderStatus.Canceled
                 order.status_msg = OrderCancelReason.requested_by_user
-        self._exec_order_cancels(orders)
+                self._exec_order_cancels([order])
+            else:
+                raise AttributeError("Invalid order id {}. Opened orders are: {}".format(i, [k for k in self.active_orders]))
 
     def current_time(self) -> pd.Timestamp:
         return self.current_timestamp
@@ -665,7 +721,7 @@ def read_market_data(args):
                              cols=['symbol', 'side', 'price', 'size', 'tickDirection'],
                              begin=args.begin,
                              end=args.end)
-    print('trades: n_rows={}, time reading: {}s'.format(len(trades), '%.2f' %  (time.time() - start)))
+    print('trades: n_rows={}, time reading: {}s'.format(len(trades), '%.2f' % (time.time() - start)))
 
     start = time.time()
     quotes = read_timeseries(filename=args.quotes_file,
@@ -692,10 +748,8 @@ def main(input_args=None):
     # main._log.info("starting SIM")
     args = get_args(input_args)
 
-    # defin here the tactic you want to activate
-    tactics = [TacticMarketOrderTest(2, 2)]
-
     ohlcv, trades, quotes = read_market_data(args)
+    tactics = [t() for t in args.tactics]
 
     sim = SimExchangeBitMex(args.begin,
                             args.end,

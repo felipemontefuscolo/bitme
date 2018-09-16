@@ -30,9 +30,9 @@ from live.settings import settings
 from live.tactic_event_handler import TacticEventHandler
 from live.ws.ws_thread import BitMEXWebsocket
 from tactic import TacticInterface
-from tactic.TacticLimitOrderTest import TacticLimitOrderTest
-from tactic.TacticMarketOrderTest import TacticMarketOrderTest
-from tactic.TacticTest3 import TacticTest3
+from tactic.tactic_tests.TacticLimitOrderTest import TacticLimitOrderTest
+from tactic.tactic_tests.TacticMarketOrderTest import TacticMarketOrderTest
+from tactic.tactic_tests.TacticTest3 import TacticTest3
 from tactic.bitmex_dummy_tactic import BitmexDummyTactic
 from utils import log
 
