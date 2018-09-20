@@ -1,0 +1,1 @@
+/Users/felipe/bitme/sim/__main__.py,--files,data/20180701-1h-%TYPE%.csv.gz,--log-dir,test/test2,-b,2018-07-01 00:00:00,-e,2018-07-01 00:10:00,--tactics,SimTMT,-x,/SimTMT/qty_to_trade=5

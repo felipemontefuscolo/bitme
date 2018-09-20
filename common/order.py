@@ -168,7 +168,7 @@ class OrderCommon:
 
     @staticmethod
     def get_header():
-        return 'time,symbol,id,side,qty,leaves_qty,price,type,status,status_msg'
+        return 'timestamp,symbol,id,side,qty,leaves_qty,price,type,status,status_msg'
 
     @staticmethod
     def e_str(x: Union[Enum, str]) -> str:

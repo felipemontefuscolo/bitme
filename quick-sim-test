@@ -1,8 +1,7 @@
 #!/bin/bash
-python -m sim -f data/bitmex_1day.csv -x span=100 -x greediness=1.0 -x qty_to_trade=3 -x loss_limit=3 -l test/quick_sim_test
 
-result=`diff -r test/quick_sim_test test/ref`
-
+python -m sim --files data/20180701-1h-%TYPE%.csv.gz --log-dir test/test1 -b '2018-07-01 00:00:00' -e '2018-07-01 00:10:00' --tactics SimTLT -x /SimTLT/qty_to_trade=5 > /tmp/a
+result=`diff -r test/test1 test/ref1`
 if [ -z $result ]
 then
 	echo " --------------------------- "
@@ -20,5 +19,23 @@ else
 	echo $result
 fi
 
+python -m sim --files data/20180701-1h-%TYPE%.csv.gz --log-dir test/test2 -b '2018-07-01 00:00:00' -e '2018-07-01 00:10:00' --tactics SimTMT -x /SimTMT/qty_to_trade=5 > /tmp/b
+result=`diff -r test/test2 test/ref2`
+if [ -z $result ]
+then
+	echo " --------------------------- "
+	echo " --------------------------- "
+	echo " PASSED!                     "
+	echo " --------------------------- "
+	echo " --------------------------- "
+else
+	echo " --------------------------- "
+	echo " --------------------------- "
+	echo " FAILED: quant diff detected "
+	echo " --------------------------- "
+	echo " --------------------------- "
+	echo " showing diff: "
+	echo $result
+fi
 
 

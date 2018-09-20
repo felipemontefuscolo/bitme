@@ -96,8 +96,9 @@ def floor_5(x):
 
 
 def read_data(file: str, begin: pd.Timestamp = None, end: pd.Timestamp = None) -> pd.DataFrame:
-    timeparser = lambda s: pd.datetime.strptime(str(s), '%Y-%m-%dT%H:%M:%S')
-    data = pd.DataFrame(pd.read_csv(file, parse_dates=True, index_col='time', date_parser=timeparser))
+    #timeparser = lambda s: pd.datetime.strptime(str(s), '%Y-%m-%dT%H:%M:%S')
+    timeparser = lambda s: pd.Timestamp(s)
+    data = pd.DataFrame(pd.read_csv(file, parse_dates=True, index_col='timestamp', date_parser=timeparser))
 
     if begin and end:
         data = data.loc[begin:end]

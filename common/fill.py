@@ -46,7 +46,7 @@ class Fill:
 
     def to_json(self):
         params = {
-            'time': str(self.fill_time),
+            'timestamp': str(self.fill_time),
             'symbol': str(self.symbol.name),
             'order_id': self.order_id,
             'side': self.side,
@@ -69,4 +69,4 @@ class Fill:
 
     @staticmethod
     def get_header():
-        return "time,symbol,order_id,side,qty,price,type"
+        return "timestamp,symbol,order_id,side,qty,price,type"

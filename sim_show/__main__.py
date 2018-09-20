@@ -36,21 +36,40 @@ def main():
     fills_file = os.path.join(args.log_dir, 'fills.csv')
     # orders_file = os.path.join(args.log_dir, 'orders.csv')
     pnl_file = os.path.join(args.log_dir, 'pnl.csv')
-    parameters_used = eval(open(os.path.join(args.log_dir, 'parameters_used'), 'r').readline())
-    candles_file = parameters_used[parameters_used.index('-f') + 1]
+    parameters_used = open(os.path.join(args.log_dir, 'parameters_used')).readlines()[0].split(',')
+    try:
+        idx = parameters_used.index('--trades-file')
+    except ValueError:
+        idx = parameters_used.index('--files')
 
-    candles: pd.DataFrame = read_data(candles_file)
+    trades_file = parameters_used[idx + 1].replace('%TYPE%', 'trades')
+
+    trades: pd.DataFrame = read_data(trades_file)
     fills = read_data(fills_file)
     pnls = read_data(pnl_file)
-    buys = fills.loc[fills['side'] == 'buy'][['price']]
-    sells = fills.loc[fills['side'] == 'sell'][['price']]
+    buys = fills.loc[fills['side'] == 'Buy'][['price']]
+    sells = fills.loc[fills['side']  == 'Sell'][['price']]
 
-    trace = go.Candlestick(x=candles.index,
-                           open=candles.open,
-                           high=candles.high,
-                           low=candles.low,
-                           close=candles.close,
-                           name='ohlc')
+    # trace = go.Candlestick(x=candles.index,
+    #                        open=candles.open,
+    #                        high=candles.high,
+    #                        low=candles.low,
+    #                        close=candles.close,
+    #                        name='ohlc')
+
+    trace = go.Scatter(
+        x=trades.index,
+        y=trades['price'],
+        name='Tick'
+        # mode='markers',
+        # marker=dict(
+        #     size=10,
+        #     color='rgba(182, 255, 193, .9)',
+        #     line=dict(
+        #         width=2,
+        #     )
+        # )
+    )
 
     trace2 = go.Scatter(
         x=buys.index,

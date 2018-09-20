@@ -192,7 +192,7 @@ class SimExchangeBitMex(ExchangeInterface):
 
         self.fills_file.write(Fill.get_header() + '\n')
         self.orders_file.write(OrderCommon.get_header() + '\n')
-        self.pnl_file.write('time,symbol,pnl,cum_pnl\n')
+        self.pnl_file.write('timestamp,symbol,pnl,cum_pnl\n')
 
     def _init_tactics(self):
         for tac in self.tactics_map.values():
@@ -762,6 +762,12 @@ def main(input_args=None):
                             tactic_prefs=args.pref)
 
     sim.run_sim()
+
+    # needed for show.py
+    pars_used_file = open(os.path.join(args.log_dir, 'parameters_used'), 'w')
+    pars_used_file.write(','.join(input_args if input_args else sys.argv))
+    pars_used_file.write("")
+    pars_used_file.close()
 
     return 0
 
