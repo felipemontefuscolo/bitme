@@ -23,6 +23,7 @@ from common.trade import Trade, TICK_DIRECTION
 from sim.liquidator import Liquidator
 from sim.position_sim import PositionSim
 from tactic import TacticInterface
+from tactic.TacticMakerV1 import TacticMakerV1
 from tactic.tactic_tests.SimTacticLimitTest import SimTacticLimitTest
 from tactic.tactic_tests.SimTacticMarketTest import SimTacticMarketTest
 
@@ -33,7 +34,6 @@ WS_DELAY = pd.Timedelta('1ms')
 ORDER_TO_FILL_DELAY = REQUEST_DELAY
 CANCEL_DELAY = REQUEST_DELAY
 CANCEL_NOTIF_DELAY = REQUEST_DELAY
-
 
 # from autologging import logged
 
@@ -46,8 +46,10 @@ CANCEL_NOTIF_DELAY = REQUEST_DELAY
 
 ALL_TACTICS = {
     SimTacticMarketTest.id(): SimTacticMarketTest,
-    SimTacticLimitTest.id(): SimTacticLimitTest
+    SimTacticLimitTest.id(): SimTacticLimitTest,
+    TacticMakerV1.id(): TacticMakerV1
 }
+
 
 def get_args(input_args=None):
     files_required = '--files' not in (input_args if input_args else sys.argv)
@@ -478,19 +480,10 @@ class SimExchangeBitMex(ExchangeInterface):
         trade_qty = trade['size']  # unsigned
         trade_sym = Symbol[trade['symbol']]
 
-        for tac in self.tactics_map.values():
-            if tac.get_symbol() != trade_sym:
-                continue
-            trade = Trade(symbol=trade_sym,
-                          timestamp=self.current_timestamp,
-                          side=+1 if trade['side'][0] == 'B' else -1,
-                          price=trade_price,
-                          size=trade_qty,
-                          tick_direction=TICK_DIRECTION[trade['tickDirection']])
+        # This price is the price that would happen if we could insert the orders price in the real book
+        sim_price = trade_price
 
-            self._queue_append(self.current_timestamp + WS_DELAY, tac.handle_trade, trade)
-
-        for order in self.active_orders.values():
+        for order in self.active_orders.values():  # type: OrderCommon
             if order.type != OrderType.Limit:
                 continue
             assert order.is_open()
@@ -520,8 +513,25 @@ class SimExchangeBitMex(ExchangeInterface):
                     self._fill_order(order=order,
                                      qty_to_fill=fill_qty,
                                      price_fill=order.price)
+                if trade_side > 0:
+                    sim_price = min(sim_price, order.price)
+                else:
+                    sim_price = max(sim_price, order.price)
 
         self.active_orders = {o.client_id: o for o in self.active_orders.values() if o.is_open()}
+
+        for tac in self.tactics_map.values():
+            if tac.get_symbol() != trade_sym:
+                continue
+            trade = Trade(symbol=trade_sym,
+                          timestamp=self.current_timestamp,
+                          side=+1 if trade['side'][0] == 'B' else -1,
+                          price=sim_price,
+                          size=trade_qty,
+                          tick_direction=TICK_DIRECTION[trade['tickDirection']])
+
+            self._queue_append(self.current_timestamp + WS_DELAY, tac.handle_trade, trade)
+
         return
 
     def _process_quote(self, quote: pd.Series):
@@ -563,6 +573,11 @@ class SimExchangeBitMex(ExchangeInterface):
             self._queue_append(self.current_timestamp + WS_DELAY, method, ohlcv_view)
 
     def _fill_order(self, order: OrderCommon, qty_to_fill, price_fill, fee=0.):
+        assert price_fill >= 0, "Price has to be positive"
+        assert abs(order.leaves_qty) >= 1, "Order with leaves_qty < 1 should be closed"
+        assert abs(order.signed_qty) >= 1, "Order signed_qty should not be less than 1"
+        assert abs(qty_to_fill) >= 1, "Can not fill order with qty less than 1"
+
         fully_filled = order.fill(qty_to_fill)
         side = order.side()
         fill = Fill(symbol=order.symbol,
@@ -577,23 +592,11 @@ class SimExchangeBitMex(ExchangeInterface):
         self.n_fills[order.symbol] += 1
 
         position = self.positions[order.symbol]
-        # we have to fill in 2 steps, in case the size to be filled invert our position
-        cur_pos = position.signed_qty
-        signed_qty_to_fill = qty_to_fill * side
-        qty1 = max(-cur_pos, signed_qty_to_fill) if cur_pos > 0 else min(-cur_pos, signed_qty_to_fill)
-        qty2 = signed_qty_to_fill - qty1
-        position.update(signed_qty=qty1,
+        position.update(signed_qty=qty_to_fill * side,
                         price=price_fill,
                         leverage=self.leverage[order.symbol],
                         current_timestamp=self.current_timestamp,
                         fee=fee)
-        if abs(qty2) > 0:
-            assert not position.is_open
-            position.update(signed_qty=qty2,
-                            price=price_fill,
-                            leverage=self.leverage[order.symbol],
-                            current_timestamp=self.current_timestamp,
-                            fee=fee)
 
         method = self._get_tactic(order.client_id).handle_fill
         self._queue_append(self.current_timestamp + WS_DELAY, method, fill)
@@ -611,6 +614,8 @@ class SimExchangeBitMex(ExchangeInterface):
         for o in orders:
             if o.status != OrderStatus.Pending:
                 raise ValueError("Sending order with status different from Pending: {}".format(o))
+            if abs(o.signed_qty) < 1:
+                raise ValueError("Order abs(quantity) has to be greater than 1, found {}".format(o.signed_qty))
             self.n_orders[o.symbol] += 1
 
         self._queue_append(self.current_timestamp + ORDER_TO_FILL_DELAY, self._send_orders_impl, orders)
@@ -632,6 +637,19 @@ class SimExchangeBitMex(ExchangeInterface):
     def cancel_orders(self, orders: Union[OrderContainerType, List[OrderCommon], List[str]]):
         self._queue_append(self.current_timestamp + CANCEL_DELAY, self._cancel_orders_impl, orders)
 
+    def cancel_all_orders(self, symbol: Symbol):
+        orders = [o for o in self.active_orders.values() if o.symbol == symbol]
+        self._queue_append(self.current_timestamp + CANCEL_DELAY, self._cancel_orders_impl, orders)
+
+    def close_position(self, symbol: Symbol, order_id: str):
+        # TODO: it should also close limit orders on the same side as the position
+        pos = self.positions[symbol]
+        if pos.is_open:
+            self.send_orders([OrderCommon(symbol=symbol,
+                                          type=OrderType.Market,
+                                          client_id=order_id,
+                                          signed_qty=-pos.signed_qty)])
+
     def _cancel_orders_impl(self, orders: Union[OrderContainerType, List[OrderCommon], List[str]]):
         # The reason to split this function from cancel_orders is to simulate the delay in the cancels
         ids = get_orders_id(orders)
@@ -642,7 +660,8 @@ class SimExchangeBitMex(ExchangeInterface):
                 order.status_msg = OrderCancelReason.requested_by_user
                 self._exec_order_cancels([order])
             else:
-                raise AttributeError("Invalid order id {}. Opened orders are: {}".format(i, [k for k in self.active_orders]))
+                # raise AttributeError("Invalid order id {}. Opened orders are: {}".format(i, [k for k in self.active_orders]))
+                pass
 
     def current_time(self) -> pd.Timestamp:
         return self.current_timestamp

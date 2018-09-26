@@ -123,7 +123,10 @@ class OrderCommon:
         return 'Sell' if self.signed_qty < 0 else 'Buy'
 
     def is_open(self):
-        return self.status == OrderStatus.New or self.status == OrderStatus.PartiallyFilled
+        if self.status == OrderStatus.New or self.status == OrderStatus.PartiallyFilled:
+            assert self.leaves_qty > 0
+            return True
+        return False
 
     def is_sell(self):
         return self.signed_qty < 0

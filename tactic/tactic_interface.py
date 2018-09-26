@@ -68,7 +68,9 @@ class TacticInterface(metaclass=ABCMeta):
             return "{}_{}".format(self.id(),
                                   base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n'))
         self.ord_num += 1
-        return "{}_{}".format(self.id(), self.ord_num)
+        cid = "{}_{}".format(self.id(), self.ord_num)
+        assert len(cid) <= 36
+        return cid
 
     def does_own_order(self, order: OrderCommon):
         my_id = self.id()

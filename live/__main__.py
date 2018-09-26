@@ -32,7 +32,6 @@ from live.ws.ws_thread import BitMEXWebsocket
 from tactic import TacticInterface
 from tactic.tactic_tests.TacticLimitOrderTest import TacticLimitOrderTest
 from tactic.tactic_tests.TacticMarketOrderTest import TacticMarketOrderTest
-from tactic.tactic_tests.TacticTest3 import TacticTest3
 from tactic.bitmex_dummy_tactic import BitmexDummyTactic
 from utils import log
 
@@ -782,32 +781,6 @@ def test_market_order(n_trades, n_positions, input_args=None):
 
 def test_limit_order_and_cancels(input_args=None):
     return test_common_1(TacticLimitOrderTest(), 5, input_args)
-
-
-def test2(input_args=None):
-    tactic = TacticMarketOrderTest()
-    ret = test_common_1(tactic, 3, input_args)
-    time.sleep(1)
-    assert tactic.got_the_cancel
-    return ret
-
-
-def test3(input_args=None):
-    # assert that tactic doesn't get 'handle_cancel' if the cancel came from the tactic iteself
-    args = get_args(input_args)
-    tactic = TacticTest3()
-    with LiveBitMex(args.log_dir) as live:
-        live.register_tactic(tactic)
-        for tac in live.tactics_map.values():
-            tac.initialize(live, args.pref)
-
-        live.tactics_map[tactic.id()].handle_1m_candles(None)
-        time.sleep(1)
-        live.tactics_map[tactic.id()].handle_1m_candles(None)
-
-    assert not tactic.got_the_cancel
-
-    return 0
 
 
 def test_print_quote(input_args=None):

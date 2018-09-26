@@ -28,6 +28,9 @@ class Trade:
                  price: float = None,
                  size: float = None,
                  tick_direction: TickDirection = None):
+        assert price > 0, "Price can not be negative, found {}".format(price)
+        assert size > 0, "Size is unsigned"
+
         self.timestamp = timestamp
         self.symbol = symbol
         self.side = side

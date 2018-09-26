@@ -44,9 +44,9 @@ def main():
 
     trades_file = parameters_used[idx + 1].replace('%TYPE%', 'trades')
 
-    trades: pd.DataFrame = read_data(trades_file)
-    fills = read_data(fills_file)
-    pnls = read_data(pnl_file)
+    trades: pd.DataFrame = read_data(trades_file, args.begin, args.end)
+    fills = read_data(fills_file, args.begin, args.end)
+    pnls = read_data(pnl_file, args.begin, args.end)
     buys = fills.loc[fills['side'] == 'Buy'][['price']]
     sells = fills.loc[fills['side']  == 'Sell'][['price']]
 

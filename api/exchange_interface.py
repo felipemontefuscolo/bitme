@@ -39,6 +39,21 @@ class ExchangeInterface(metaclass=ABCMeta):
         raise AttributeError("interface class")
 
     @abstractmethod
+    def cancel_all_orders(self, symbol: Symbol):
+        """
+        Cancel all open orders for a symbol
+        """
+        raise AttributeError("interface class")
+
+    @abstractmethod
+    def close_position(self, symbol: Symbol, order_id: str):
+        """
+        Send a closing order on behalf of the tactic (tactic will get handle_fill if order_id is properly defined)
+        It also closes limit orders on the same side as the position
+        """
+        raise AttributeError("interface class")
+
+    @abstractmethod
     def current_time(self) -> pd.Timestamp:
         raise AttributeError("interface class")
 
