@@ -140,7 +140,7 @@ class TacticMakerV1(TacticInterface):
 
             if should_liq:
                 self._cancel_all()
-                self.exchange.close_position(self.symbol, self.gen_order_id('_liq'))
+                self.exchange.close_position(self.symbol)
                 self.rest = 3
 
         pass

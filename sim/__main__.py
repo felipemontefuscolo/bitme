@@ -641,13 +641,15 @@ class SimExchangeBitMex(ExchangeInterface):
         orders = [o for o in self.active_orders.values() if o.symbol == symbol]
         self._queue_append(self.current_timestamp + CANCEL_DELAY, self._cancel_orders_impl, orders)
 
-    def close_position(self, symbol: Symbol, order_id: str):
+    def close_position(self, symbol: Symbol):
         # TODO: it should also close limit orders on the same side as the position
         pos = self.positions[symbol]
+        oid = self.liquidator_tactic.gen_order_id().split('_')
+        oid = 'closing_' + oid[1]
         if pos.is_open:
             self.send_orders([OrderCommon(symbol=symbol,
                                           type=OrderType.Market,
-                                          client_id=order_id,
+                                          client_id=oid,
                                           signed_qty=-pos.signed_qty)])
 
     def _cancel_orders_impl(self, orders: Union[OrderContainerType, List[OrderCommon], List[str]]):

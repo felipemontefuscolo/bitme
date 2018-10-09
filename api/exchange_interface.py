@@ -46,10 +46,9 @@ class ExchangeInterface(metaclass=ABCMeta):
         raise AttributeError("interface class")
 
     @abstractmethod
-    def close_position(self, symbol: Symbol, order_id: str):
+    def close_position(self, symbol: Symbol):
         """
-        Send a closing order on behalf of the tactic (tactic will get handle_fill if order_id is properly defined)
-        It also closes limit orders on the same side as the position
+        Send a closing order on behalf of the tactic
         """
         raise AttributeError("interface class")
 
