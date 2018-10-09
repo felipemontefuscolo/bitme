@@ -34,6 +34,7 @@ def get_args():
 def main():
     args = get_args()
     fills_file = os.path.join(args.log_dir, 'fills.csv')
+    orders_file = os.path.join(args.log_dir, 'orders.csv')
     # orders_file = os.path.join(args.log_dir, 'orders.csv')
     pnl_file = os.path.join(args.log_dir, 'pnl.csv')
     parameters_used = open(os.path.join(args.log_dir, 'parameters_used')).readlines()[0].split(',')
@@ -46,9 +47,12 @@ def main():
 
     trades: pd.DataFrame = read_data(trades_file, args.begin, args.end)
     fills = read_data(fills_file, args.begin, args.end)
+    orders = read_data(orders_file, args.begin, args.end)
     pnls = read_data(pnl_file, args.begin, args.end)
     buys = fills.loc[fills['side'] == 'Buy'][['price']]
     sells = fills.loc[fills['side']  == 'Sell'][['price']]
+    orders_buy = orders.loc[orders['side'] == 'buy']
+    orders_sell = orders.loc[orders['side'] == 'sell']
 
     # trace = go.Candlestick(x=candles.index,
     #                        open=candles.open,
@@ -114,7 +118,37 @@ def main():
         yaxis='y2'
     )
 
-    data = [trace, trace2, trace3, trace4]
+    trace5 = go.Scatter(
+        x=orders_buy.index,
+        y=orders_buy['price'],
+        name='Orders buy',
+        mode='markers',
+        marker=dict(
+            symbol='triangle-up',
+            size=7,
+            color='rgba(182, 255, 193, .9)',
+            line=dict(
+                width=1,
+            )
+        )
+    )
+
+    trace6 = go.Scatter(
+        x=orders_sell.index,
+        y=orders_sell['price'],
+        name='Orders sell',
+        mode='markers',
+        marker=dict(
+            symbol='triangle-down',
+            size=7,
+            color='rgba(255, 182, 193, .9)',
+            line=dict(
+                width=1,
+            )
+        )
+    )
+
+    data = [trace, trace2, trace3, trace4, trace5, trace6]
 
     layout = go.Layout(
         title='Trading log',
