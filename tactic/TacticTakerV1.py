@@ -7,17 +7,17 @@ from tactic import TacticInterface, PositionSim
 import math
 
 
-class TacticMakerV1(TacticInterface):
+class TacticTakerV1(TacticInterface):
 
     def __init__(self):
         self.exchange = None  # type: ExchangeInterface
         self.max_qty = 10000
         self.min_liq = 10000  # doesn't make much sense when we don't have the full book available
-        self.alpha = 100  # qty / price
+        self.alpha = 1  # qty / price
         self.leverage = 1
         self.symbol = Symbol.XBTUSD
         self.risk = 0.001  # percent
-        self.spread = 0.5
+        self.spread = 3.5
 
         # buy, sell
         self.buy_order = None  # type: OrderCommon
@@ -95,6 +95,13 @@ class TacticMakerV1(TacticInterface):
         qty_buy = min(self.max_qty, round((price - buy) * self.alpha))
         qty_sel = min(self.max_qty, round((sell - price) * self.alpha))
 
+        # TODO: improve quantities
+        qty_buy = min(qty_buy, qty_sel)
+        qty_sel = qty_buy
+
+        if qty_buy < 1:
+            self.learning = 0
+
         if qty_buy >= 1:
             self.buy_order = OrderCommon(symbol=self.symbol,
                                          type=OrderType.Limit,
@@ -117,7 +124,8 @@ class TacticMakerV1(TacticInterface):
         if self.sell_order:
             orders.append(self.sell_order)
 
-        self.exchange.send_orders(orders)
+        if orders:
+            self.exchange.send_orders(orders)
 
     def _liq_pos(self, pos: float):
         self.exchange.send_orders([OrderCommon(symbol=self.symbol,
@@ -141,13 +149,17 @@ class TacticMakerV1(TacticInterface):
 
         if not self.buy_order and not self.sell_order:
             fcst = (self.last_quote.bid_price + self.last_quote.ask_price) * 0.5
-            self._create_orders(learning=self.position.signed_qty, fcst=fcst, quote=self.last_quote)
+            if self.position.signed_qty != 0:
+                raise ValueError("self.position.signed_qty is {}".format(self.position.signed_qty))
+            self._create_orders(learning=self.learning, fcst=fcst, quote=self.last_quote)
             self._send_orders()
+
         else:
             side = self.position.side
             should_liq = self.liq_price is not None and trade.price * side < self.liq_price * side
 
             if should_liq:
+                self.learning += self.position.signed_qty
                 self._cancel_all()
                 self.exchange.close_position(self.symbol)
                 self.rest = 3
@@ -203,4 +215,4 @@ class TacticMakerV1(TacticInterface):
 
     @staticmethod
     def id() -> str:
-        return 'TMV1'
+        return 'TTV1'

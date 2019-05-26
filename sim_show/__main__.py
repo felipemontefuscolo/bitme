@@ -49,8 +49,9 @@ def main():
     fills = read_data(fills_file, args.begin, args.end)
     orders = read_data(orders_file, args.begin, args.end)
     pnls = read_data(pnl_file, args.begin, args.end)
-    buys = fills.loc[fills['side'] == 'Buy'][['price']]
-    sells = fills.loc[fills['side']  == 'Sell'][['price']]
+    buys = fills.loc[fills['side'] == 'Buy'][['price', 'order_id']]
+    sells = fills.loc[fills['side']  == 'Sell'][['price', 'order_id']]
+    orders = orders.loc[orders['status'] != 'Canceled']
     orders_buy = orders.loc[orders['side'] == 'buy']
     orders_sell = orders.loc[orders['side'] == 'sell']
 
@@ -78,6 +79,8 @@ def main():
     trace2 = go.Scatter(
         x=buys.index,
         y=buys['price'],
+        text=buys['order_id'],
+        hoverinfo='text',
         name='Buy',
         mode='markers',
         marker=dict(
@@ -92,6 +95,8 @@ def main():
     trace3 = go.Scatter(
         x=sells.index,
         y=sells['price'],
+        text=sells['order_id'],
+        hoverinfo='text',
         name='Sell',
         mode='markers',
         marker=dict(
@@ -121,6 +126,8 @@ def main():
     trace5 = go.Scatter(
         x=orders_buy.index,
         y=orders_buy['price'],
+        text=orders_buy['id'],
+        hoverinfo='text',
         name='Orders buy',
         mode='markers',
         marker=dict(
@@ -136,6 +143,8 @@ def main():
     trace6 = go.Scatter(
         x=orders_sell.index,
         y=orders_sell['price'],
+        text=orders_sell['id'],
+        hoverinfo='text',
         name='Orders sell',
         mode='markers',
         marker=dict(

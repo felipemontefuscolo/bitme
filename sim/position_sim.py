@@ -42,7 +42,7 @@ class PositionSim(PositionInterface):
 
         return qty1, qty2
 
-    def update(self, signed_qty, *args, **kwargs):
+    def update(self, signed_qty, *  args, **kwargs):
         """
         This version of update supports position side change
         """
@@ -112,6 +112,9 @@ class PositionSim(PositionInterface):
             self.__init__(self.symbol, self.on_position_close)
 
         return self
+
+    def reset(self):
+        self.__init__(self.symbol, self.on_position_close)
 
     @staticmethod
     def _calc_liq_price(avg_entry, curr_qty, lev, funding_rate=0.001):

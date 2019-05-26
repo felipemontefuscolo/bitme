@@ -24,6 +24,7 @@ from sim.liquidator import Liquidator
 from sim.position_sim import PositionSim
 from tactic import TacticInterface
 from tactic.TacticMakerV1 import TacticMakerV1
+from tactic.TacticTakerV1 import TacticTakerV1
 from tactic.tactic_tests.SimTacticLimitTest import SimTacticLimitTest
 from tactic.tactic_tests.SimTacticMarketTest import SimTacticMarketTest
 
@@ -47,7 +48,8 @@ CANCEL_NOTIF_DELAY = REQUEST_DELAY
 ALL_TACTICS = {
     SimTacticMarketTest.id(): SimTacticMarketTest,
     SimTacticLimitTest.id(): SimTacticLimitTest,
-    TacticMakerV1.id(): TacticMakerV1
+    TacticMakerV1.id(): TacticMakerV1,
+    TacticTakerV1.id(): TacticTakerV1
 }
 
 
@@ -146,6 +148,11 @@ class SimExchangeBitMex(ExchangeInterface):
 
         self.begin_timestamp = begin_timestamp
         self.end_timestamp = end_timestamp
+
+        if self.begin_timestamp is None:
+            self.begin_timestamp = min(self.ohlcv.index[0], self.trades.index[0], self.quotes.index[0])
+        if self.end_timestamp is None:
+            self.end_timestamp = max(self.ohlcv.index[-1], self.trades.index[-1], self.quotes.index[-1])
 
         self.ohlcv_idx = 0
         self.trade_idx = 0
@@ -272,7 +279,8 @@ class SimExchangeBitMex(ExchangeInterface):
                 else:
                     loss_part[s] += p
 
-        summary = {'initial_xbt': self.xbt_initial_balance,
+        summary = {'sim time': time.time() - self.sim_start_time,
+                   'initial_xbt': self.xbt_initial_balance,
                    'position_xbt': 'Not implemented',
                    'num_fills': self.n_fills,
                    'volume': self.volume,
@@ -280,11 +288,11 @@ class SimExchangeBitMex(ExchangeInterface):
                    'n_unsolicited_cancels': self.n_unsolicited_cancels,
                    'num_liq': self.n_liquidations,
                    'close_price': self.current_quote.w_mid(),
-                   'pnl (XBT)': self.cum_pnl,
-                   'pnl_total': sum([p for p in self.cum_pnl.values()]),
                    'profit_part': profit_part,
                    'loss_part': loss_part,
-                   'sim time': time.time() - self.sim_start_time}
+                   'pnl (XBT)': self.cum_pnl,
+                   'pnl_total': sum([p for p in self.cum_pnl.values()])
+                   }
 
         for k, v in summary.items():
             print('{}: {}'.format(k, self._transf(v, len(k))))
@@ -639,13 +647,14 @@ class SimExchangeBitMex(ExchangeInterface):
 
     def cancel_all_orders(self, symbol: Symbol):
         orders = [o for o in self.active_orders.values() if o.symbol == symbol]
-        self._queue_append(self.current_timestamp + CANCEL_DELAY, self._cancel_orders_impl, orders)
+        if orders:
+            self._queue_append(self.current_timestamp + CANCEL_DELAY, self._cancel_orders_impl, orders)
 
     def close_position(self, symbol: Symbol):
         # TODO: it should also close limit orders on the same side as the position
         pos = self.positions[symbol]
         oid = self.liquidator_tactic.gen_order_id().split('_')
-        oid = 'closing_' + oid[1]
+        oid = oid[0] + '_closing_' + oid[1]
         if pos.is_open:
             self.send_orders([OrderCommon(symbol=symbol,
                                           type=OrderType.Market,
